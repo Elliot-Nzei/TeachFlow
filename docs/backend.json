@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -29,14 +30,27 @@
         },
         "currentTerm": {
           "type": "string",
-          "enum": ["First Term", "Second Term", "Third Term"]
+          "enum": [
+            "First Term",
+            "Second Term",
+            "Third Term"
+          ]
         },
         "currentSession": {
           "type": "string",
           "description": "e.g. 2023/2024"
+        },
+        "studentCounter": {
+            "type": "number",
+            "description": "A counter to generate unique student IDs."
         }
       },
-      "required": ["name", "email", "userCode", "schoolName"]
+      "required": [
+        "name",
+        "email",
+        "userCode",
+        "schoolName"
+      ]
     },
     "Class": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -51,10 +65,21 @@
         "subjects": {
           "type": "array",
           "description": "List of subject names offered in this class.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
+        },
+        "students": {
+          "type": "array",
+          "description": "List of student document IDs in this class.",
+          "items": {
+            "type": "string"
+          }
         }
       },
-      "required": ["name"]
+      "required": [
+        "name"
+      ]
     },
     "Student": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -62,13 +87,29 @@
       "type": "object",
       "description": "Represents a student in a class.",
       "properties": {
-        "studentId": { "type": "string" },
-        "name": { "type": "string" },
-        "classId": { "type": "string" },
-        "className": { "type": "string" },
-        "avatarUrl": { "type": "string", "format": "uri" }
+        "studentId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "string"
+        },
+        "className": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri"
+        }
       },
-      "required": ["studentId", "name", "classId", "className"]
+      "required": [
+        "studentId",
+        "name",
+        "classId",
+        "className"
+      ]
     },
     "Subject": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -76,9 +117,13 @@
       "type": "object",
       "description": "Represents a subject offered by the school.",
       "properties": {
-        "name": { "type": "string" }
+        "name": {
+          "type": "string"
+        }
       },
-      "required": ["name"]
+      "required": [
+        "name"
+      ]
     },
     "Grade": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -86,14 +131,46 @@
       "type": "object",
       "description": "Represents a student's grade for a specific subject and term.",
       "properties": {
-        "studentId": { "type": "string" },
-        "classId": { "type": "string" },
-        "subject": { "type": "string" },
-        "term": { "type": "string" },
-        "session": { "type": "string" },
-        "score": { "type": "number" }
+        "studentId": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "term": {
+          "type": "string"
+        },
+        "session": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "studentName": {
+          "type": "string"
+        },
+        "className": {
+          "type": "string"
+        },
+        "grade": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D", "F"]
+        }
       },
-      "required": ["studentId", "classId", "subject", "term", "session", "score"]
+      "required": [
+        "studentId",
+        "classId",
+        "subject",
+        "term",
+        "session",
+        "score",
+        "studentName",
+        "className",
+        "grade"
+      ]
     },
     "Transfer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -101,58 +178,87 @@
       "type": "object",
       "description": "Represents a data transfer between two users.",
       "properties": {
-        "fromUser": { "type": "string" },
-        "toUser": { "type": "string" },
-        "dataType": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "fromUser": {
+          "type": "string"
+        },
+        "toUser": {
+          "type": "string"
+        },
+        "dataType": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["fromUser", "toUser", "dataType", "timestamp"]
+      "required": [
+        "fromUser",
+        "toUser",
+        "dataType",
+        "timestamp"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
     "structure": [
       {
         "path": "users/{userId}",
         "definition": {
-          "schema": { "$ref": "#/entities/User" },
+          "schema": {
+            "$ref": "#/entities/User"
+          },
           "description": "Stores user profiles and settings. The `userId` is the Firebase Auth UID."
         }
       },
       {
         "path": "users/{userId}/classes/{classId}",
         "definition": {
-          "schema": { "$ref": "#/entities/Class" },
+          "schema": {
+            "$ref": "#/entities/Class"
+          },
           "description": "Stores classes created by a specific user."
         }
       },
       {
         "path": "users/{userId}/students/{studentId}",
         "definition": {
-          "schema": { "$ref": "#/entities/Student" },
+          "schema": {
+            "$ref": "#/entities/Student"
+          },
           "description": "Stores students belonging to a specific user/school."
         }
       },
       {
         "path": "users/{userId}/subjects/{subjectId}",
         "definition": {
-          "schema": { "$ref": "#/entities/Subject" },
+          "schema": {
+            "$ref": "#/entities/Subject"
+          },
           "description": "The master list of subjects for a user/school."
         }
       },
       {
         "path": "users/{userId}/grades/{gradeId}",
         "definition": {
-          "schema": { "$ref": "#/entities/Grade" },
+          "schema": {
+            "$ref": "#/entities/Grade"
+          },
           "description": "Stores all grades entered by a specific user."
         }
       },
       {
         "path": "transfers/{transferId}",
         "definition": {
-          "schema": { "$ref": "#/entities/Transfer" },
+          "schema": {
+            "$ref": "#/entities/Transfer"
+          },
           "description": "Global log of data transfers. Writable by a Cloud Function."
         }
       }

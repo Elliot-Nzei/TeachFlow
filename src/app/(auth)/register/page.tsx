@@ -35,13 +35,16 @@ export default function RegisterPage() {
                 const userRef = doc(firestore, "users", user.uid);
                 const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-                setDocumentNonBlocking(userRef, {
+                await setDoc(userRef, {
                     uid: user.uid,
                     name: fullName,
                     email: user.email,
                     schoolName: schoolName,
                     userCode: userCode,
-                    profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`
+                    profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`,
+                    studentCounter: 0,
+                    currentTerm: 'First Term',
+                    currentSession: '2023/2024'
                 }, { merge: true });
                 
                 router.push('/dashboard');

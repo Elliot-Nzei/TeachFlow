@@ -12,6 +12,7 @@ type Settings = {
     currentTerm: 'First Term' | 'Second Term' | 'Third Term';
     currentSession: string;
     userCode: string;
+    studentCounter?: number;
 }
 
 type SettingsContextType = {

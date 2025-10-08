@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -12,11 +12,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, arrayUnion } from 'firebase/firestore';
+import { collection, query, doc, arrayUnion, increment } from 'firebase/firestore';
+import { SettingsContext } from '@/contexts/settings-context';
+import { useToast } from '@/hooks/use-toast';
 
 export default function StudentsPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const { settings, setSettings } = useContext(SettingsContext);
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStudentOpen, setAddStudentOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
@@ -31,7 +35,7 @@ export default function StudentsPage() {
 
   const filteredStudents = students?.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase())) ||
     student.className.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -48,31 +52,51 @@ export default function StudentsPage() {
   
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (studentName && classId && user) {
+    if (studentName && classId && user && settings) {
         const studentClass = classes?.find(c => c.id === classId);
         if (studentClass) {
-            const studentCount = (students?.length || 0) + 1;
-            const newStudentId = `SPS-${String(studentCount).padStart(3, '0')}`;
+            const newStudentCount = (settings.studentCounter || 0) + 1;
+            const newStudentId = `SPS-${String(newStudentCount).padStart(3, '0')}`;
             const studentsCollection = collection(firestore, 'users', user.uid, 'students');
-            const newStudentDoc = await addDocumentNonBlocking(studentsCollection, {
-                studentId: newStudentId,
-                name: studentName,
-                className: studentClass.name,
-                classId: classId,
-                avatarUrl: previewImage || `https://picsum.photos/seed/student-${studentCount}/100/100`,
-            });
             
-            if (newStudentDoc) {
+            try {
+                const newStudentDoc = await addDoc(studentsCollection, {
+                    studentId: newStudentId,
+                    name: studentName,
+                    className: studentClass.name,
+                    classId: classId,
+                    avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/100/100`,
+                });
+                
+                // Update class
                 const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
                 updateDocumentNonBlocking(classRef, {
                     students: arrayUnion(newStudentDoc.id)
                 });
-            }
 
-            setAddStudentOpen(false);
-            setPreviewImage('');
-            setStudentName('');
-            setClassId('');
+                // Update counter
+                const userRef = doc(firestore, 'users', user.uid);
+                updateDocumentNonBlocking(userRef, { studentCounter: increment(1) });
+                setSettings({ studentCounter: newStudentCount }); // Update context
+
+                setAddStudentOpen(false);
+                setPreviewImage('');
+                setStudentName('');
+                setClassId('');
+                
+                toast({
+                    title: "Student Added",
+                    description: `${studentName} has been added to ${studentClass.name}.`
+                });
+
+            } catch (error) {
+                console.error("Error adding student:", error);
+                 toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not add student. Please try again."
+                });
+            }
         }
     }
   };
