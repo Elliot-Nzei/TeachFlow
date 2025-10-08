@@ -87,6 +87,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                    <Link href="/">
+                        <SidebarMenuButton tooltip={{children: 'Logout'}}>
+                            <LogOut />
+                            <span>Logout</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
             </SidebarMenu>
           </SidebarFooter>
         </Sidebar>
