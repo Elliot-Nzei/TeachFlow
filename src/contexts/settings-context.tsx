@@ -1,7 +1,7 @@
 
 'use client';
 import React, { createContext, useState, useEffect } from 'react';
-import { useUser, useDoc, useFirebase, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 type Settings = {
@@ -28,22 +28,18 @@ export const SettingsContext = createContext<SettingsContextType>({
 });
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-    const { firestore } = useFirebase();
-    const { user } = useUser();
-    const [settings, setLocalSettings] = useState<Settings | null>(null);
+    const { firestore, user, settings: globalSettings, isSettingsLoading } = useFirebase();
+    const [localSettings, setLocalSettings] = useState<Settings | null>(null);
 
-    const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, isLoading: isProfileLoading } = useDoc<Settings>(userProfileQuery);
-    
     useEffect(() => {
-        if (userProfile) {
-            setLocalSettings(userProfile);
+        if (globalSettings) {
+            setLocalSettings(globalSettings);
         }
-    }, [userProfile]);
+    }, [globalSettings]);
 
     const handleSetSettings = (newSettings: Partial<Settings>) => {
-        if (user && settings) {
-            const updatedSettings = { ...settings, ...newSettings };
+        if (user && localSettings) {
+            const updatedSettings = { ...localSettings, ...newSettings };
             setLocalSettings(updatedSettings);
             const userRef = doc(firestore, 'users', user.uid);
             updateDocumentNonBlocking(userRef, newSettings);
@@ -51,7 +47,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
 
     return (
-        <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, isLoading: isProfileLoading }}>
+        <SettingsContext.Provider value={{ settings: localSettings, setSettings: handleSetSettings, isLoading: isSettingsLoading }}>
             {children}
         </SettingsContext.Provider>
     );
