@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings,
   Users,
+  User,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -37,6 +38,7 @@ import { Logo } from '@/components/logo';
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/classes', label: 'Classes', icon: Users },
+  { href: '/students', label: 'Students', icon: User },
   { href: '/grades', label: 'Grades', icon: BookOpen },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
   { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft },
@@ -58,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
                     <SidebarMenuButton
-                      isActive={pathname === item.href}
+                      isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
                       tooltip={{ children: item.label }}
                     >
                       <item.icon />

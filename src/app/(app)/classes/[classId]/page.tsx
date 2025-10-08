@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { placeholderClasses } from '@/lib/placeholder-data';
+import { placeholderClasses, placeholderStudents } from '@/lib/placeholder-data';
 import { notFound } from 'next/navigation';
 import { BookOpen, Users, User, Book } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function ClassDetailsPage({ params }: { params: { classId: string } }) {
   const classDetails = placeholderClasses.find(c => c.id === params.classId);
@@ -14,6 +15,8 @@ export default function ClassDetailsPage({ params }: { params: { classId: string
   if (!classDetails) {
     notFound();
   }
+
+  const studentsInClass = placeholderStudents.filter(s => s.classId === params.classId);
 
   return (
     <>
@@ -37,17 +40,22 @@ export default function ClassDetailsPage({ params }: { params: { classId: string
             <CardHeader>
                 <CardTitle className="flex items-center">
                 <Users className="mr-2 h-6 w-6" />
-                Students ({classDetails.students.length})
+                Students ({studentsInClass.length})
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <Separator className="mb-4" />
-                <div className="space-y-3">
-                {classDetails.students.map((student, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
-                        <User className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium">{student}</span>
-                    </div>
+                <div className="space-y-1">
+                {studentsInClass.map((student) => (
+                    <Link href={`/students/${student.id}`} key={student.id} className="block">
+                        <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={student.avatarUrl} alt={student.name} />
+                                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{student.name}</span>
+                        </div>
+                    </Link>
                 ))}
                 </div>
             </CardContent>

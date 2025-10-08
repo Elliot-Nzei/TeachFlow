@@ -6,6 +6,14 @@ export type User = {
   schoolName: string;
 };
 
+export type Student = {
+  id: string;
+  name: string;
+  class: string;
+  classId: string;
+  avatarUrl: string;
+};
+
 export type Class = {
   id: string;
   name: string;
