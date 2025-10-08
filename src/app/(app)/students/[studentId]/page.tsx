@@ -13,17 +13,16 @@ import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function StudentProfileContent({ studentId }: { studentId: string }) {
+function StudentProfileContent({ studentId, userId }: { studentId: string, userId: string }) {
   const { firestore } = useFirebase();
-  const { user } = useUser();
 
-  const studentDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId]);
+  const studentDocQuery = useMemoFirebase(() => doc(firestore, 'users', userId, 'students', studentId), [firestore, userId, studentId]);
   const { data: student, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
   
-  const classDocQuery = useMemoFirebase(() => (user && student) ? doc(firestore, 'users', user.uid, 'classes', student.classId) : null, [firestore, user, student]);
+  const classDocQuery = useMemoFirebase(() => (student ? doc(firestore, 'users', userId, 'classes', student.classId) : null), [firestore, userId, student]);
   const { data: studentClass, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
 
-  const gradesQuery = useMemoFirebase(() => (user && student) ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
+  const gradesQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'grades'), where('studentId', '==', studentId)), [firestore, userId, studentId]);
   const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
 
   if (isLoadingStudent) {
@@ -46,7 +45,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
   }
 
   if (!student) {
-      return null; // Return null while loading or if not found to avoid rendering flicker
+      return null;
   }
 
   return (
@@ -137,11 +136,25 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
   );
 }
 
+function StudentProfileLoader({ studentId }: { studentId: string }) {
+    const { user, isUserLoading } = useUser();
+
+    if (isUserLoading) {
+        return <div>Loading student profile...</div>;
+    }
+
+    if (!user) {
+        return <div>Please log in to view this page.</div>;
+    }
+
+    return <StudentProfileContent studentId={studentId} userId={user.uid} />;
+}
+
 export default function StudentProfilePage({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = use(params);
   return (
       <Suspense fallback={<div>Loading student profile...</div>}>
-          <StudentProfileContent studentId={studentId} />
+          <StudentProfileLoader studentId={studentId} />
       </Suspense>
   )
 }

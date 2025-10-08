@@ -3,7 +3,7 @@
 import { use, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
-import { BookOpen, Users, User, Book } from 'lucide-react';
+import { BookOpen, Users, Book } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -14,14 +14,13 @@ import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function ClassDetailsContent({ classId }: { classId: string }) {
+function ClassDetailsContent({ classId, userId }: { classId: string, userId: string }) {
   const { firestore } = useFirebase();
-  const { user } = useUser();
 
-  const classDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'classes', classId) : null, [firestore, user, classId]);
+  const classDocQuery = useMemoFirebase(() => doc(firestore, 'users', userId, 'classes', classId), [firestore, userId, classId]);
   const { data: classDetails, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
 
-  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', classId)) : null, [firestore, user, classId]);
+  const studentsQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'students'), where('classId', '==', classId)), [firestore, userId, classId]);
   const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
 
 
@@ -44,9 +43,8 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   }
   
   if (!classDetails) {
-      return null; // Return null while loading or if not found to avoid rendering flicker
+      return null; // Should be handled by the checks above but as a safeguard.
   }
-
 
   return (
     <>
@@ -129,12 +127,27 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   );
 }
 
+function ClassDetailsLoader({ classId }: { classId: string }) {
+    const { user, isUserLoading } = useUser();
+
+    if (isUserLoading) {
+        return <div>Loading class details...</div>;
+    }
+
+    if (!user) {
+        // Handle case where user is not logged in, maybe redirect
+        return <div>Please log in to view this page.</div>;
+    }
+
+    return <ClassDetailsContent classId={classId} userId={user.uid} />;
+}
+
 
 export default function ClassDetailsPage({ params }: { params: Promise<{ classId: string }> }) {
     const { classId } = use(params);
     return (
         <Suspense fallback={<div>Loading class details...</div>}>
-            <ClassDetailsContent classId={classId} />
+            <ClassDetailsLoader classId={classId} />
         </Suspense>
     )
 }
