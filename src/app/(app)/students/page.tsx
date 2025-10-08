@@ -178,24 +178,24 @@ export default function StudentsPage() {
         </div>
       </div>
       <Sheet open={!!selectedStudentId} onOpenChange={(isOpen) => !isOpen && setSelectedStudentId(null)}>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {isLoadingStudents ? Array.from({length: 8}).map((_, i) => (
-              <Card key={i}><CardContent className="h-40 bg-muted rounded-lg animate-pulse" /></Card>
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {isLoadingStudents ? Array.from({length: 10}).map((_, i) => (
+              <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
           )) : filteredStudents?.map((student) => (
             <SheetTrigger asChild key={student.id}>
               <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
                 <Card className="h-full overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
-                  <CardContent className="p-0 text-center">
-                    <div className="bg-muted/50 p-6">
-                        <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-background shadow-md">
+                  <CardContent className="p-0 text-center flex flex-col">
+                    <div className="bg-muted/50 p-4 flex-grow flex flex-col items-center justify-center">
+                        <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-background shadow-md">
                         <AvatarImage src={student.avatarUrl} alt={student.name} />
-                        <AvatarFallback className="text-2xl">{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
+                        <AvatarFallback className="text-xl">{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
                         </Avatar>
-                        <CardTitle className="text-lg font-bold font-headline">{student.name}</CardTitle>
+                        <CardTitle className="text-base font-bold font-headline">{student.name}</CardTitle>
                         <CardDescription className="font-mono text-xs">{student.studentId}</CardDescription>
                     </div>
-                    <div className="p-4">
-                        <Badge variant="secondary">{student.className}</Badge>
+                    <div className="p-2 border-t">
+                        <Badge variant="secondary" className="text-xs">{student.className}</Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -209,13 +209,13 @@ export default function StudentsPage() {
           </div>
         )}
         <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
-            <SheetHeader>
-                <SheetTitle>Student Profile</SheetTitle>
-                <SheetDescription>
-                    View the academic record and details for this student.
-                </SheetDescription>
-            </SheetHeader>
-            {selectedStudentId && <StudentProfileContent studentId={selectedStudentId} />}
+          <SheetHeader>
+            <SheetTitle>Student Profile</SheetTitle>
+            <SheetDescription>
+              View the academic record and details for this student.
+            </SheetDescription>
+          </SheetHeader>
+          {selectedStudentId && <StudentProfileContent studentId={selectedStudentId} />}
         </SheetContent>
       </Sheet>
     </>
