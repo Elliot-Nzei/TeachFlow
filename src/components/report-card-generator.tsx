@@ -62,45 +62,53 @@ export default function ReportCardGenerator() {
     setGeneratedReports([]);
 
     const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
-
+    const term = settings.currentTerm;
+    const session = settings.currentSession;
+    
     try {
-      const reports: ReportWithStudentAndGradeInfo[] = [];
-      for (const student of targets) {
-        const studentGrades = (placeholderGrades[student.class] || []).filter(g => g.studentName === student.name);
+        const reportPromises = targets.map(async (student) => {
+            const studentGrades = (placeholderGrades[student.class] || []).filter(g => g.studentName === student.name);
+
+            if (studentGrades.length === 0) {
+                return null;
+            }
+
+            const input: GenerateReportCardInput = {
+                studentName: student.name,
+                className: student.class,
+                grades: studentGrades.map(g => ({ subject: g.subject, score: g.score })),
+                term,
+                session
+            };
+
+            const result = await generateReportCard(input);
+            const detailedGrades = studentGrades.map(g => ({ subject: g.subject, score: g.score, grade: g.grade }));
+
+            return {
+                ...result,
+                studentName: student.name,
+                studentId: student.studentId,
+                className: student.class,
+                term: input.term,
+                session: input.session,
+                grades: detailedGrades,
+            };
+        });
+
+        const reports = (await Promise.all(reportPromises)).filter((report): report is ReportWithStudentAndGradeInfo => report !== null);
         
-        if (studentGrades.length === 0) {
-          continue; 
+        setGeneratedReports(reports);
+
+        if (reports.length === 0) {
+            const description = selectedStudent
+                ? `No grades have been recorded for ${selectedStudent.name}.`
+                : `No students in ${selectedClass?.name} have recorded grades.`;
+            toast({
+                variant: "destructive",
+                title: "No Grades Found",
+                description: description,
+            });
         }
-
-        const input: GenerateReportCardInput = {
-          studentName: student.name,
-          className: student.class,
-          term: settings.currentTerm,
-          session: settings.currentSession,
-          grades: studentGrades.map(g => ({ subject: g.subject, score: g.score })),
-        };
-
-        const result = await generateReportCard(input);
-        const detailedGrades = studentGrades.map(g => ({ subject: g.subject, score: g.score, grade: g.grade }));
-        
-        reports.push({
-          ...result,
-          studentName: student.name,
-          studentId: student.studentId,
-          className: student.class,
-          term: input.term,
-          session: input.session,
-          grades: detailedGrades,
-        });
-      }
-      setGeneratedReports(reports);
-      if(reports.length === 0) {
-         toast({
-            variant: "destructive",
-            title: "No Grades Found",
-            description: `No grades have been recorded for the selected ${selectedStudent ? 'student' : 'class'}.`,
-        });
-      }
     } catch (error) {
       console.error('Error generating report card(s):', error);
       toast({
@@ -123,12 +131,12 @@ export default function ReportCardGenerator() {
         <Card className="md:col-span-4">
           <CardHeader>
             <CardTitle>Select Target</CardTitle>
-            <CardDescription>Choose a class or an individual student.</CardDescription>
+            <CardDescription>Choose to generate reports for an entire class or a single student.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <label className="flex items-center text-sm font-medium">
-                <Users className="mr-2 h-4 w-4" /> Select a Class
+                <Users className="mr-2 h-4 w-4" /> Generate for a Whole Class
               </label>
               <Select
                 onValueChange={(classId) => {
@@ -152,7 +160,7 @@ export default function ReportCardGenerator() {
 
             <div className="space-y-2">
                  <label className="flex items-center text-sm font-medium">
-                    <User className="mr-2 h-4 w-4" /> Search for a Student
+                    <User className="mr-2 h-4 w-4" /> Generate for a Single Student
                 </label>
                 <Command className="rounded-lg border shadow-sm">
                     <CommandInput placeholder="Type student name or ID..." />
@@ -178,181 +186,183 @@ export default function ReportCardGenerator() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleGenerateReports} disabled={loading} className="w-full">
+            <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent)} className="w-full">
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate {selectedStudent ? 'Report' : 'Class Reports'}
+              Generate Reports
             </Button>
           </CardFooter>
         </Card>
 
-        <Card className="md:col-span-8">
-          <CardHeader className="flex flex-row justify-between items-start">
-            <div>
-                <CardTitle>Generated Reports Preview</CardTitle>
-                <CardDescription>
-                    {selectedStudent ? `Report for ${selectedStudent.name}` : selectedClass ? `Reports for ${selectedClass.name}` : 'Select a target to see a preview.'}
-                </CardDescription>
-            </div>
-             {generatedReports.length > 0 && (
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={handlePrint}>
-                        <FileDown className="mr-2 h-4 w-4" /> Download as PDF
-                    </Button>
-                     <Button onClick={handlePrint}>
-                        <Printer className="mr-2 h-4 w-4" /> Print
-                    </Button>
-                </div>
-            )}
-          </CardHeader>
-          <CardContent className="min-h-[400px]">
-            {loading && (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                <p className="font-semibold">Generating Reports...</p>
-                <p className="text-sm">This may take a moment.</p>
-              </div>
-            )}
-            {!loading && generatedReports.length === 0 && (
-              <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-                <p>Your generated report cards will be displayed here.</p>
-              </div>
-            )}
-            {!loading && generatedReports.length > 0 && (
-                <div id="print-section" className="space-y-8">
-                    {generatedReports.map((report, index) => (
-                        <Fragment key={index}>
-                           <div className="report-card p-6 border rounded-lg bg-card text-card-foreground shadow-sm break-after-page">
-                                <header className="grid grid-cols-3 items-center mb-8">
-                                    <Logo />
-                                    <div className="text-center">
-                                        <h2 className="text-2xl font-bold font-headline">{settings.schoolName}</h2>
-                                        <p className="text-muted-foreground text-sm">Student Academic Report</p>
-                                    </div>
-                                    <div className="text-right text-xs">
-                                        <p>123 School Lane, Lagos, Nigeria</p>
-                                        <p>sunshine@school.ng</p>
-                                    </div>
-                                </header>
-                                
-                                <div className="mb-6 bg-muted/50 rounded-lg p-4">
-                                    <h3 className="text-lg font-semibold font-headline mb-3 text-center">Student Information</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-                                        <div><strong className="font-medium text-muted-foreground block">Name:</strong> {report.studentName}</div>
-                                        <div><strong className="font-medium text-muted-foreground block">Class:</strong> {report.className}</div>
-                                        <div><strong className="font-medium text-muted-foreground block">Student ID:</strong> {report.studentId}</div>
-                                        <div><strong className="font-medium text-muted-foreground block">Session:</strong> {report.session}</div>
-                                        <div className="md:col-span-2"><strong className="font-medium text-muted-foreground block">Term:</strong> {report.term}</div>
-                                    </div>
-                                </div>
-
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-semibold font-headline mb-3 text-center">Academic Performance</h3>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[50%]">Subject</TableHead>
-                                                <TableHead className="text-center">Score</TableHead>
-                                                <TableHead className="text-right">Grade</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {report.grades.map((grade, idx) => (
-                                                <TableRow key={idx}>
-                                                    <TableCell className="font-medium">{grade.subject}</TableCell>
-                                                    <TableCell className="text-center">{grade.score}</TableCell>
-                                                    <TableCell className="text-right font-bold">{grade.grade}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-
-                                <div className="grid md:grid-cols-2 gap-6 items-start">
-                                    <div className="space-y-4">
-                                        <div>
-                                            <h4 className="font-semibold mb-2">Academic Summary</h4>
-                                            <div className="grid grid-cols-3 gap-2 text-center border rounded-lg p-3">
-                                                 <div>
-                                                    <p className="text-xs text-muted-foreground">Total</p>
-                                                    <p className="text-xl font-bold">{report.totalScore}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-muted-foreground">Average</p>
-                                                    <p className="text-xl font-bold">{report.averageScore.toFixed(1)}%</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-muted-foreground">Grade</p>
-                                                    <p className="text-xl font-bold text-primary">{report.grade}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                         <div>
-                                            <h4 className="font-semibold mb-2">Teacher's General Remark</h4>
-                                            <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md italic">"{report.remark}"</p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold mb-2">Grading Scale</h4>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Grade</TableHead>
-                                                    <TableHead>Score Range</TableHead>
-                                                    <TableHead>Remark</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {gradingScale.map((scale) => (
-                                                    <TableRow key={scale.grade}>
-                                                        <TableCell className="font-bold">{scale.grade}</TableCell>
-                                                        <TableCell>{scale.range}</TableCell>
-                                                        <TableCell>{scale.remark}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-8 mt-12 pt-8 border-t">
-                                     <div className="text-center">
-                                        <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
-                                        <p className="text-sm mt-1">Class Teacher's Signature</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
-                                        <p className="text-sm mt-1">Principal's Signature</p>
-                                    </div>
-                                </div>
-                                <footer className="text-center text-xs text-muted-foreground mt-8 pt-4 border-t">
-                                    <p>Official School Stamp</p>
-                                </footer>
-                            </div>
-                        </Fragment>
-                    ))}
-                </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="md:col-span-8">
+            <Card>
+                <CardHeader className="flex flex-row justify-between items-start">
+                    <div>
+                        <CardTitle>Generated Reports</CardTitle>
+                        <CardDescription>
+                            {generatedReports.length > 0
+                            ? `Showing ${generatedReports.length} report(s). Ready to print or download.`
+                            : 'Select a class or student to generate reports.'}
+                        </CardDescription>
+                    </div>
+                    {generatedReports.length > 0 && (
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handlePrint}>
+                                <FileDown className="mr-2 h-4 w-4" /> Download All
+                            </Button>
+                            <Button onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" /> Print All
+                            </Button>
+                        </div>
+                    )}
+                </CardHeader>
+                <CardContent className="min-h-[400px]">
+                    {loading && (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                        <p className="font-semibold">Generating Reports...</p>
+                        <p className="text-sm">This may take a moment for large classes.</p>
+                    </div>
+                    )}
+                    {!loading && generatedReports.length === 0 && (
+                    <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                        <p>Your generated report cards will be displayed here.</p>
+                    </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
       </div>
+       <div id="print-section" className="space-y-8 mt-8">
+            {!loading && generatedReports.length > 0 && generatedReports.map((report, index) => (
+                <Fragment key={index}>
+                    <div className="report-card p-6 border rounded-lg bg-card text-card-foreground shadow-sm break-after-page">
+                        <header className="grid grid-cols-3 items-center mb-8">
+                            <Logo />
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold font-headline">{settings.schoolName}</h2>
+                                <p className="text-muted-foreground text-sm">Student Academic Report</p>
+                            </div>
+                            <div className="text-right text-xs">
+                                <p>123 School Lane, Lagos, Nigeria</p>
+                                <p>sunshine@school.ng</p>
+                            </div>
+                        </header>
+                        
+                        <div className="mb-6 bg-muted/50 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold font-headline mb-3 text-center">Student Information</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                                <div><strong className="font-medium text-muted-foreground block">Name:</strong> {report.studentName}</div>
+                                <div><strong className="font-medium text-muted-foreground block">Class:</strong> {report.className}</div>
+                                <div><strong className="font-medium text-muted-foreground block">Student ID:</strong> {report.studentId}</div>
+                                <div><strong className="font-medium text-muted-foreground block">Session:</strong> {report.session}</div>
+                                <div className="md:col-span-2"><strong className="font-medium text-muted-foreground block">Term:</strong> {report.term}</div>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold font-headline mb-3 text-center">Academic Performance</h3>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50%]">Subject</TableHead>
+                                        <TableHead className="text-center">Score</TableHead>
+                                        <TableHead className="text-right">Grade</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {report.grades.map((grade, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="font-medium">{grade.subject}</TableCell>
+                                            <TableCell className="text-center">{grade.score}</TableCell>
+                                            <TableCell className="text-right font-bold">{grade.grade}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6 items-start">
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="font-semibold mb-2">Academic Summary</h4>
+                                    <div className="grid grid-cols-3 gap-2 text-center border rounded-lg p-3">
+                                            <div>
+                                            <p className="text-xs text-muted-foreground">Total</p>
+                                            <p className="text-xl font-bold">{report.totalScore}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Average</p>
+                                            <p className="text-xl font-bold">{report.averageScore.toFixed(1)}%</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Grade</p>
+                                            <p className="text-xl font-bold text-primary">{report.grade}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                    <div>
+                                    <h4 className="font-semibold mb-2">Teacher's General Remark</h4>
+                                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md italic">"{report.remark}"</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Grading Scale</h4>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Grade</TableHead>
+                                            <TableHead>Score Range</TableHead>
+                                            <TableHead>Remark</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {gradingScale.map((scale) => (
+                                            <TableRow key={scale.grade}>
+                                                <TableCell className="font-bold">{scale.grade}</TableCell>
+                                                <TableCell>{scale.range}</TableCell>
+                                                <TableCell>{scale.remark}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-8 mt-12 pt-8 border-t">
+                                <div className="text-center">
+                                <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
+                                <p className="text-sm mt-1">Class Teacher's Signature</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
+                                <p className="text-sm mt-1">Principal's Signature</p>
+                            </div>
+                        </div>
+                        <footer className="text-center text-xs text-muted-foreground mt-8 pt-4 border-t">
+                            <p>Official School Stamp</p>
+                        </footer>
+                    </div>
+                </Fragment>
+            ))}
+        </div>
        <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          #print-section, #print-section * {
-            visibility: visible;
-          }
-          #print-section {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .report-card {
-            page-break-after: always;
-            border: 1px solid #ccc !important;
-            box-shadow: none !important;
-          }
+            body * {
+                visibility: hidden;
+            }
+            #print-section, #print-section * {
+                visibility: visible;
+            }
+            #print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .report-card {
+                page-break-after: always;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+            }
         }
         @page {
             size: A4;
