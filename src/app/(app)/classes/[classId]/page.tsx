@@ -38,7 +38,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
       )
   }
 
-  if (!classDetails && !isLoadingClass) {
+  if (!classDetails) {
     notFound();
   }
 
@@ -71,17 +71,23 @@ function ClassDetailsContent({ classId }: { classId: string }) {
                 <Separator className="mb-4" />
                 {isLoadingStudents ? <Skeleton className="h-40 w-full" /> : 
                     <div className="space-y-1">
-                    {studentsInClass && studentsInClass.map((student) => (
-                        <Link href={`/students/${student.id}`} key={student.id} className="block">
-                            <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={student.avatarUrl} alt={student.name} />
-                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{student.name}</span>
-                            </div>
-                        </Link>
-                    ))}
+                    {studentsInClass && studentsInClass.length > 0 ? (
+                        studentsInClass.map((student) => (
+                            <Link href={`/students/${student.id}`} key={student.id} className="block">
+                                <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={student.avatarUrl} alt={student.name} />
+                                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium">{student.name}</span>
+                                </div>
+                            </Link>
+                        ))
+                    ) : (
+                        <div className="text-center text-sm text-muted-foreground p-4">
+                            No students have been added to this class yet.
+                        </div>
+                    )}
                     </div>
                 }
             </CardContent>
@@ -96,12 +102,18 @@ function ClassDetailsContent({ classId }: { classId: string }) {
             <CardContent>
                 <Separator className="mb-4" />
                 <div className="flex flex-wrap gap-2">
-                {classDetails.subjects?.map((subject: string, index: number) => (
+                {classDetails.subjects && classDetails.subjects.length > 0 ? (
+                    classDetails.subjects?.map((subject: string, index: number) => (
                     <Badge key={index} variant="secondary" className="text-sm">
                         <Book className="mr-1.5 h-3 w-3" />
                         {subject}
                     </Badge>
-                ))}
+                ))
+                ) : (
+                    <div className="text-center text-sm text-muted-foreground">
+                        No subjects assigned yet.
+                    </div>
+                )}
                 </div>
             </CardContent>
             </Card>
@@ -115,7 +127,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 export default function ClassDetailsPage({ params }: { params: Promise<{ classId: string }> }) {
     const { classId } = use(params);
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>Loading class details...</div>}>
             <ClassDetailsContent classId={classId} />
         </Suspense>
     )
