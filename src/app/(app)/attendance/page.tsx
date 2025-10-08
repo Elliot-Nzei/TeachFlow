@@ -10,7 +10,7 @@ import { Calendar as CalendarIcon, Save, Users, ArrowLeft, User } from 'lucide-r
 import { format } from 'date-fns';
 import type { Class, Student } from '@/lib/types';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
