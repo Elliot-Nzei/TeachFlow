@@ -25,7 +25,7 @@ export default function StudentsPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStudentOpen, setAddStudentOpen] = useState(false);
-  const [previewImage, setPreviewImage] = useState('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [studentName, setStudentName] = useState('');
   const [classId, setClassId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -55,58 +55,60 @@ export default function StudentsPage() {
   
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (studentName && classId && user && settings) {
+    if (studentName && user && settings) {
         const studentClass = classes?.find(c => c.id === classId);
-        if (studentClass) {
+        
+        const schoolAcronym = settings.schoolName
+          ? settings.schoolName
+              .split(' ')
+              .map(word => word[0])
+              .join('')
+              .toUpperCase()
+          : 'SPS';
 
-            const schoolAcronym = settings.schoolName
-              ? settings.schoolName
-                  .split(' ')
-                  .map(word => word[0])
-                  .join('')
-                  .toUpperCase()
-              : 'SPS';
-
-            const newStudentCount = (settings.studentCounter || 0) + 1;
-            const newStudentId = `${schoolAcronym}-${String(newStudentCount).padStart(3, '0')}`;
+        const newStudentCount = (settings.studentCounter || 0) + 1;
+        const newStudentId = `${schoolAcronym}-${String(newStudentCount).padStart(3, '0')}`;
+        
+        try {
+            const studentsCollection = collection(firestore, 'users', user.uid, 'students');
+            const newStudentDoc = await addDoc(studentsCollection, {
+                studentId: newStudentId,
+                name: studentName,
+                // Assign empty strings if no class is selected
+                className: studentClass?.name || '',
+                classId: studentClass?.id || '',
+                avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
+            });
             
-            try {
-                const studentsCollection = collection(firestore, 'users', user.uid, 'students');
-                const newStudentDoc = await addDoc(studentsCollection, {
-                    studentId: newStudentId,
-                    name: studentName,
-                    className: studentClass.name,
-                    classId: classId,
-                    avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
-                });
-                
-                const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
-                await updateDoc(classRef, {
-                    students: arrayUnion(newStudentDoc.id)
-                });
-
-                const userRef = doc(firestore, 'users', user.uid);
-                await updateDoc(userRef, { studentCounter: increment(1) });
-                setSettings({ studentCounter: newStudentCount });
-
-                setAddStudentOpen(false);
-                setPreviewImage('');
-                setStudentName('');
-                setClassId('');
-                
-                toast({
-                    title: "Student Added",
-                    description: `${studentName} has been added to ${studentClass.name}.`
-                });
-
-            } catch (error) {
-                console.error("Error adding student:", error);
-                 toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Could not add student. Please try again."
-                });
+            // If a class was selected, update the class document as well
+            if (studentClass) {
+              const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
+              await updateDoc(classRef, {
+                  students: arrayUnion(newStudentDoc.id)
+              });
             }
+
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, { studentCounter: increment(1) });
+            setSettings({ studentCounter: newStudentCount });
+
+            setAddStudentOpen(false);
+            setPreviewImage('');
+            setStudentName('');
+            setClassId('');
+            
+            toast({
+                title: "Student Added",
+                description: `${studentName} has been added.`
+            });
+
+        } catch (error) {
+            console.error("Error adding student:", error);
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not add student. Please try again."
+            });
         }
     }
   };
@@ -165,8 +167,8 @@ export default function StudentsPage() {
                                 <Input id="student-name" value={studentName} onChange={e => setStudentName(e.target.value)} placeholder="e.g., John Doe" required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="student-class">Class</Label>
-                                <Select onValueChange={setClassId} value={classId} required>
+                                <Label htmlFor="student-class">Class (Optional)</Label>
+                                <Select onValueChange={setClassId} value={classId}>
                                     <SelectTrigger id="student-class">
                                     <SelectValue placeholder="Select a class" />
                                     </SelectTrigger>
@@ -211,7 +213,7 @@ export default function StudentsPage() {
                     <div className="relative flex flex-col h-full justify-end p-3 text-white">
                         <p className="text-sm font-bold font-headline leading-tight">{student.name}</p>
                         <p className="font-mono text-xs text-white/80">{student.studentId}</p>
-                        <Badge variant="secondary" className="text-xs mt-1 self-center">{student.className}</Badge>
+                        {student.className && <Badge variant="secondary" className="text-xs mt-1 self-center">{student.className}</Badge>}
                     </div>
                   </CardContent>
                 </Card>
