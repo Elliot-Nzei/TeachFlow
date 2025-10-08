@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users } from 'lucide-react';
+import { FileDown, Loader2, Printer, Search, User, Users, Trophy, Medal, Award, Star } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from './ui/separator';
 import { Logo } from './logo';
@@ -23,6 +23,7 @@ import { Progress } from './ui/progress';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from './ui/skeleton';
+import { cn } from '@/lib/utils';
 
 type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
@@ -41,6 +42,8 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   schoolName?: string;
   schoolMotto?: string;
   schoolAddress?: string;
+  position: number;
+  totalStudents: number;
 };
 
 const gradingScale = [
@@ -50,6 +53,58 @@ const gradingScale = [
     { grade: 'D', range: '45–49', remark: 'Pass' },
     { grade: 'F', range: 'Below 45', remark: 'Fail' },
 ];
+
+const PositionBadge = ({ position }: { position: number }) => {
+  const getOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  if (position === 1) {
+    return (
+      <div className="flex flex-col items-center justify-center text-yellow-500">
+        <Trophy className="h-10 w-10" />
+        <span className="text-lg font-bold">1st</span>
+        <span className="text-xs font-medium">Position</span>
+      </div>
+    );
+  }
+  if (position === 2) {
+    return (
+      <div className="flex flex-col items-center justify-center text-slate-400">
+        <Medal className="h-10 w-10" />
+        <span className="text-lg font-bold">2nd</span>
+        <span className="text-xs font-medium">Position</span>
+      </div>
+    );
+  }
+  if (position === 3) {
+    return (
+      <div className="flex flex-col items-center justify-center text-amber-700">
+        <Award className="h-10 w-10" />
+        <span className="text-lg font-bold">3rd</span>
+        <span className="text-xs font-medium">Position</span>
+      </div>
+    );
+  }
+  if (position >= 4 && position <= 10) {
+     return (
+      <div className="flex flex-col items-center justify-center text-blue-600">
+        <Star className="h-10 w-10" />
+        <span className="text-lg font-bold">{getOrdinal(position)}</span>
+        <span className="text-xs font-medium">Position</span>
+      </div>
+    );
+  }
+  return (
+      <div className="flex flex-col items-center justify-center text-gray-600">
+        <span className="text-2xl font-bold">{getOrdinal(position)}</span>
+        <span className="text-xs font-medium">Position</span>
+      </div>
+  );
+};
+
 
 export default function ReportCardGenerator() {
   const { firestore, user } = useFirebase();
@@ -107,13 +162,24 @@ export default function ReportCardGenerator() {
     setGeneratedReports([]);
 
     const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
-    if (!settings) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load settings.'});
+    if (!settings || !allGrades) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load settings or grades.'});
         setLoading(false);
         return;
     }
     const term = settings.currentTerm;
     const session = settings.currentSession;
+    
+    // Pre-calculate all class averages for ranking
+    const classAverages = studentsInClass.map(student => {
+      const studentGrades = allGrades.filter(g => g.studentId === student.id && g.session === session && g.term === term && typeof g.total === 'number');
+      if (studentGrades.length === 0) return { studentId: student.id, average: 0 };
+      const totalScore = studentGrades.reduce((sum, g) => sum + g.total, 0);
+      return { studentId: student.id, average: totalScore / studentGrades.length };
+    });
+
+    classAverages.sort((a, b) => b.average - a.average);
+
     const newReports: ReportWithStudentAndGradeInfo[] = [];
     
     try {
@@ -122,7 +188,7 @@ export default function ReportCardGenerator() {
             setCurrentStudent(student.name);
             setLoadingProgress(((i + 1) / targets.length) * 100);
 
-            const studentGrades = (allGrades || []).filter(g => 
+            const studentGrades = allGrades.filter(g => 
                 g.studentId === student.id && 
                 g.session === session && 
                 g.term === term &&
@@ -168,6 +234,8 @@ export default function ReportCardGenerator() {
               grade: g.grade, 
               remark: getRemarkFromScore(g.total) 
             }));
+            
+            const position = classAverages.findIndex(avg => avg.studentId === student.id) + 1;
 
             newReports.push({
                 ...result,
@@ -187,6 +255,8 @@ export default function ReportCardGenerator() {
                 traits: studentTraits.map(t => ({ name: t.traitName, rating: t.rating, domain: t.domain})),
                 formTeacherComment: result.formTeacherComment,
                 principalComment: result.principalComment,
+                position: position || 0,
+                totalStudents: studentsInClass.length,
             });
         }
         
@@ -324,7 +394,7 @@ export default function ReportCardGenerator() {
                                     value={`${student.name} ${student.studentId}`}
                                     onSelect={() => {
                                         setSelectedStudent(student);
-                                        setSelectedClass(null);
+                                        setSelectedClass(classes?.find(c => c.id === student.classId) || null);
                                     }}
                                 >
                                     {student.name}
@@ -447,11 +517,15 @@ export default function ReportCardGenerator() {
                             ))}
                             </tbody>
                         </table>
-                        <div className="grid grid-cols-4 gap-1 mt-2 text-[9px]">
-                            <div className="bg-green-50 p-1 text-center border border-green-200"><p className="text-gray-600">Total</p><p className="text-sm font-bold text-green-700">{report.totalScore}</p></div>
-                            <div className="bg-blue-50 p-1 text-center border border-blue-200"><p className="text-gray-600">Average</p><p className="text-sm font-bold text-blue-700">{report.averageScore.toFixed(1)}</p></div>
-                            <div className="bg-yellow-50 p-1 text-center border border-yellow-200"><p className="text-gray-600">Position</p><p className="text-sm font-bold text-yellow-700">1st</p></div>
-                            <div className="bg-purple-50 p-1 text-center border border-purple-200"><p className="text-gray-600">Out of</p><p className="text-sm font-bold text-purple-700">{studentsInClass.length || 1}</p></div>
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="flex gap-1 text-[9px]">
+                              <div className="bg-green-50 p-1 text-center border border-green-200 min-w-[70px]"><p className="text-gray-600">Total</p><p className="text-sm font-bold text-green-700">{report.totalScore}</p></div>
+                              <div className="bg-blue-50 p-1 text-center border border-blue-200 min-w-[70px]"><p className="text-gray-600">Average</p><p className="text-sm font-bold text-blue-700">{report.averageScore.toFixed(1)}</p></div>
+                              <div className="bg-purple-50 p-1 text-center border border-purple-200 min-w-[70px]"><p className="text-gray-600">Out of</p><p className="text-sm font-bold text-purple-700">{report.totalStudents}</p></div>
+                          </div>
+                          <div className="p-1">
+                            <PositionBadge position={report.position} />
+                          </div>
                         </div>
                     </div>
                      <div className="mb-2 text-[7px]">
@@ -545,3 +619,4 @@ export default function ReportCardGenerator() {
     </>
   );
 }
+
