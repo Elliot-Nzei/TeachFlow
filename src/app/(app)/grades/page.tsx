@@ -26,7 +26,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 
-type GradeInput = { studentId: string; studentName: string; score: number | string };
+type GradeInput = { studentId: string; studentName: string; ca1: number | string; ca2: number | string; exam: number | string; };
 
 export default function GradesPage() {
   const { firestore } = useFirebase();
@@ -60,16 +60,18 @@ export default function GradesPage() {
             return {
                 studentId: student.id,
                 studentName: student.name,
-                score: existingGrade?.score || '',
+                ca1: existingGrade?.ca1 || '',
+                ca2: existingGrade?.ca2 || '',
+                exam: existingGrade?.exam || '',
             };
         });
         setGradeInputs(studentGrades);
     }
   };
 
-  const handleScoreChange = (studentId: string, score: string) => {
+  const handleScoreChange = (studentId: string, field: 'ca1' | 'ca2' | 'exam', value: string) => {
     setGradeInputs(prev => 
-        prev.map(gi => gi.studentId === studentId ? {...gi, score: score} : gi)
+        prev.map(gi => gi.studentId === studentId ? {...gi, [field]: value} : gi)
     );
   };
   
@@ -80,16 +82,20 @@ export default function GradesPage() {
     const batch = writeBatch(firestore);
 
     gradeInputs.forEach((input) => {
-        const score = Number(input.score);
-        if (isNaN(score)) return;
-
-        let grade: 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
-        if (score >= 70) grade = 'A';
-        else if (score >= 60) grade = 'B';
-        else if (score >= 50) grade = 'C';
-        else if (score >= 45) grade = 'D';
+        const ca1 = Number(input.ca1);
+        const ca2 = Number(input.ca2);
+        const exam = Number(input.exam);
         
-        // Check if a grade already exists to update it, or create a new one
+        if (isNaN(ca1) || isNaN(ca2) || isNaN(exam)) return;
+
+        const total = ca1 + ca2 + exam;
+        
+        let grade: 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
+        if (total >= 70) grade = 'A';
+        else if (total >= 60) grade = 'B';
+        else if (total >= 50) grade = 'C';
+        else if (total >= 45) grade = 'D';
+        
         const existingGrade = (grades || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject);
 
         const gradeData = {
@@ -98,8 +104,11 @@ export default function GradesPage() {
             subject: selectedSubject,
             term: 'First Term', // Replace with dynamic data from settings context later
             session: '2023/2024', // Replace with dynamic data from settings context later
-            score: score,
-            grade: grade,
+            ca1,
+            ca2,
+            exam,
+            total,
+            grade,
             studentName: input.studentName,
             className: selectedClass.name,
         };
@@ -170,7 +179,7 @@ export default function GradesPage() {
                           <PlusCircle className="mr-2 h-4 w-4" /> Add / Edit Grades
                       </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-2xl">
                       <DialogHeader>
                           <DialogTitle>Add/Edit Grades for {selectedClass.name}</DialogTitle>
                           <DialogDescription>Select a subject to enter scores for all students.</DialogDescription>
@@ -192,26 +201,33 @@ export default function GradesPage() {
                               </div>
                               
                               {selectedSubject && (
-                                  <ScrollArea className="h-72 mt-4 border rounded-md p-4">
-                                  <div className="space-y-4">
-                                      <Label className="font-bold">Enter Scores for {selectedSubject}</Label>
+                                  <ScrollArea className="h-72 mt-4 border rounded-md">
+                                  <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-2/5">Student Name</TableHead>
+                                            <TableHead>CA1 (20)</TableHead>
+                                            <TableHead>CA2 (20)</TableHead>
+                                            <TableHead>Exam (60)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                       {gradeInputs.map((input) => (
-                                          <div key={input.studentId} className="grid grid-cols-3 items-center gap-4">
-                                              <Label htmlFor={`score-${input.studentId}`} className="col-span-2">{input.studentName}</Label>
-                                              <Input 
-                                                  id={`score-${input.studentId}`} 
-                                                  name={`score-${input.studentId}`} 
-                                                  type="number" 
-                                                  min="0" 
-                                                  max="100" 
-                                                  placeholder="0-100" 
-                                                  value={input.score}
-                                                  onChange={(e) => handleScoreChange(input.studentId, e.target.value)}
-                                                  className="col-span-1" 
-                                              />
-                                          </div>
+                                          <TableRow key={input.studentId}>
+                                              <TableCell className="font-medium">{input.studentName}</TableCell>
+                                              <TableCell>
+                                                  <Input type="number" min="0" max="20" value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} />
+                                              </TableCell>
+                                               <TableCell>
+                                                  <Input type="number" min="0" max="20" value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} />
+                                              </TableCell>
+                                               <TableCell>
+                                                  <Input type="number" min="0" max="60" value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} />
+                                              </TableCell>
+                                          </TableRow>
                                       ))}
-                                  </div>
+                                    </TableBody>
+                                  </Table>
                                   </ScrollArea>
                               )}
                           </div>
@@ -240,7 +256,10 @@ export default function GradesPage() {
                             <TableHeader>
                               <TableRow>
                                 <TableHead>Student Name</TableHead>
-                                <TableHead>Score</TableHead>
+                                <TableHead>CA1</TableHead>
+                                <TableHead>CA2</TableHead>
+                                <TableHead>Exam</TableHead>
+                                <TableHead>Total</TableHead>
                                 <TableHead className="text-right">Grade</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -248,7 +267,10 @@ export default function GradesPage() {
                               {subjectGrades.map((grade) => (
                                 <TableRow key={grade.id}>
                                   <TableCell className="font-medium">{grade.studentName}</TableCell>
-                                  <TableCell>{grade.score}</TableCell>
+                                  <TableCell>{grade.ca1}</TableCell>
+                                  <TableCell>{grade.ca2}</TableCell>
+                                  <TableCell>{grade.exam}</TableCell>
+                                  <TableCell>{grade.total}</TableCell>
                                   <TableCell className="text-right font-bold">{grade.grade}</TableCell>
                                 </TableRow>
                               ))}
@@ -275,3 +297,5 @@ export default function GradesPage() {
     </div>
   );
 }
+
+    

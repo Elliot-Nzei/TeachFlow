@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   name: string;
@@ -14,6 +15,8 @@ export type Student = {
   className: string;
   classId: string;
   avatarUrl: string;
+  age?: number;
+  gender?: 'Male' | 'Female';
 };
 
 export type Class = {
@@ -35,10 +38,14 @@ export type Grade = {
   subject: string;
   term: string;
   session: string;
-  score: number;
+  ca1?: number;
+  ca2?: number;
+  exam?: number;
+  total: number;
   studentName: string;
   className: string;
   grade: "A" | "B" | "C" | "D" | "F";
+  remark?: string;
 };
 
 export type ReportCard = {
@@ -73,3 +80,5 @@ export type Settings = {
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;
 };
+
+    

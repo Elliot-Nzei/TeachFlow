@@ -24,6 +24,19 @@
           "type": "string",
           "description": "The name of the school the user is associated with."
         },
+        "schoolMotto": {
+          "type": "string",
+          "description": "The school's motto."
+        },
+        "schoolAddress": {
+          "type": "string",
+          "description": "The physical address of the school."
+        },
+        "nextTermBegins": {
+            "type": "string",
+            "format": "date",
+            "description": "The start date for the next academic term."
+        },
         "profilePicture": {
           "type": "string",
           "description": "URL of the user's profile picture."
@@ -102,6 +115,13 @@
         "avatarUrl": {
           "type": "string",
           "format": "uri"
+        },
+        "age": {
+          "type": "number"
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["Male", "Female"]
         }
       },
       "required": [
@@ -131,34 +151,19 @@
       "type": "object",
       "description": "Represents a student's grade for a specific subject and term.",
       "properties": {
-        "studentId": {
-          "type": "string"
-        },
-        "classId": {
-          "type": "string"
-        },
-        "subject": {
-          "type": "string"
-        },
-        "term": {
-          "type": "string"
-        },
-        "session": {
-          "type": "string"
-        },
-        "score": {
-          "type": "number"
-        },
-        "studentName": {
-          "type": "string"
-        },
-        "className": {
-          "type": "string"
-        },
-        "grade": {
-          "type": "string",
-          "enum": ["A", "B", "C", "D", "F"]
-        }
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "subject": { "type": "string" },
+        "term": { "type": "string" },
+        "session": { "type": "string" },
+        "ca1": { "type": "number", "description": "First Continuous Assessment Score (max 20)." },
+        "ca2": { "type": "number", "description": "Second Continuous Assessment Score (max 20)." },
+        "exam": { "type": "number", "description": "Examination Score (max 60)." },
+        "total": { "type": "number", "description": "Total score (ca1 + ca2 + exam)." },
+        "grade": { "type": "string", "description": "Overall letter grade for the subject." },
+        "remark": { "type": "string", "description": "Teacher's remark for the subject." },
+        "studentName": { "type": "string" },
+        "className": { "type": "string" }
       },
       "required": [
         "studentId",
@@ -166,11 +171,26 @@
         "subject",
         "term",
         "session",
-        "score",
+        "total",
+        "grade",
         "studentName",
-        "className",
-        "grade"
+        "className"
       ]
+    },
+    "Trait": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Trait",
+      "type": "object",
+      "description": "Represents a student's rating for a behavioral trait for a specific term.",
+       "properties": {
+        "studentId": { "type": "string" },
+        "term": { "type": "string" },
+        "session": { "type": "string" },
+        "traitName": { "type": "string" },
+        "domain": { "type": "string", "enum": ["Affective", "Psychomotor"]},
+        "rating": { "type": "number", "minimum": 1, "maximum": 5 }
+       },
+       "required": ["studentId", "term", "session", "traitName", "domain", "rating"]
     },
     "Attendance": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -283,6 +303,13 @@
           "description": "Stores all grades entered by a specific user."
         }
       },
+       {
+        "path": "users/{userId}/traits/{traitId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/Trait" },
+          "description": "Stores student behavioral trait ratings for each term."
+        }
+      },
       {
         "path": "users/{userId}/attendance/{attendanceId}",
         "definition": {
@@ -312,3 +339,5 @@
     "reasoning": "This data structure is user-centric. All primary data (classes, students, subjects, grades, attendance) is nested under the `/users/{userId}` collection. This makes security rules simple and robust, as we can secure entire branches of the database based on the authenticated user's ID. This prevents data leakage between different school accounts and simplifies queries, as all data for a logged-in user is located in a predictable path."
   }
 }
+
+    
