@@ -17,8 +17,9 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStudentOpen, setAddStudentOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
+  const [students, setStudents] = useState(placeholderStudents);
 
-  const filteredStudents = placeholderStudents.filter(student =>
+  const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.class.toLowerCase().includes(searchTerm.toLowerCase())
@@ -28,6 +29,31 @@ export default function StudentsPage() {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       setPreviewImage(URL.createObjectURL(file));
+    }
+  };
+  
+  const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const studentName = (form.elements.namedItem('student-name') as HTMLInputElement).value;
+    const classId = (form.elements.namedItem('student-class') as HTMLInputElement).value;
+    
+    if (studentName && classId) {
+        const studentClass = placeholderClasses.find(c => c.id === classId);
+        if (studentClass) {
+            const newIdNumber = students.length + 1;
+            const newStudent = {
+                id: `student-${newIdNumber}`,
+                studentId: `SPS-${String(newIdNumber).padStart(3, '0')}`,
+                name: studentName,
+                class: studentClass.name,
+                classId: classId,
+                avatarUrl: previewImage || `https://picsum.photos/seed/student-${newIdNumber}/100/100`,
+            };
+            setStudents([...students, newStudent]);
+            setAddStudentOpen(false);
+            setPreviewImage('');
+        }
     }
   };
 
@@ -56,52 +82,48 @@ export default function StudentsPage() {
                     <DialogHeader>
                         <DialogTitle>Add New Student</DialogTitle>
                         <DialogDescription>
-                            Enter the details for the new student.
+                            Enter the details for the new student. A unique ID will be generated automatically.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-6 py-4">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-24 w-24">
-                                <AvatarImage src={previewImage} alt="Student preview" />
-                                <AvatarFallback className="text-3xl">
-                                    {previewImage ? '' : <UserPlus />}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Label htmlFor="picture">Student Picture</Label>
-                                <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} />
+                    <form onSubmit={handleAddStudent}>
+                        <div className="grid gap-6 py-4">
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-24 w-24">
+                                    <AvatarImage src={previewImage} alt="Student preview" />
+                                    <AvatarFallback className="text-3xl">
+                                        {previewImage ? '' : <UserPlus />}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="grid w-full max-w-sm items-center gap-1.5">
+                                    <Label htmlFor="picture">Student Picture</Label>
+                                    <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} />
+                                </div>
                             </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="student-name">Full Name</Label>
-                                <Input id="student-name" placeholder="e.g., John Doe" />
+                                <Input id="student-name" name="student-name" placeholder="e.g., John Doe" required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="student-id">Student ID</Label>
-                                <Input id="student-id" placeholder="e.g., SPS-013" />
+                                <Label htmlFor="student-class">Class</Label>
+                                <Select name="student-class" required>
+                                    <SelectTrigger id="student-class">
+                                    <SelectValue placeholder="Select a class" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                    {placeholderClasses.map(cls => (
+                                        <SelectItem key={cls.id} value={cls.id}>
+                                        {cls.name}
+                                        </SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="student-class">Class</Label>
-                            <Select>
-                                <SelectTrigger id="student-class">
-                                <SelectValue placeholder="Select a class" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                {placeholderClasses.map(cls => (
-                                    <SelectItem key={cls.id} value={cls.id}>
-                                    {cls.name}
-                                    </SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setAddStudentOpen(false)}>Cancel</Button>
-                        <Button type="submit">Save Student</Button>
-                    </DialogFooter>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setAddStudentOpen(false)}>Cancel</Button>
+                            <Button type="submit">Save Student</Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>
