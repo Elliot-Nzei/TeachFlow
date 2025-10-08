@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, Fragment, useContext } from 'react';
 import jsPDF from 'jspdf';
@@ -29,13 +30,15 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   className: string;
   term: string;
   session: string;
-  grades: { subject: string; ca1?: number; ca2?: number; exam?: number; total: number, grade: string }[];
+  grades: { subject: string; ca1?: number; ca2?: number; exam?: number; total: number, grade: string, remark?: string }[];
   age?: number;
   gender?: 'Male' | 'Female';
   attendance?: { schoolOpened: number; timesPresent: number; timesAbsent: number };
   traits?: { name: string; domain: string; rating: number }[];
   principalComment?: string;
   nextTermBegins?: string;
+  schoolName?: string;
+  schoolMotto?: string;
 };
 
 const gradingScale = [
@@ -103,10 +106,15 @@ export default function ReportCardGenerator() {
             setCurrentStudent(student.name);
             setLoadingProgress(((i + 1) / targets.length) * 100);
 
-            const studentGrades = (allGrades || []).filter(g => g.studentId === student.id && g.session === session && g.term === term);
+            const studentGrades = (allGrades || []).filter(g => 
+                g.studentId === student.id && 
+                g.session === session && 
+                g.term === term &&
+                typeof g.total === 'number' // Ensure only grades with a total score are processed
+            );
             
             if (studentGrades.length === 0) {
-                continue; // Skip students with no grades for the current term/session
+                continue; // Skip students with no valid grades for the current term/session
             }
 
             const input: GenerateReportCardInput = {
@@ -118,7 +126,7 @@ export default function ReportCardGenerator() {
             };
 
             const result = await generateReportCard(input);
-            const detailedGrades = studentGrades.map(g => ({ subject: g.subject, ca1: g.ca1, ca2: g.ca2, exam: g.exam, total: g.total, grade: g.grade }));
+            const detailedGrades = studentGrades.map(g => ({ subject: g.subject, ca1: g.ca1, ca2: g.ca2, exam: g.exam, total: g.total, grade: g.grade, remark: g.remark }));
 
             newReports.push({
                 ...result,
@@ -150,8 +158,8 @@ export default function ReportCardGenerator() {
 
         if (newReports.length === 0) {
             const description = selectedStudent
-                ? `No grades have been recorded for ${selectedStudent.name} for the current term/session.`
-                : `No students in ${selectedClass?.name} have recorded grades for the current term/session.`;
+                ? `No valid grades have been recorded for ${selectedStudent.name} for the current term/session.`
+                : `No students in ${selectedClass?.name} have valid recorded grades for the current term/session.`;
             toast({
                 variant: "destructive",
                 title: "No Grades Found",
