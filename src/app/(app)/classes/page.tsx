@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { placeholderClasses } from '@/lib/placeholder-data';
 import { BookOpen, PlusCircle, Users } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ClassesPage() {
   return (
@@ -63,7 +64,9 @@ export default function ClassesPage() {
                 </div>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full">View Details</Button>
+              <Link href={`/classes/${cls.id}`} className="w-full">
+                <Button variant="outline" className="w-full">View Details</Button>
+              </Link>
             </CardFooter>
           </Card>
         ))}
