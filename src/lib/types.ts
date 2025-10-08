@@ -59,7 +59,7 @@ export type DataTransfer = {
   fromUser: string;
   toUser: string;
   dataType: 'Class' | 'Grades' | 'Report Card';
-  dataTransferred: string;
+  dataTransferred?: string;
   timestamp: string;
 };
 

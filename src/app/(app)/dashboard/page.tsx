@@ -1,5 +1,6 @@
 
 'use client';
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, BookOpen, ClipboardList, ArrowRightLeft } from 'lucide-react';
@@ -13,7 +14,8 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
-import type { Grade, DataTransfer } from '@/lib/types';
+import type { Grade } from '@/lib/types';
+import { DataTransfer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
