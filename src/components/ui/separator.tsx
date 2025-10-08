@@ -10,20 +10,24 @@ const Separator = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
 >(
   (
-    { className, orientation = "horizontal", decorative = true, ...props },
+    { className, orientation = "horizontal", decorative = true, children, ...props },
     ref
   ) => (
-    <SeparatorPrimitive.Root
-      ref={ref}
-      decorative={decorative}
-      orientation={orientation}
-      className={cn(
-        "shrink-0 bg-border",
-        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
-        className
-      )}
-      {...props}
-    />
+    <div className={cn('flex items-center', className)}>
+        {children && <div className="flex-1 border-t" />}
+        {children && <span className="mx-4 text-xs uppercase text-muted-foreground">{children}</span>}
+        <SeparatorPrimitive.Root
+        ref={ref}
+        decorative={decorative}
+        orientation={orientation}
+        className={cn(
+            "shrink-0 bg-border flex-1",
+            children ? "border-t" : (orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]"),
+        )}
+        {...props}
+        />
+        {children && <div className="flex-1 border-t" />}
+    </div>
   )
 )
 Separator.displayName = SeparatorPrimitive.Root.displayName

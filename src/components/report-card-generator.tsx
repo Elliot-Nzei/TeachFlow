@@ -1,10 +1,5 @@
 'use client';
-import { useState } from 'react';
-import { useFormState } from 'react-dom';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-
+import { useState, useMemo, Fragment } from 'react';
 import {
   generateReportCard,
   type GenerateReportCardInput,
@@ -12,191 +7,256 @@ import {
 } from '@/ai/flows/generate-report-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Separator } from './ui/separator';
-import { FileDown, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { placeholderClasses, placeholderGrades, placeholderStudents } from '@/lib/placeholder-data';
+import type { Student, Class, Grade } from '@/lib/types';
+import { FileDown, Loader2, Printer, Search, User, Users } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Separator } from './ui/separator';
 
-const formSchema = z.object({
-  studentName: z.string().min(2, { message: 'Student name is required.' }),
-  className: z.string().min(2, { message: 'Class name is required.' }),
-  term: z.string().min(2, { message: 'Term is required.' }),
-  session: z.string().min(2, { message: 'Session is required.' }),
-  grades: z.string().min(10, { message: 'Please enter at least one subject and score.' }),
-});
+type ReportWithStudentInfo = GenerateReportCardOutput & {
+  studentName: string;
+  className: string;
+  term: string;
+  session: string;
+};
 
 export default function ReportCardGenerator() {
-  const [report, setReport] = useState<GenerateReportCardOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [generatedReports, setGeneratedReports] = useState<ReportWithStudentInfo[]>([]);
+
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      studentName: 'Ada Okoro',
-      className: 'Primary 3B',
-      term: 'First Term',
-      session: '2023/2024',
-      grades: 'Mathematics: 85, English: 92, Basic Science: 78, Social Studies: 88',
-    },
-  });
+  const studentsInClass = useMemo(() => {
+    return selectedClass ? placeholderStudents.filter(s => s.classId === selectedClass.id) : [];
+  }, [selectedClass]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const handleGenerateReports = async () => {
+    if (!selectedClass && !selectedStudent) {
+      toast({
+        variant: 'destructive',
+        title: 'Selection Required',
+        description: 'Please select a class or a student to generate reports.',
+      });
+      return;
+    }
+
     setLoading(true);
-    setReport(null);
+    setGeneratedReports([]);
+
+    const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
 
     try {
-        const gradesArray = values.grades
-          .split(',')
-          .map((g) => {
-            const [subject, score] = g.split(':');
-            return { subject: subject.trim(), score: parseInt(score.trim(), 10) };
-          })
-          .filter(g => g.subject && !isNaN(g.score));
-
-        if (gradesArray.length === 0) {
-            toast({
-                variant: "destructive",
-                title: "Invalid Grades Format",
-                description: "Please ensure grades are in 'Subject: Score' format, separated by commas.",
-            });
-            setLoading(false);
-            return;
+      const reports: ReportWithStudentInfo[] = [];
+      for (const student of targets) {
+        const studentGrades = (placeholderGrades[student.class] || []).filter(g => g.studentName === student.name);
+        
+        if (studentGrades.length === 0) {
+          continue; 
         }
 
         const input: GenerateReportCardInput = {
-          studentName: values.studentName,
-          className: values.className,
-          term: values.term,
-          session: values.session,
-          grades: gradesArray,
+          studentName: student.name,
+          className: student.class,
+          term: 'First Term', // Placeholder
+          session: '2023/2024', // Placeholder
+          grades: studentGrades.map(g => ({ subject: g.subject, score: g.score })),
         };
 
         const result = await generateReportCard(input);
-        setReport(result);
-    } catch (error) {
-        console.error('Error generating report card:', error);
-        toast({
-            variant: "destructive",
-            title: "Generation Failed",
-            description: "An unexpected error occurred. Please try again.",
+        reports.push({
+          ...result,
+          studentName: student.name,
+          className: student.class,
+          term: input.term,
+          session: input.session,
         });
+      }
+      setGeneratedReports(reports);
+      if(reports.length === 0) {
+         toast({
+            variant: "destructive",
+            title: "No Grades Found",
+            description: `No grades have been recorded for the selected ${selectedStudent ? 'student' : 'class'}.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error generating report card(s):', error);
+      toast({
+        variant: 'destructive',
+        title: 'Generation Failed',
+        description: 'An unexpected error occurred. Please try again.',
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
+  };
+  
+  const handlePrint = () => {
+    window.print();
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Enter Student Details</CardTitle>
-          <CardDescription>Fill in the form below to generate a new report card.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="studentName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Student Name</FormLabel>
-                    <FormControl><Input placeholder="e.g., Ada Okoro" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-3 gap-4">
-                <FormField control={form.control} name="className" render={({ field }) => (
-                    <FormItem><FormLabel>Class</FormLabel><FormControl><Input placeholder="e.g., Primary 3B" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="term" render={({ field }) => (
-                    <FormItem><FormLabel>Term</FormLabel><FormControl><Input placeholder="e.g., First Term" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="session" render={({ field }) => (
-                    <FormItem><FormLabel>Session</FormLabel><FormControl><Input placeholder="e.g., 2023/2024" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </div>
-              <FormField
-                control={form.control}
-                name="grades"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Grades</FormLabel>
-                    <FormControl><Textarea placeholder="Mathematics: 85, English: 92, ..." {...field} rows={4} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Generate Report
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+    <>
+      <div className="grid gap-8 md:grid-cols-12 @media print:hidden">
+        <Card className="md:col-span-4">
+          <CardHeader>
+            <CardTitle>Select Target</CardTitle>
+            <CardDescription>Choose a class or an individual student.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <label className="flex items-center text-sm font-medium">
+                <Users className="mr-2 h-4 w-4" /> Select a Class
+              </label>
+              <Select
+                onValueChange={(classId) => {
+                  setSelectedClass(placeholderClasses.find(c => c.id === classId) || null);
+                  setSelectedStudent(null);
+                }}
+                value={selectedClass?.id || ''}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a class..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {placeholderClasses.map(cls => (
+                    <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Generated Report Card</CardTitle>
-          <CardDescription>The AI-generated report will appear here.</CardDescription>
-        </CardHeader>
-        <CardContent className="min-h-[400px]">
-          {loading && (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-              <p className="font-semibold">Generating Report...</p>
-              <p className="text-sm">This may take a moment.</p>
+            <Separator>OR</Separator>
+
+            <div className="space-y-2">
+                 <label className="flex items-center text-sm font-medium">
+                    <User className="mr-2 h-4 w-4" /> Search for a Student
+                </label>
+                <Command className="rounded-lg border shadow-sm">
+                    <CommandInput placeholder="Type student name or ID..." />
+                    <CommandList>
+                        <CommandEmpty>No student found.</CommandEmpty>
+                        <CommandGroup>
+                        {placeholderStudents.map((student) => (
+                            <CommandItem
+                                key={student.id}
+                                value={`${student.name} ${student.studentId}`}
+                                onSelect={() => {
+                                    setSelectedStudent(student);
+                                    setSelectedClass(null);
+                                }}
+                            >
+                                {student.name}
+                                <span className="ml-2 text-xs text-muted-foreground">{student.studentId}</span>
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
             </div>
-          )}
-          {!loading && !report && (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-                <p>Your generated report card will be displayed here.</p>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleGenerateReports} disabled={loading} className="w-full">
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Generate {selectedStudent ? 'Report' : 'Class Reports'}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="md:col-span-8">
+          <CardHeader className="flex flex-row justify-between items-start">
+            <div>
+                <CardTitle>Generated Reports Preview</CardTitle>
+                <CardDescription>
+                    {selectedStudent ? `Report for ${selectedStudent.name}` : selectedClass ? `Reports for ${selectedClass.name}` : 'Select a target to see a preview.'}
+                </CardDescription>
             </div>
-          )}
-          {report && (
-             <div className="space-y-4">
-                <div className="text-center">
-                    <h3 className="text-2xl font-bold font-headline">{form.getValues('studentName')}</h3>
-                    <p className="text-muted-foreground">{form.getValues('className')} - {form.getValues('term')}, {form.getValues('session')}</p>
+             {generatedReports.length > 0 && (
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => toast({ title: "Coming Soon!", description: "Excel export will be available shortly."})}>
+                        <FileDown className="mr-2 h-4 w-4" /> Download All
+                    </Button>
+                     <Button onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" /> Print
+                    </Button>
                 </div>
-                <Separator />
-                <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                        <p className="text-sm text-muted-foreground">Total Score</p>
-                        <p className="text-2xl font-bold">{report.totalScore}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-muted-foreground">Average</p>
-                        <p className="text-2xl font-bold">{report.averageScore.toFixed(1)}%</p>
-                    </div>
-                     <div>
-                        <p className="text-sm text-muted-foreground">Grade</p>
-                        <p className="text-2xl font-bold text-primary">{report.grade}</p>
-                    </div>
+            )}
+          </CardHeader>
+          <CardContent className="min-h-[400px]">
+            {loading && (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <p className="font-semibold">Generating Reports...</p>
+                <p className="text-sm">This may take a moment.</p>
+              </div>
+            )}
+            {!loading && generatedReports.length === 0 && (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                <p>Your generated report cards will be displayed here.</p>
+              </div>
+            )}
+            {!loading && generatedReports.length > 0 && (
+                <div id="print-section" className="space-y-8">
+                    {generatedReports.map((report, index) => (
+                        <Fragment key={index}>
+                           <div className="report-card p-6 border rounded-lg bg-card text-card-foreground shadow-sm break-after-page">
+                                <div className="text-center mb-4">
+                                    <h3 className="text-2xl font-bold font-headline">{report.studentName}</h3>
+                                    <p className="text-muted-foreground">{report.className} - {report.term}, {report.session}</p>
+                                </div>
+                                <Separator />
+                                <div className="grid grid-cols-3 gap-4 text-center my-4">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Total Score</p>
+                                        <p className="text-2xl font-bold">{report.totalScore}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Average</p>
+                                        <p className="text-2xl font-bold">{report.averageScore.toFixed(1)}%</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Grade</p>
+                                        <p className="text-2xl font-bold text-primary">{report.grade}</p>
+                                    </div>
+                                </div>
+                                <Separator />
+                                <div className="mt-4">
+                                    <h4 className="font-semibold mb-2">Teacher's Remark</h4>
+                                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md">{report.remark}</p>
+                                </div>
+                            </div>
+                        </Fragment>
+                    ))}
                 </div>
-                <Separator />
-                 <div>
-                    <h4 className="font-semibold mb-2">Teacher's Remark</h4>
-                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md">{report.remark}</p>
-                 </div>
-             </div>
-          )}
-        </CardContent>
-        {report && (
-             <CardFooter>
-                <Button className="w-full" variant="outline" onClick={() => toast({ title: "Coming Soon!", description: "Excel export functionality will be available shortly."})}>
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Export to Excel
-                </Button>
-            </CardFooter>
-        )}
-      </Card>
-    </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+       <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #print-section, #print-section * {
+            visibility: visible;
+          }
+          #print-section {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .report-card {
+            page-break-after: always;
+            border: 1px solid #ccc !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }
