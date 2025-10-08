@@ -41,35 +41,44 @@ export default function DashboardPage() {
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
   useEffect(() => {
-    if (userProfile && userProfile.userCode && firestore) {
-      const fetchTransfers = async () => {
-        setIsLoadingTransfers(true);
-        try {
-          // Fetch all documents from the transfers collection
-          const transfersSnapshot = await getDocs(collection(firestore, 'transfers'));
-          
-          // Filter on the client-side
-          const userTransfers = transfersSnapshot.docs
-            .map(d => ({ ...d.data(), id: d.id }) as DataTransfer)
-            .filter(t => t.fromUser === userProfile.userCode || t.toUser === userProfile.userCode);
-
-          // Sort by timestamp
-          userTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-          setAllTransfers(userTransfers);
-        } catch (error) {
-            console.error("Error fetching and filtering transfers:", error);
-            // Even if it fails, stop loading
-        } finally {
-            setIsLoadingTransfers(false);
-        }
-      };
-
-      fetchTransfers();
-    } else if (!isLoadingProfile) {
-        // If profile is loaded but there's no userCode or firestore, we're done.
+    if (!userProfile || !userProfile.userCode || !firestore) {
+      if(!isLoadingProfile) {
         setIsLoadingTransfers(false);
+      }
+      return;
     }
+
+    const fetchTransfers = async () => {
+      setIsLoadingTransfers(true);
+      try {
+        const transfersCollection = collection(firestore, 'transfers');
+        
+        const sentQuery = query(transfersCollection, where('fromUser', '==', userProfile.userCode));
+        const receivedQuery = query(transfersCollection, where('toUser', '==', userProfile.userCode));
+
+        const [sentSnapshot, receivedSnapshot] = await Promise.all([
+          getDocs(sentQuery),
+          getDocs(receivedQuery)
+        ]);
+
+        const sentTransfers = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
+        const receivedTransfers = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
+
+        const combined = [...sentTransfers, ...receivedTransfers];
+        // Deduplicate in case a user sends data to themselves
+        const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
+        
+        uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        setAllTransfers(uniqueTransfers);
+      } catch (error) {
+        console.error("Error fetching transfers:", error);
+      } finally {
+        setIsLoadingTransfers(false);
+      }
+    };
+
+    fetchTransfers();
   }, [userProfile, firestore, isLoadingProfile]);
   
   const gradeCounts = useMemo(() => (grades || []).reduce((acc, grade) => {
