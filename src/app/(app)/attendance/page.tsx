@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar as CalendarIcon, Save, Users, ArrowLeft, PanelLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Save, Users, ArrowLeft, User } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Class, Student } from '@/lib/types';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
@@ -14,16 +14,14 @@ import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/fir
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { SettingsContext } from '@/contexts/settings-context';
-import ClassSidebar from '@/components/class-sidebar';
 
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Late';
 type AttendanceRecord = { studentId: string; status: AttendanceStatus; name: string; avatarUrl: string; recordId?: string; };
 
-function AttendanceTaker({ selectedClass }: { selectedClass: Class }) {
+function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBack: () => void }) {
   const { firestore, user } = useFirebase();
   const { settings } = useContext(SettingsContext);
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -133,120 +131,126 @@ function AttendanceTaker({ selectedClass }: { selectedClass: Class }) {
   };
 
   return (
-    <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-            <Popover>
-                <PopoverTrigger asChild>
-                <Button
-                    variant={"outline"}
-                    className="w-full sm:w-[280px] justify-start text-left font-normal"
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+    <Card className="h-full">
+        <CardHeader>
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle>{selectedClass.name} - Attendance</CardTitle>
+                    <CardDescription>Mark daily attendance for each student.</CardDescription>
+                </div>
+                <Button variant="outline" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Back to Classes</Button>
+            </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className="w-full sm:w-[280px] justify-start text-left font-normal"
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+                <Button onClick={handleSaveAttendance} disabled={attendance.length === 0} className="w-full sm:w-auto">
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Attendance
                 </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    initialFocus
-                />
-                </PopoverContent>
-            </Popover>
-            <Button onClick={handleSaveAttendance} disabled={attendance.length === 0} className="w-full sm:w-auto">
-                <Save className="mr-2 h-4 w-4" />
-                Save Attendance
-            </Button>
-        </div>
+            </div>
 
-        {isLoadingStudents ? (
-            <div className="space-y-4">
-                {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-            </div>
-        ) : attendance.length > 0 ? (
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead className="text-right">Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {attendance.map(record => (
-                        <TableRow key={record.studentId}>
-                            <TableCell>
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={record.avatarUrl} alt={record.name} />
-                                        <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-medium">{record.name}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                                    <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
-                                    <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
-                                    <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
-                                </div>
-                            </TableCell>
+            {isLoadingStudents ? (
+                <div className="space-y-4">
+                    {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                </div>
+            ) : attendance.length > 0 ? (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Student</TableHead>
+                            <TableHead className="text-right">Status</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        ) : (
-            <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
-                <p>No students in this class.</p>
-            </div>
-        )}
-    </div>
+                    </TableHeader>
+                    <TableBody>
+                        {attendance.map(record => (
+                            <TableRow key={record.studentId}>
+                                <TableCell>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                            <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium">{record.name}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
+                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
+                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            ) : (
+                <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
+                    <p>No students in this class.</p>
+                </div>
+            )}
+        </CardContent>
+    </Card>
   )
+}
+
+function ClassSelector({ onSelectClass }: { onSelectClass: (cls: Class) => void }) {
+    const { firestore, user } = useFirebase();
+    const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+    const { data: classes, isLoading } = useCollection<Class>(classesQuery);
+
+    return (
+        <div>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold font-headline">Attendance</h1>
+                <p className="text-muted-foreground">Select a class to begin marking attendance.</p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {isLoading ? Array.from({length: 3}).map((_, i) => (
+                    <Card key={i}><CardContent className="h-40 bg-muted rounded-lg animate-pulse" /></Card>
+                )) : classes?.map((cls) => (
+                    <Card key={cls.id} onClick={() => onSelectClass(cls)} className="cursor-pointer hover:shadow-lg transition-shadow">
+                        <CardHeader>
+                            <CardTitle className="font-headline">{cls.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Users className="h-4 w-4" />
+                                <span>{cls.students?.length || 0} Students</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    )
 }
 
 export default function AttendancePage() {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const handleSelectClass = (cls: Class) => {
-    setSelectedClass(cls);
-    setIsSidebarOpen(false);
-  };
+  if (selectedClass) {
+    return <AttendanceTaker selectedClass={selectedClass} onBack={() => setSelectedClass(null)} />;
+  }
   
-  return (
-    <div className="flex h-full">
-      <div className="hidden md:block md:w-80">
-        <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-      </div>
-      <div className="flex-1 md:pl-8">
-        <div className="flex items-center gap-4 mb-4 md:hidden">
-          <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline">
-                <PanelLeft className="mr-2 h-4 w-4" /> Select Class
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
-              <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-            </SheetContent>
-          </Sheet>
-        </div>
-        {selectedClass ? (
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>{selectedClass.name} - Attendance</CardTitle>
-              <CardDescription>Mark daily attendance for each student.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AttendanceTaker selectedClass={selectedClass} />
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="flex items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
-            <p>Select a class to view and manage attendance.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <ClassSelector onSelectClass={setSelectedClass} />;
 }
