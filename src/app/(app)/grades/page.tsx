@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -106,21 +107,22 @@ export default function GradesPage() {
             <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
         </div>
       <div className="flex-1">
+        <div className="flex items-center gap-4 mb-4 md:hidden">
+            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline">
+                    <PanelLeft className="mr-2 h-4 w-4" /> Select Class
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                    <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+                </SheetContent>
+            </Sheet>
+        </div>
         {selectedClass ? (
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
               <div className="flex items-center gap-4">
-                  <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                      <SheetTrigger asChild>
-                          <Button variant="ghost" size="icon" className="md:hidden">
-                            <PanelLeft className="h-5 w-5" />
-                            <span className="sr-only">Select Class</span>
-                          </Button>
-                      </SheetTrigger>
-                      <SheetContent side="left" className="w-72 p-0">
-                          <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-                      </SheetContent>
-                  </Sheet>
                 <div>
                     <CardTitle className="font-headline">{selectedClass.name}</CardTitle>
                     <CardDescription>Manage grades for this class.</CardDescription>
@@ -233,16 +235,6 @@ export default function GradesPage() {
         ) : (
             <div className="flex items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
                 <p>Select a class to view and manage grades.</p>
-                 <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="outline" className="md:hidden ml-4">
-                        <PanelLeft className="mr-2 h-4 w-4" /> Select Class
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-72 p-0">
-                        <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-                    </SheetContent>
-                </Sheet>
             </div>
         )}
       </div>
