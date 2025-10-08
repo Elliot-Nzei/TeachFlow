@@ -41,28 +41,25 @@ export default function DashboardPage() {
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
   useEffect(() => {
-    if (userProfile && userProfile.userCode) {
+    if (userProfile && userProfile.userCode && firestore) {
       const fetchTransfers = async () => {
         setIsLoadingTransfers(true);
         try {
-          const sentQuery = query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode));
-          const receivedQuery = query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode));
-
-          const [sentSnapshot, receivedSnapshot] = await Promise.all([
-            getDocs(sentQuery),
-            getDocs(receivedQuery),
-          ]);
+          // Fetch all documents from the transfers collection
+          const transfersSnapshot = await getDocs(collection(firestore, 'transfers'));
           
-          const sentData = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id })) as DataTransfer[];
-          const receivedData = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id })) as DataTransfer[];
+          // Filter on the client-side
+          const userTransfers = transfersSnapshot.docs
+            .map(d => ({ ...d.data(), id: d.id }) as DataTransfer)
+            .filter(t => t.fromUser === userProfile.userCode || t.toUser === userProfile.userCode);
 
-          const combined = [...sentData, ...receivedData];
-          const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
-          uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          // Sort by timestamp
+          userTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-          setAllTransfers(uniqueTransfers);
+          setAllTransfers(userTransfers);
         } catch (error) {
-            console.error("Error fetching transfers:", error);
+            console.error("Error fetching and filtering transfers:", error);
+            // Even if it fails, stop loading
         } finally {
             setIsLoadingTransfers(false);
         }
@@ -70,7 +67,7 @@ export default function DashboardPage() {
 
       fetchTransfers();
     } else if (!isLoadingProfile) {
-        // If profile is loaded but there's no userCode, we're done loading.
+        // If profile is loaded but there's no userCode or firestore, we're done.
         setIsLoadingTransfers(false);
     }
   }, [userProfile, firestore, isLoadingProfile]);
