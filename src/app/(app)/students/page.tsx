@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,20 +35,20 @@ export default function StudentsPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredStudents.map((student) => (
-          <Link href={`/students/${student.id}`} key={student.id}>
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex-row items-center gap-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={student.avatarUrl} alt={student.name} />
-                  <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle className="text-lg font-semibold">{student.name}</CardTitle>
-                  <CardDescription>{student.studentId}</CardDescription>
+          <Link href={`/students/${student.id}`} key={student.id} className="group">
+            <Card className="h-full overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
+              <CardContent className="p-0 text-center">
+                <div className="bg-muted/50 p-6">
+                    <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-background shadow-md">
+                    <AvatarImage src={student.avatarUrl} alt={student.name} />
+                    <AvatarFallback className="text-2xl">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <CardTitle className="text-lg font-bold font-headline">{student.name}</CardTitle>
+                    <CardDescription className="font-mono text-xs">{student.studentId}</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{student.class}</p>
+                <div className="p-4">
+                    <Badge variant="secondary">{student.class}</Badge>
+                </div>
               </CardContent>
             </Card>
           </Link>
