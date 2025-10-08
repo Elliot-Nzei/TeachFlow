@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -20,6 +21,12 @@ const GenerateReportCardInputSchema = z.object({
       score: z.number().describe('The score obtained in the subject.'),
     })
   ).describe('An array of grades for each subject.'),
+  traits: z.array(
+    z.object({
+        name: z.string(),
+        rating: z.number(),
+    })
+  ).describe("An array of the student's behavioral traits and their ratings (1-5)."),
   term: z.string().describe('The current academic term.'),
   session: z.string().describe('The current academic session.'),
 });
@@ -29,7 +36,8 @@ const GenerateReportCardOutputSchema = z.object({
   totalScore: z.number().describe('The total score of the student.'),
   averageScore: z.number().describe('The average score of the student.'),
   grade: z.string().describe('The overall grade of the student.'),
-  remark: z.string().describe('Personalized remark for the student.'),
+  formTeacherComment: z.string().describe("Personalized remark from the form teacher for the student, considering their grades and traits. Should be encouraging and constructive."),
+  principalComment: z.string().describe("Personalized, concise remark from the principal for the student based on overall performance. Should be authoritative and motivational."),
 });
 export type GenerateReportCardOutput = z.infer<typeof GenerateReportCardOutputSchema>;
 
@@ -41,28 +49,31 @@ const prompt = ai.definePrompt({
   name: 'generateReportCardPrompt',
   input: {schema: GenerateReportCardInputSchema},
   output: {schema: GenerateReportCardOutputSchema},
-  prompt: `You are an expert teacher generating report cards for students in a Nigerian school.
+  prompt: `You are an expert Nigerian school administrator generating a report card.
 
-  Given the student's name, class, grades, term, and session, calculate the total score, average score, and assign an overall grade based on the Nigerian grading scale:
+  Given the student's details, grades, and behavioral traits for the term, provide:
+  1. A personalized, encouraging, and constructive comment from the **Form Teacher**.
+  2. A concise, authoritative, and motivational comment from the **Principal**.
 
-  A: 70–100
-  B: 60–69
-  C: 50–59
-  D: 45–49
-  F: below 45
-
-  Also, provide a personalized remark for the student based on their performance.
+  The comments should reflect the student's overall performance based on the data provided.
 
   Student Name: {{{studentName}}}
   Class: {{{className}}}
   Term: {{{term}}}
   Session: {{{session}}}
+  
   Grades:
   {{#each grades}}
   - Subject: {{{subject}}}, Score: {{{score}}}
   {{/each}}
+  
+  Behavioral Traits (rated 1-5, 5 is highest):
+  {{#each traits}}
+  - Trait: {{{name}}}, Rating: {{{rating}}}
+  {{/each}}
 
-  Based on the above information, generate the report card with total score, average score, grade, and a personalized remark.`,
+  Based on all the above information, generate the report card comments.
+  `,
 });
 
 const generateReportCardFlow = ai.defineFlow(
@@ -88,12 +99,14 @@ const generateReportCardFlow = ai.defineFlow(
       grade = 'D';
     }
 
-    const {output} = await prompt({...input, totalScore, averageScore, grade});
+    const {output} = await prompt({...input});
+
     return {
-      ...output!,
       totalScore,
       averageScore,
       grade,
+      formTeacherComment: output!.formTeacherComment,
+      principalComment: output!.principalComment,
     };
   }
 );

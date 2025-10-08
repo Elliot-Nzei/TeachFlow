@@ -11,23 +11,23 @@ const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'he
 const features = [
   {
     icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Class Management',
-    description: 'Easily create and manage classes, assign students, and track subjects for each academic session.',
+    title: 'Class & Student Management',
+    description: 'Easily create classes, add students, and manage their information, all in one place.',
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Grades & Reports',
-    description: 'Input grades using the Nigerian grading scale and generate insightful, AI-powered report cards.',
+    title: 'Comprehensive Gradebook',
+    description: 'Input detailed scores for continuous assessments and exams for each subject.',
+  },
+  {
+    icon: <BarChart className="h-8 w-8 text-primary" />,
+    title: 'AI-Powered Report Cards',
+    description: 'Generate insightful, detailed, and personalized report cards with AI-driven comments.',
   },
   {
     icon: <Share2 className="h-8 w-8 text-primary" />,
     title: 'Secure Data Transfer',
     description: 'Share class data, grades, or report cards securely with other users via a unique transfer code.',
-  },
-  {
-    icon: <FileDown className="h-8 w-8 text-primary" />,
-    title: 'Export to Excel',
-    description: 'Download your school data, including student grades and report summaries, in Excel format anytime.',
   },
 ];
 

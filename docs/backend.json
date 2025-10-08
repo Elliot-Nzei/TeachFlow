@@ -339,5 +339,3 @@
     "reasoning": "This data structure is user-centric. All primary data (classes, students, subjects, grades, attendance) is nested under the `/users/{userId}` collection. This makes security rules simple and robust, as we can secure entire branches of the database based on the authenticated user's ID. This prevents data leakage between different school accounts and simplifies queries, as all data for a logged-in user is located in a predictable path."
   }
 }
-
-    

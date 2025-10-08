@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Student, Class, Grade } from '@/lib/types';
+import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from './ui/separator';
@@ -35,10 +35,12 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   gender?: 'Male' | 'Female';
   attendance?: { schoolOpened: number; timesPresent: number; timesAbsent: number };
   traits?: { name: string; domain: string; rating: number }[];
-  principalComment?: string;
+  formTeacherComment: string;
+  principalComment: string;
   nextTermBegins?: string;
   schoolName?: string;
   schoolMotto?: string;
+  schoolAddress?: string;
 };
 
 const gradingScale = [
@@ -69,6 +71,12 @@ export default function ReportCardGenerator() {
   
   const allGradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: allGrades, isLoading: isLoadingGrades } = useCollection<Grade>(allGradesQuery);
+  
+  const allTraitsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'traits')) : null, [firestore, user]);
+  const { data: allTraits, isLoading: isLoadingTraits } = useCollection<Trait>(allTraitsQuery);
+  
+  const allAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance')) : null, [firestore, user]);
+  const { data: allAttendance, isLoading: isLoadingAttendance } = useCollection<Attendance>(allAttendanceQuery);
 
 
   const studentsInClass = useMemo(() => {
@@ -110,17 +118,34 @@ export default function ReportCardGenerator() {
                 g.studentId === student.id && 
                 g.session === session && 
                 g.term === term &&
-                typeof g.total === 'number' // Ensure only grades with a total score are processed
+                typeof g.total === 'number'
             );
             
             if (studentGrades.length === 0) {
                 continue; // Skip students with no valid grades for the current term/session
             }
+            
+            const studentTraits = (allTraits || []).filter(t =>
+              t.studentId === student.id &&
+              t.session === session &&
+              t.term === term
+            );
 
+            const studentAttendance = (allAttendance || []).filter(a =>
+              a.studentId === student.id &&
+              a.session === session &&
+              a.term === term
+            );
+
+            const schoolOpened = new Set(allAttendance?.map(a => a.date)).size;
+            const timesPresent = studentAttendance.filter(a => a.status === 'Present').length;
+            const timesAbsent = studentAttendance.filter(a => a.status === 'Absent').length;
+            
             const input: GenerateReportCardInput = {
                 studentName: student.name,
                 className: student.className,
                 grades: studentGrades.map(g => ({ subject: g.subject, score: g.total })),
+                traits: studentTraits.map(t => ({ name: t.traitName, rating: t.rating })),
                 term,
                 session
             };
@@ -140,17 +165,12 @@ export default function ReportCardGenerator() {
                 gender: student.gender,
                 schoolName: settings.schoolName,
                 schoolMotto: settings.schoolMotto,
+                schoolAddress: settings.schoolAddress,
                 nextTermBegins: settings.nextTermBegins,
-                principalComment: "An outstanding performance. Continue to maintain this excellent standard.",
-                // Dummy data for now, to be replaced with real data later
-                attendance: { schoolOpened: 98, timesPresent: 94, timesAbsent: 4},
-                traits: [
-                  { name: "Punctuality", rating: 4, domain: "Affective" },
-                  { name: "Honesty", rating: 5, domain: "Affective" },
-                  { name: "Leadership", rating: 4, domain: "Affective" },
-                  { name: "Handwriting", rating: 4, domain: "Psychomotor" },
-                  { name: "Sports", rating: 3, domain: "Psychomotor" },
-                ]
+                attendance: { schoolOpened, timesPresent, timesAbsent },
+                traits: studentTraits.map(t => ({ name: t.traitName, rating: t.rating, domain: t.domain})),
+                formTeacherComment: result.formTeacherComment,
+                principalComment: result.principalComment,
             });
         }
         
@@ -236,7 +256,7 @@ export default function ReportCardGenerator() {
     return ratings[rating] || "N/A";
   };
 
-  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingGrades;
+  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingGrades || isLoadingTraits || isLoadingAttendance;
 
   return (
     <>
@@ -359,7 +379,7 @@ export default function ReportCardGenerator() {
                             </div>
                             <div>
                             <h1 className="text-xl font-bold text-green-800">{(report.schoolName || '').toUpperCase()}</h1>
-                            <p className="text-[9px] text-gray-600">{settings?.schoolAddress}</p>
+                            <p className="text-[9px] text-gray-600">{report.schoolAddress}</p>
                             </div>
                         </div>
                         <p className="text-[9px] font-semibold italic text-gray-700">"{report.schoolMotto}"</p>
@@ -372,7 +392,7 @@ export default function ReportCardGenerator() {
                         <div className="flex"><span className="font-semibold w-16">Class:</span><span className="flex-1">{report.className}</span></div>
                         <div className="flex"><span className="font-semibold w-24">Term:</span><span className="flex-1">{report.term}</span></div>
                         <div className="flex"><span className="font-semibold w-20">Session:</span><span className="flex-1">{report.session}</span></div>
-                        <div className="flex"><span className="font-semibold w-16">Age:</span><span className="flex-1">{report.age} years</span></div>
+                         <div className="flex"><span className="font-semibold w-16">Age:</span><span className="flex-1">{report.age ? `${report.age} years` : 'N/A'}</span></div>
                     </div>
                     
                     {report.attendance && (
@@ -418,6 +438,16 @@ export default function ReportCardGenerator() {
                             <div className="bg-purple-50 p-1 text-center border border-purple-200"><p className="text-gray-600">Out of</p><p className="text-sm font-bold text-purple-700">{studentsInClass.length || 1}</p></div>
                         </div>
                     </div>
+                     <div className="mb-2 text-[7px]">
+                      <h3 className="font-bold text-green-700 text-[9px] mb-1">GRADING SCALE</h3>
+                      <div className="flex gap-1 flex-wrap">
+                          <span className="bg-gray-50 px-1 py-0.5 border">A: 70-100 (Excellent)</span>
+                          <span className="bg-gray-50 px-1 py-0.5 border">B: 60-69 (Good)</span>
+                          <span className="bg-gray-50 px-1 py-0.5 border">C: 50-59 (Credit)</span>
+                          <span className="bg-gray-50 px-1 py-0.5 border">D: 45-49 (Pass)</span>
+                          <span className="bg-gray-50 px-1 py-0.5 border">F: 0-44 (Fail)</span>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
                             <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">AFFECTIVE DOMAIN</h3>
@@ -444,7 +474,7 @@ export default function ReportCardGenerator() {
                         </div>
                     </div>
                     <div className="mb-2">
-                        <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.remark}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
+                        <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.formTeacherComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
                         <div><h3 className="font-bold text-green-700 text-[9px] mb-0.5">PRINCIPAL'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.principalComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
                     </div>
                     <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: {report.nextTermBegins}</p></div>
