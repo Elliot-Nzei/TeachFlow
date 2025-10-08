@@ -1,5 +1,6 @@
+
+'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { placeholderClasses, placeholderStudents } from '@/lib/placeholder-data';
 import { notFound } from 'next/navigation';
 import { BookOpen, Users, User, Book } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -8,15 +9,37 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ClassDetailsPage({ params }: { params: { classId: string } }) {
-  const classDetails = placeholderClasses.find(c => c.id === params.classId);
+  const { firestore } = useFirebase();
+  const { user } = useUser();
 
-  if (!classDetails) {
-    notFound();
+  const classDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'classes', params.classId) : null, [firestore, user, params.classId]);
+  const { data: classDetails, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
+
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', params.classId)) : null, [firestore, user, params.classId]);
+  const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
+
+
+  if (isLoadingClass) {
+      return (
+          <div className="space-y-8">
+              <Skeleton className="h-12 w-48" />
+              <Skeleton className="h-24 w-full" />
+              <div className="grid md:grid-cols-2 gap-8">
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-64 w-full" />
+              </div>
+          </div>
+      )
   }
 
-  const studentsInClass = placeholderStudents.filter(s => s.classId === params.classId);
+  if (!classDetails && !isLoadingClass) {
+    notFound();
+  }
 
   return (
     <>
@@ -40,37 +63,39 @@ export default function ClassDetailsPage({ params }: { params: { classId: string
             <CardHeader>
                 <CardTitle className="flex items-center">
                 <Users className="mr-2 h-6 w-6" />
-                Students ({studentsInClass.length})
+                Students ({studentsInClass?.length ?? 0})
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <Separator className="mb-4" />
-                <div className="space-y-1">
-                {studentsInClass.map((student) => (
-                    <Link href={`/students/${student.id}`} key={student.id} className="block">
-                        <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={student.avatarUrl} alt={student.name} />
-                                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{student.name}</span>
-                        </div>
-                    </Link>
-                ))}
-                </div>
+                {isLoadingStudents ? <Skeleton className="h-40 w-full" /> : 
+                    <div className="space-y-1">
+                    {studentsInClass && studentsInClass.map((student) => (
+                        <Link href={`/students/${student.id}`} key={student.id} className="block">
+                            <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={student.avatarUrl} alt={student.name} />
+                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{student.name}</span>
+                            </div>
+                        </Link>
+                    ))}
+                    </div>
+                }
             </CardContent>
             </Card>
             <Card>
             <CardHeader>
                 <CardTitle className="flex items-center">
                 <BookOpen className="mr-2 h-6 w-6" />
-                Subjects ({classDetails.subjects.length})
+                Subjects ({classDetails.subjects?.length ?? 0})
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 <Separator className="mb-4" />
                 <div className="flex flex-wrap gap-2">
-                {classDetails.subjects.map((subject, index) => (
+                {classDetails.subjects?.map((subject: string, index: number) => (
                     <Badge key={index} variant="secondary" className="text-sm">
                         <Book className="mr-1.5 h-3 w-3" />
                         {subject}

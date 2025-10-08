@@ -1,11 +1,14 @@
+
 'use client';
 
-import { placeholderClasses } from '@/lib/placeholder-data';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { BookOpen } from 'lucide-react';
 import type { Class } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
+import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { Skeleton } from './ui/skeleton';
 
 interface ClassSidebarProps {
   selectedClass: Class | null;
@@ -13,6 +16,12 @@ interface ClassSidebarProps {
 }
 
 export default function ClassSidebar({ selectedClass, onSelectClass }: ClassSidebarProps) {
+  const { firestore } = useFirebase();
+  const { user } = useUser();
+
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading } = useCollection<any>(classesQuery);
+  
   return (
     <aside className="w-full md:w-64 flex-shrink-0 border-r h-full flex flex-col">
         <div className="p-4 border-b">
@@ -20,7 +29,8 @@ export default function ClassSidebar({ selectedClass, onSelectClass }: ClassSide
         </div>
         <ScrollArea className="flex-1">
             <div className="space-y-2 p-4">
-                {placeholderClasses.map((cls) => (
+                {isLoading ? Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-9 w-full" />) :
+                classes?.map((cls) => (
                     <Button 
                         key={cls.id} 
                         variant={selectedClass?.id === cls.id ? 'secondary' : 'ghost'} 

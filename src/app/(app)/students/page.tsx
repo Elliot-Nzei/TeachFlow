@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { collection, query, doc, arrayUnion } from 'firebase/firestore';
 
 export default function StudentsPage() {
   const { firestore } = useFirebase();
@@ -54,7 +54,7 @@ export default function StudentsPage() {
             const studentCount = (students?.length || 0) + 1;
             const newStudentId = `SPS-${String(studentCount).padStart(3, '0')}`;
             const studentsCollection = collection(firestore, 'users', user.uid, 'students');
-            await addDocumentNonBlocking(studentsCollection, {
+            const newStudentDoc = await addDocumentNonBlocking(studentsCollection, {
                 studentId: newStudentId,
                 name: studentName,
                 className: studentClass.name,
@@ -62,6 +62,13 @@ export default function StudentsPage() {
                 avatarUrl: previewImage || `https://picsum.photos/seed/student-${studentCount}/100/100`,
             });
             
+            if (newStudentDoc) {
+                const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
+                updateDocumentNonBlocking(classRef, {
+                    students: arrayUnion(newStudentDoc.id)
+                });
+            }
+
             setAddStudentOpen(false);
             setPreviewImage('');
             setStudentName('');

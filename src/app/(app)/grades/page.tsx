@@ -17,40 +17,45 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { placeholderClasses, placeholderGrades, placeholderStudents } from '@/lib/placeholder-data';
 import type { Class, Grade, Student } from '@/lib/types';
-import { PlusCircle, BookOpen, View, PanelLeft } from 'lucide-react';
+import { PlusCircle, View, PanelLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import ClassSidebar from '@/components/class-sidebar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 
 type GradeInput = { studentId: string; studentName: string; score: number | string };
 
 export default function GradesPage() {
+  const { firestore } = useFirebase();
+  const { user } = useUser();
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [grades, setGrades] = useState<{ [className: string]: Grade[] }>(placeholderGrades);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showGrades, setShowGrades] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  const studentsInSelectedClass = selectedClass ? placeholderStudents.filter(s => s.classId === selectedClass.id) : [];
-
   const [gradeInputs, setGradeInputs] = useState<GradeInput[]>([]);
+
+  const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
+  
+  const gradesQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const { data: grades } = useCollection<Grade>(gradesQuery);
 
   const handleSelectClass = (cls: Class) => {
     setSelectedClass(cls);
-    setShowGrades(false); // Hide grades when a new class is selected
-    setIsSidebarOpen(false); // Close sidebar on mobile after selection
+    setShowGrades(false);
+    setIsSidebarOpen(false);
   };
 
   const handleSubjectSelect = (subject: string) => {
     setSelectedSubject(subject);
-    if (selectedClass) {
+    if (selectedClass && studentsInSelectedClass) {
         const studentGrades = studentsInSelectedClass.map(student => {
-            const existingGrade = (grades[selectedClass.name] || []).find(
-                g => g.studentName === student.name && g.subject === subject
+            const existingGrade = (grades || []).find(
+                (g: Grade) => g.studentId === student.id && g.subject === subject
             );
             return {
                 studentId: student.id,
@@ -68,47 +73,60 @@ export default function GradesPage() {
     );
   };
   
-  const handleBulkAddGrades = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleBulkAddGrades = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedClass || !selectedSubject) return;
+    if (!selectedClass || !selectedSubject || !user) return;
+    
+    const batch = writeBatch(firestore);
 
-    const newGrades: Grade[] = gradeInputs.map((input) => {
+    gradeInputs.forEach((input) => {
         const score = Number(input.score);
+        if (isNaN(score)) return;
+
         let grade: 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
         if (score >= 70) grade = 'A';
         else if (score >= 60) grade = 'B';
         else if (score >= 50) grade = 'C';
         else if (score >= 45) grade = 'D';
+        
+        // Check if a grade already exists to update it, or create a new one
+        const existingGrade = (grades || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject);
 
-        return {
-            id: `g${Date.now()}-${input.studentId}`,
-            studentName: input.studentName,
+        const gradeData = {
+            studentId: input.studentId,
+            classId: selectedClass.id,
             subject: selectedSubject,
+            term: 'First Term', // Replace with dynamic data from settings context later
+            session: '2023/2024', // Replace with dynamic data from settings context later
             score: score,
             grade: grade,
-            term: 'First Term',
-            session: '2023/2024',
+            studentName: input.studentName,
+            className: selectedClass.name,
         };
-    }).filter(g => !isNaN(g.score));
 
-    setGrades(prevGrades => {
-        const otherGrades = (prevGrades[selectedClass.name] || []).filter(g => g.subject !== selectedSubject);
-        const updatedGradesForClass = [...otherGrades, ...newGrades];
-        return { ...prevGrades, [selectedClass.name]: updatedGradesForClass };
+        if (existingGrade) {
+            const gradeRef = doc(firestore, 'users', user.uid, 'grades', existingGrade.id);
+            batch.update(gradeRef, gradeData);
+        } else {
+            const gradeRef = doc(collection(firestore, 'users', user.uid, 'grades'));
+            batch.set(gradeRef, gradeData);
+        }
     });
+
+    await batch.commit();
     
     setIsDialogOpen(false);
     setSelectedSubject('');
     setGradeInputs([]);
   };
 
-  const gradesBySubject = selectedClass ? (grades[selectedClass.name] || []).reduce((acc, grade) => {
+  const gradesBySubject = (grades || []).reduce((acc, grade) => {
     if (!acc[grade.subject]) {
       acc[grade.subject] = [];
     }
     acc[grade.subject].push(grade);
     return acc;
-  }, {} as Record<string, Grade[]>) : {};
+  }, {} as Record<string, Grade[]>);
 
   return (
     <div className="flex">
