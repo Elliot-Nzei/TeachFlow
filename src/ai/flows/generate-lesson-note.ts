@@ -4,10 +4,7 @@
  * @fileOverview AI Lesson Note Generator Flow.
  *
  * - generateLessonNote - A function that generates a lesson note based on user inputs.
- * - GenerateLessonNoteInput - The input type for the generateLessonNote function.
- * - GenerateLessonNoteOutput - The return type for the generateLessonNote function.
  */
-
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
@@ -17,12 +14,12 @@ const GenerateLessonNoteInputSchema = z.object({
   schemeOfWork: z.string().describe('The scheme of work or topic outline.'),
   weeks: z.number().describe('The number of weeks or lessons to generate.'),
 });
-export type GenerateLessonNoteInput = z.infer<typeof GenerateLessonNoteInputSchema>;
+type GenerateLessonNoteInput = z.infer<typeof GenerateLessonNoteInputSchema>;
 
 const GenerateLessonNoteOutputSchema = z.object({
   note: z.string().describe('The generated lesson note in Markdown format.'),
 });
-export type GenerateLessonNoteOutput = z.infer<typeof GenerateLessonNoteOutputSchema>;
+type GenerateLessonNoteOutput = z.infer<typeof GenerateLessonNoteOutputSchema>;
 
 export async function generateLessonNote(input: GenerateLessonNoteInput): Promise<GenerateLessonNoteOutput> {
   return generateLessonNoteFlow(input);
@@ -31,6 +28,7 @@ export async function generateLessonNote(input: GenerateLessonNoteInput): Promis
 const prompt = ai.definePrompt({
   name: 'generateLessonNotePrompt',
   input: { schema: GenerateLessonNoteInputSchema },
+  output: { schema: GenerateLessonNoteOutputSchema },
   prompt: `You are an experienced Nigerian school teacher.
 Generate a well-structured, repetition-free lesson note in Markdown format for:
 Class: {{{classLevel}}}
@@ -61,6 +59,6 @@ const generateLessonNoteFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await prompt(input);
-    return { note: output! };
+    return output!;
   }
 );
