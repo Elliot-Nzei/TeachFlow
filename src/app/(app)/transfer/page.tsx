@@ -129,7 +129,7 @@ export default function TransferPage() {
             dataTransferredName = students?.find(s => s.id === dataItem)?.name || 'Unknown Student';
         }
 
-        addDocumentNonBlocking(transfersCollection, {
+        await addDocumentNonBlocking(transfersCollection, {
             fromUser: userProfile.userCode,
             toUser: recipientCode,
             dataType: dataType,
@@ -154,7 +154,7 @@ export default function TransferPage() {
         toast({
             variant: 'destructive',
             title: 'Transfer Failed',
-            description: 'Could not initiate the transfer. Please try again.',
+            description: 'Could not initiate the transfer. Please check permissions and try again.',
         });
     } finally {
         setIsTransferring(false);
