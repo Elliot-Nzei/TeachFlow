@@ -32,7 +32,6 @@ export default function AttendancePage() {
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  // Effect to initialize or fetch attendance when students or date change
   useEffect(() => {
     if (!students || !date) {
       setAttendance([]);
@@ -57,8 +56,9 @@ export default function AttendancePage() {
                 studentId: student.id,
                 name: student.name,
                 avatarUrl: student.avatarUrl,
-                status: existing?.status || 'Present', // Default to 'Present'
-                recordId: existing?.id, // Keep track of existing record ID for updates
+                status: existing?.status || 'Present',
+                // @ts-ignore
+                recordId: existing?.id,
             };
         });
 
@@ -93,11 +93,11 @@ export default function AttendancePage() {
             classId: selectedClass.id,
             date: formattedDate,
             status: record.status,
-            term: "First Term", // Placeholder
-            session: "2023/2024", // Placeholder
+            term: "First Term",
+            session: "2023/2024",
         };
         
-        // @ts-ignore - recordId is a temporary property
+        // @ts-ignore
         const recordId = record.recordId;
         const docRef = recordId
           ? doc(firestore, 'users', user.uid, 'attendance', recordId)
@@ -115,105 +115,110 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="flex">
-        <div className="hidden md:block">
+    <div className="grid md:grid-cols-[250px_1fr] gap-8 items-start">
+        <div className="hidden md:block sticky top-20">
             <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
         </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-4 mb-4 md:hidden">
-            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="outline">
-                    <PanelLeft className="mr-2 h-4 w-4" /> Select Class
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
-                  <SheetHeader>
-                    <SheetTitle className="sr-only">Select Class</SheetTitle>
-                    <SheetDescription className="sr-only">Choose a class from the list to manage attendance.</SheetDescription>
-                  </SheetHeader>
-                    <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-                </SheetContent>
-            </Sheet>
-        </div>
-        {selectedClass ? (
-          <Card>
-            <CardHeader className="flex flex-row justify-between items-center">
-              <div>
-                <CardTitle className="font-headline">{selectedClass.name} - Attendance</CardTitle>
-                <CardDescription>Mark daily attendance for each student.</CardDescription>
-              </div>
-              <div className="flex gap-2 items-center">
-                 <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className="w-[280px] justify-start text-left font-normal"
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                    />
-                    </PopoverContent>
-                </Popover>
-                 <Button onClick={handleSaveAttendance} disabled={attendance.length === 0}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Attendance
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-                {isLoadingStudents && <div className="space-y-4">
-                  {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                </div>}
-                {!isLoadingStudents && attendance.length > 0 ? (
-                    <div className="space-y-4">
-                        {attendance.map(record => (
-                            <div key={record.studentId} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div className="flex items-center gap-4">
-                                    <Avatar>
-                                        <AvatarImage src={record.avatarUrl} alt={record.name} />
-                                        <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-medium">{record.name}</span>
-                                </div>
-                                <RadioGroup 
-                                    defaultValue={record.status} 
-                                    onValueChange={(status: AttendanceStatus) => handleStatusChange(record.studentId, status)} 
-                                    className="flex gap-4"
-                                >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Present" id={`present-${record.studentId}`} />
-                                        <Label htmlFor={`present-${record.studentId}`}>Present</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Absent" id={`absent-${record.studentId}`} />
-                                        <Label htmlFor={`absent-${record.studentId}`}>Absent</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Late" id={`late-${record.studentId}`} />
-                                        <Label htmlFor={`late-${record.studentId}`}>Late</Label>
-                                    </div>
-                                </RadioGroup>
-                            </div>
-                        ))}
-                    </div>
-                ): !isLoadingStudents && <p className="text-muted-foreground text-center">No students in this class.</p>}
-            </CardContent>
-          </Card>
-        ) : (
-            <div className="flex items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
-                <p>Select a class to mark attendance.</p>
+      
+        <div className="flex-1 space-y-4">
+            <div className="flex items-center gap-4 mb-4 md:hidden">
+                <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                    <SheetTrigger asChild>
+                        <Button variant="outline">
+                        <PanelLeft className="mr-2 h-4 w-4" /> Select Class
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-72 p-0">
+                        <SheetHeader>
+                        <SheetTitle className="sr-only">Select Class</SheetTitle>
+                        <SheetDescription className="sr-only">Choose a class from the list to manage attendance.</SheetDescription>
+                        </SheetHeader>
+                        <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+                    </SheetContent>
+                </Sheet>
+                {selectedClass && <h2 className="font-bold text-lg">{selectedClass.name}</h2>}
             </div>
-        )}
-      </div>
+
+            {selectedClass ? (
+            <Card>
+                <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <CardTitle className="font-headline hidden md:block">{selectedClass.name} - Attendance</CardTitle>
+                    <CardDescription className="hidden md:block">Mark daily attendance for each student.</CardDescription>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className="w-full sm:w-[280px] justify-start text-left font-normal"
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={setDate}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <Button onClick={handleSaveAttendance} disabled={attendance.length === 0} className="w-full sm:w-auto">
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Attendance
+                    </Button>
+                </div>
+                </CardHeader>
+                <CardContent>
+                    {isLoadingStudents && <div className="space-y-4">
+                    {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                    </div>}
+                    {!isLoadingStudents && attendance.length > 0 ? (
+                        <div className="space-y-4">
+                            {attendance.map(record => (
+                                <div key={record.studentId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <Avatar>
+                                            <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                            <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium">{record.name}</span>
+                                    </div>
+                                    <RadioGroup 
+                                        defaultValue={record.status} 
+                                        onValueChange={(status: AttendanceStatus) => handleStatusChange(record.studentId, status)} 
+                                        className="flex gap-4"
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Present" id={`present-${record.studentId}`} />
+                                            <Label htmlFor={`present-${record.studentId}`}>Present</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Absent" id={`absent-${record.studentId}`} />
+                                            <Label htmlFor={`absent-${record.studentId}`}>Absent</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Late" id={`late-${record.studentId}`} />
+                                            <Label htmlFor={`late-${record.studentId}`}>Late</Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+                            ))}
+                        </div>
+                    ): !isLoadingStudents && <p className="text-muted-foreground text-center">No students in this class.</p>}
+                </CardContent>
+            </Card>
+            ) : (
+                <Card className="flex items-center justify-center h-full min-h-[400px] text-center">
+                    <div className="text-muted-foreground">
+                        <p>Select a class to mark attendance.</p>
+                    </div>
+                </Card>
+            )}
+        </div>
     </div>
   );
 }
