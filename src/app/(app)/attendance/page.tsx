@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, PanelLeft, Save } from 'lucide-react';
 import { format } from 'date-fns';
@@ -17,9 +15,11 @@ import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase
 import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Late';
-type AttendanceRecord = { studentId: string; status: AttendanceStatus; name: string; avatarUrl: string };
+type AttendanceRecord = { studentId: string; status: AttendanceStatus; name: string; avatarUrl: string; recordId?: string; };
 
 export default function AttendancePage() {
   const { firestore, user } = useFirebase();
@@ -57,7 +57,6 @@ export default function AttendancePage() {
                 name: student.name,
                 avatarUrl: student.avatarUrl,
                 status: existing?.status || 'Present',
-                // @ts-ignore
                 recordId: existing?.id,
             };
         });
@@ -97,7 +96,6 @@ export default function AttendancePage() {
             session: "2023/2024",
         };
         
-        // @ts-ignore
         const recordId = record.recordId;
         const docRef = recordId
           ? doc(firestore, 'users', user.uid, 'attendance', recordId)
@@ -110,9 +108,38 @@ export default function AttendancePage() {
         }
     });
     
-    await batch.commit();
-    toast({ title: 'Success', description: `Attendance for ${selectedClass.name} on ${format(date, 'PPP')} has been saved.` });
+    try {
+        await batch.commit();
+        toast({ title: 'Success', description: `Attendance for ${selectedClass.name} on ${format(date, 'PPP')} has been saved.` });
+    } catch (error) {
+        console.error("Error saving attendance:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save attendance. Please check your connection or permissions.' });
+    }
   };
+
+  const StatusButton = ({ studentId, currentStatus, status }: { studentId: string, currentStatus: AttendanceStatus, status: AttendanceStatus }) => {
+    const variant = currentStatus === status ? 'default' : 'outline';
+    let colors = '';
+    if (variant === 'default') {
+      switch(status) {
+        case 'Present': colors = 'bg-green-500 hover:bg-green-600 text-white'; break;
+        case 'Absent': colors = 'bg-red-500 hover:bg-red-600 text-white'; break;
+        case 'Late': colors = 'bg-yellow-500 hover:bg-yellow-600 text-white'; break;
+      }
+    }
+
+    return (
+        <Button 
+            variant={variant}
+            size="sm"
+            className={cn("w-full sm:w-auto", colors)}
+            onClick={() => handleStatusChange(studentId, status)}
+        >
+            {status}
+        </Button>
+    )
+  };
+
 
   return (
     <div className="grid md:grid-cols-[250px_1fr] gap-8 items-start">
@@ -173,42 +200,46 @@ export default function AttendancePage() {
                 </div>
                 </CardHeader>
                 <CardContent>
-                    {isLoadingStudents && <div className="space-y-4">
-                    {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                    </div>}
-                    {!isLoadingStudents && attendance.length > 0 ? (
+                    {isLoadingStudents ? (
                         <div className="space-y-4">
-                            {attendance.map(record => (
-                                <div key={record.studentId} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 border rounded-lg gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar>
-                                            <AvatarImage src={record.avatarUrl} alt={record.name} />
-                                            <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-medium">{record.name}</span>
-                                    </div>
-                                    <RadioGroup 
-                                        defaultValue={record.status} 
-                                        onValueChange={(status: AttendanceStatus) => handleStatusChange(record.studentId, status)} 
-                                        className="flex gap-4 pl-14 md:pl-0"
-                                    >
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="Present" id={`present-${record.studentId}`} />
-                                            <Label htmlFor={`present-${record.studentId}`}>Present</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="Absent" id={`absent-${record.studentId}`} />
-                                            <Label htmlFor={`absent-${record.studentId}`}>Absent</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="Late" id={`late-${record.studentId}`} />
-                                            <Label htmlFor={`late-${record.studentId}`}>Late</Label>
-                                        </div>
-                                    </RadioGroup>
-                                </div>
-                            ))}
+                            {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
                         </div>
-                    ): !isLoadingStudents && <p className="text-muted-foreground text-center">No students in this class.</p>}
+                    ) : attendance.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead className="text-right">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {attendance.map(record => (
+                                    <TableRow key={record.studentId}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-9 w-9">
+                                                    <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                                    <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="font-medium">{record.name}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
+                                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
+                                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
+                            <p>No students in this class.</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
             ) : (
