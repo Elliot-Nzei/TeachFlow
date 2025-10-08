@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Student } from '@/lib/types';
 
 
 function ClassDetailsContent({ classId }: { classId: string }) {
@@ -19,9 +20,8 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   const classDocQuery = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid, 'classes', classId) : null), [firestore, user, classId]);
   const { data: classDetails, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
 
-  const studentIds = useMemo(() => classDetails?.students || [], [classDetails]);
-  const studentsQuery = useMemoFirebase(() => (user && studentIds.length > 0) ? query(collection(firestore, 'users', user.uid, 'students'), where('__name__', 'in', studentIds)) : null, [firestore, user, studentIds]);
-  const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
+  const studentsQuery = useMemoFirebase(() => (user && classId) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', classId)) : null, [firestore, user, classId]);
+  const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
 
   if (isLoadingClass) {
@@ -108,3 +108,4 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 
 
 export default ClassDetailsContent;
+
