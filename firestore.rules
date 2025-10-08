@@ -2,174 +2,135 @@
  * @fileoverview Firestore Security Rules for the Nigerian School Management System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Users can only access data under their own user ID.
+ * This ruleset enforces a strict user-ownership model. Users can only access their own data.
  *
  * Data Structure:
- * All data (classes, students, subjects, grades) is nested under the /users/{userId} collection, where {userId} is the Firebase Auth UID.
- * The /transfers collection is a global log intended for administrative use.
+ * All data is nested under /users/{userId}, where {userId} corresponds to the Firebase Auth UID.
+ * The 'transfers' collection is a global log, writable only by backend.
  *
  * Key Security Decisions:
- * - Users can only list data within their own /users/{userId} tree.
- * - The /transfers collection is write-only by a trusted source.
- * - All write operations require a valid, authenticated user.
+ * - Users can only read and write their own data under /users/{userId}.
+ * - Listing of users is disallowed.
+ * - The 'transfers' collection is writeable only by backend.
  *
  * Denormalization for Authorization:
- *  - The rules rely on the path `/users/{userId}` matching the authenticated user's UID. This avoids the need to store the user ID within the document itself and simplifies ownership checks.
+ * No specific denormalization is required, as the user-centric data model allows for simple path-based authorization.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
-     * @path /databases/{database}/documents/users/{userId}
-     * @allow (create) - If the authenticated user's UID matches the userId.
-     * @allow (get, list, update, delete) - If the authenticated user's UID matches the userId.
-     * @deny (create) - If the authenticated user is not signed in.
-     * @deny (get, list, update, delete) - If the authenticated user's UID does not match the userId.
-     * @principle Enforces document ownership, allowing users to only manage their own profile.
+     * @description Secures the user profile. Only the authenticated user can read and write their own profile.
+     * @path /users/{userId}
+     * @allow (create, update, get, delete) if request.auth.uid == userId
+     * @deny (create, update, get, delete) if request.auth.uid != userId
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to classes created by a user.
-     * @path /databases/{database}/documents/users/{userId}/classes/{classId}
-     * @allow (create, get, list, update, delete) - If the authenticated user's UID matches the userId.
-     * @deny (create, get, list, update, delete) - If the authenticated user is not the owner.
-     * @principle Enforces user-ownership for managing classes.
-     */
-    match /users/{userId}/classes/{classId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false; // Listing all users is not permitted.
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+
+      /**
+       * @description Secures classes created by a specific user.
+       * @path /users/{userId}/classes/{classId}
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /classes/{classId} {
+        allow get: if isSignedIn() && isOwner(userId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId);
+        allow update: if isSignedIn() && isOwner(userId) && resource != null;
+        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      /**
+       * @description Secures students belonging to a specific user/school.
+       * @path /users/{userId}/students/{studentId}
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /students/{studentId} {
+        allow get: if isSignedIn() && isOwner(userId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId);
+        allow update: if isSignedIn() && isOwner(userId) && resource != null;
+        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      /**
+       * @description Secures the master list of subjects for a user/school.
+       * @path /users/{userId}/subjects/{subjectId}
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /subjects/{subjectId} {
+        allow get: if isSignedIn() && isOwner(userId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId);
+        allow update: if isSignedIn() && isOwner(userId) && resource != null;
+        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      /**
+       * @description Secures all grades entered by a specific user.
+       * @path /users/{userId}/grades/{gradeId}
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /grades/{gradeId} {
+        allow get: if isSignedIn() && isOwner(userId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId);
+        allow update: if isSignedIn() && isOwner(userId) && resource != null;
+        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+       /**
+        * @description Secures daily attendance records for students.
+        * @path /users/{userId}/attendance/{attendanceId}
+        * @allow (create, update, get, delete, list) if request.auth.uid == userId
+        * @deny (create, update, get, delete, list) if request.auth.uid != userId
+        * @principle Restricts access to a user's own data tree.
+        */
+      match /attendance/{attendanceId} {
+        allow get: if isSignedIn() && isOwner(userId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId);
+        allow update: if isSignedIn() && isOwner(userId) && resource != null;
+        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      }
     }
 
     /**
-     * @description Controls access to students belonging to a user/school.
-     * @path /databases/{database}/documents/users/{userId}/students/{studentId}
-     * @allow (create, get, list, update, delete) - If the authenticated user's UID matches the userId.
-     * @deny (create, get, list, update, delete) - If the authenticated user is not the owner.
-     * @principle Enforces user-ownership for managing student records.
-     */
-    match /users/{userId}/students/{studentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to the master list of subjects for a user/school.
-     * @path /databases/{database}/documents/users/{userId}/subjects/{subjectId}
-     * @allow (create, get, list, update, delete) - If the authenticated user's UID matches the userId.
-     * @deny (create, get, list, update, delete) - If the authenticated user is not the owner.
-     * @principle Enforces user-ownership for managing the list of subjects.
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to grades entered by a specific user.
-     * @path /databases/{database}/documents/users/{userId}/grades/{gradeId}
-     * @allow (create, get, list, update, delete) - If the authenticated user's UID matches the userId.
-     * @deny (create, get, list, update, delete) - If the authenticated user is not the owner.
-     * @principle Enforces user-ownership for managing grades.
-     */
-    match /users/{userId}/grades/{gradeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to the global log of data transfers.
-     * @path /databases/{database}/documents/transfers/{transferId}
-     * @allow (create) - If the request comes from a trusted source (e.g., Cloud Functions).
-     * @deny (get, list, update, delete) - No direct client access.
-     * @principle Restricts write access to a trusted environment.
+     * @description Global log of data transfers. Writable by a Cloud Function.
+     * @path /transfers/{transferId}
+     * @allow get, list: if false;
+     * @allow create, update, delete: if false; // TODO: Implement backend-only writes.
+     * @principle Restricts write access to a backend service account.
      */
     match /transfers/{transferId} {
       allow get: if false;
       allow list: if false;
-      allow create: if false; // TODO: Replace with a check for a trusted environment.
-      allow update: if false;
-      allow delete: if false;
+      allow create: if false; // TODO: Implement backend-only writes.
+      allow update: if false; // TODO: Implement backend-only writes.
+      allow delete: if false; // TODO: Implement backend-only writes.
     }
   }
 }
