@@ -11,6 +11,8 @@ import { useAuth, useFirebase, setDocumentNonBlocking, initiateEmailSignUp } fro
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import { doc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { FirebaseError } from "firebase/app";
 
 const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -18,6 +20,7 @@ export default function RegisterPage() {
     const { firestore } = useFirebase();
     const auth = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
     const [fullName, setFullName] = useState('');
     const [schoolName, setSchoolName] = useState('');
     const [email, setEmail] = useState('');
@@ -40,11 +43,24 @@ export default function RegisterPage() {
                     userCode: userCode,
                     profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`
                 }, { merge: true });
+                
+                router.push('/dashboard');
             }
-            router.push('/dashboard');
         } catch (error) {
             console.error("Error during registration:", error);
-            // You can add user-facing error messages here
+            if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Registration Failed',
+                    description: 'This email is already in use. Please try another email or log in.',
+                });
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Registration Failed',
+                    description: 'An unexpected error occurred. Please try again.',
+                });
+            }
         }
     };
 
