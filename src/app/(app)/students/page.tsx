@@ -178,23 +178,23 @@ export default function StudentsPage() {
         </div>
       </div>
       <Sheet open={!!selectedStudentId} onOpenChange={(isOpen) => !isOpen && setSelectedStudentId(null)}>
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {isLoadingStudents ? Array.from({length: 10}).map((_, i) => (
-              <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {isLoadingStudents ? Array.from({length: 12}).map((_, i) => (
+              <Card key={i} className="w-40 h-40"><CardContent className="h-full bg-muted rounded-lg animate-pulse" /></Card>
           )) : filteredStudents?.map((student) => (
             <SheetTrigger asChild key={student.id}>
               <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
-                <Card className="h-full overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
-                  <CardContent className="p-0 text-center flex flex-col">
-                    <div className="bg-muted/50 p-4 flex-grow flex flex-col items-center justify-center">
-                        <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-background shadow-md">
-                        <AvatarImage src={student.avatarUrl} alt={student.name} />
-                        <AvatarFallback className="text-xl">{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
+                <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
+                  <CardContent className="p-0 text-center flex flex-col h-full">
+                    <div className="bg-muted/50 p-2 flex-grow flex flex-col items-center justify-center">
+                        <Avatar className="h-12 w-12 mx-auto mb-2 border-2 border-background shadow-md">
+                          <AvatarImage src={student.avatarUrl} alt={student.name} />
+                          <AvatarFallback>{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
                         </Avatar>
-                        <CardTitle className="text-base font-bold font-headline">{student.name}</CardTitle>
-                        <CardDescription className="font-mono text-xs">{student.studentId}</CardDescription>
+                        <p className="text-sm font-bold font-headline leading-tight">{student.name}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{student.studentId}</p>
                     </div>
-                    <div className="p-2 border-t">
+                    <div className="p-1 border-t">
                         <Badge variant="secondary" className="text-xs">{student.className}</Badge>
                     </div>
                   </CardContent>
