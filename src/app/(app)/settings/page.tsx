@@ -1,52 +1,101 @@
+
 'use client';
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clipboard, User as UserIcon, Upload } from 'lucide-react';
+import { Clipboard, User as UserIcon, Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SettingsPage() {
-    const { settings, setSettings } = useContext(SettingsContext);
-    const [previewImage, setPreviewImage] = useState(settings.profilePicture);
-    const userCode = 'NSMS-53102';
+    const { settings, setSettings, isLoading } = useContext(SettingsContext);
+    const [previewImage, setPreviewImage] = useState('');
     const { toast } = useToast();
+
+    useEffect(() => {
+        if (settings?.profilePicture) {
+            setPreviewImage(settings.profilePicture);
+        }
+    }, [settings?.profilePicture]);
 
     const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
-        const file = event.target.files[0];
-        const imageUrl = URL.createObjectURL(file);
-        setPreviewImage(imageUrl);
-        setSettings(prev => ({...prev, profilePicture: imageUrl}));
+            const file = event.target.files[0];
+            const imageUrl = URL.createObjectURL(file);
+            setPreviewImage(imageUrl);
+            // This is a temporary frontend update. The actual upload logic needs to be implemented.
+            // For now, let's just update the local state.
+            // In a real app, you would upload the file to Firebase Storage and get a URL.
         }
     };
 
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(userCode);
-        toast({
-            title: 'Copied to Clipboard',
-            description: 'Your user code has been copied.',
-        });
+        if (settings?.userCode) {
+            navigator.clipboard.writeText(settings.userCode);
+            toast({
+                title: 'Copied to Clipboard',
+                description: 'Your user code has been copied.',
+            });
+        }
     };
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
-        setSettings(prev => ({...prev, [id]: value}));
+        setSettings({[id]: value});
     };
     
     const handleSelectChange = (id: string, value: string) => {
-        setSettings(prev => ({...prev, [id]: value}));
+        setSettings({[id]: value});
     };
     
     const handleSaveChanges = () => {
+        // Here we would ideally check which fields have changed and save them.
+        // The setSettings in context already handles the DB update.
         toast({
             title: 'Settings Saved',
             description: 'Your changes have been saved successfully.',
         });
+    }
+
+    if (isLoading) {
+        return (
+             <div className="space-y-8 max-w-4xl mx-auto">
+                <div>
+                    <h1 className="text-3xl font-bold font-headline">Settings</h1>
+                    <p className="text-muted-foreground">Manage your profile and application preferences.</p>
+                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Personal Information</CardTitle>
+                        <CardDescription>Update your name, school, and profile picture.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                         <div className="flex items-center gap-6">
+                            <Skeleton className="h-24 w-24 rounded-full" />
+                            <div className="w-full max-w-sm space-y-2">
+                                <Skeleton className="h-4 w-1/4" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-10 w-full" /></div>
+                           <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-10 w-full" /></div>
+                           <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-10 w-full" /></div>
+                           <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-10 w-full" /></div>
+                        </div>
+                    </CardContent>
+                </Card>
+             </div>
+        )
+    }
+    
+    if (!settings) {
+        return <div className="text-center">Could not load settings. Please try again later.</div>
     }
 
   return (
@@ -97,7 +146,7 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                         <Label htmlFor="user-code">Your User Code</Label>
                         <div className="flex items-center gap-2">
-                        <Input id="user-code" value={userCode} readOnly />
+                        <Input id="user-code" value={settings.userCode} readOnly />
                         <Button variant="outline" size="icon" onClick={handleCopyCode}>
                             <Clipboard className="h-4 w-4" />
                         </Button>
