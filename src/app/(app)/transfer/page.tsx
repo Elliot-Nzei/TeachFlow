@@ -42,7 +42,7 @@ export default function TransferPage() {
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   useEffect(() => {
-    if (isLoadingProfile || !userProfile?.userCode) {
+    if (isLoadingProfile || !userProfile?.userCode || !user) {
       if (!isLoadingProfile) setIsLoadingTransfers(false);
       return;
     }
@@ -50,20 +50,21 @@ export default function TransferPage() {
     const fetchTransfers = async () => {
       setIsLoadingTransfers(true);
       try {
-        const transfersCollection = collection(firestore, 'transfers');
+        // We query the user's own transfers subcollection for sent items
+        const sentTransfersCollection = collection(firestore, 'users', user.uid, 'transfers');
+        const sentSnapshot = await getDocs(sentTransfersCollection);
+        const sentTransfers = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id, isSent: true }) as DataTransfer & {isSent: boolean});
         
-        const sentQuery = query(transfersCollection, where('fromUser', '==', userProfile.userCode));
-        const receivedQuery = query(transfersCollection, where('toUser', '==', userProfile.userCode));
-
-        const [sentSnapshot, receivedSnapshot] = await Promise.all([
-          getDocs(sentQuery),
-          getDocs(receivedQuery)
-        ]);
-
-        const sentTransfers = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
-        const receivedTransfers = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
+        // We still need a way to find transfers sent TO this user.
+        // This query remains potentially problematic if rules are strict.
+        // For now, we assume a rule exists that allows querying transfers where toUser === currentUser.userCode
+        const globalTransfersCollection = collection(firestore, 'transfers');
+        const receivedQuery = query(globalTransfersCollection, where('toUser', '==', userProfile.userCode));
+        const receivedSnapshot = await getDocs(receivedQuery);
+        const receivedTransfers = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id, isSent: false }) as DataTransfer & {isSent: boolean});
 
         const combined = [...sentTransfers, ...receivedTransfers];
+        
         const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
         
         uniqueTransfers.sort((a, b) => {
@@ -75,13 +76,17 @@ export default function TransferPage() {
         setAllTransfers(uniqueTransfers);
       } catch (error) {
         console.error("Error fetching transfers:", error);
+        // Don't show toast for permission errors on load, as it might be expected
+        if (!(error instanceof Error && error.message.includes("permission"))) {
+            toast({ variant: 'destructive', title: 'Could not load transfer history.' });
+        }
       } finally {
         setIsLoadingTransfers(false);
       }
     };
 
     fetchTransfers();
-  }, [userProfile, firestore, isLoadingProfile]);
+  }, [userProfile, user, firestore, isLoadingProfile, toast]);
 
 
   const isLoading = isLoadingClasses || isLoadingStudents || isLoadingProfile;
@@ -99,7 +104,7 @@ export default function TransferPage() {
   }, [dataType, classes, students]);
 
   const handleTransfer = async () => {
-    if (!recipientCode || !dataType || !dataItem || !userProfile?.userCode) {
+    if (!recipientCode || !dataType || !dataItem || !userProfile?.userCode || !user) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
@@ -120,7 +125,8 @@ export default function TransferPage() {
     setIsTransferring(true);
     
     try {
-        const transfersCollection = collection(firestore, 'transfers');
+        // Write to the user-specific 'transfers' sub-collection
+        const transfersCollection = collection(firestore, 'users', user.uid, 'transfers');
         
         let dataTransferredName = '';
         if (dataType === 'Class') {
@@ -129,7 +135,8 @@ export default function TransferPage() {
             dataTransferredName = students?.find(s => s.id === dataItem)?.name || 'Unknown Student';
         }
 
-        await addDocumentNonBlocking(transfersCollection, {
+        // The await here ensures we catch permission errors from this specific write.
+        await addDoc(transfersCollection, {
             fromUser: userProfile.userCode,
             toUser: recipientCode,
             dataType: dataType,
@@ -275,3 +282,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
