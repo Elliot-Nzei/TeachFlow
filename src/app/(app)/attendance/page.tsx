@@ -14,12 +14,13 @@ import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/fir
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Late';
 type AttendanceRecord = { studentId: string; status: AttendanceStatus; name: string; avatarUrl: string; recordId?: string; };
 
-function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBack: () => void }) {
+function AttendanceTaker({ selectedClass }: { selectedClass: Class }) {
   const { firestore, user, settings } = useFirebase();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -128,17 +129,7 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   };
 
   return (
-    <Card>
-        <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={onBack}>
-                <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-                <CardTitle className="font-headline">{selectedClass.name} - Attendance</CardTitle>
-                <CardDescription>Mark daily attendance for each student.</CardDescription>
-            </div>
-        </div>
+    <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Popover>
                 <PopoverTrigger asChild>
@@ -164,50 +155,48 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
                 Save Attendance
             </Button>
         </div>
-        </CardHeader>
-        <CardContent>
-            {isLoadingStudents ? (
-                <div className="space-y-4">
-                    {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                </div>
-            ) : attendance.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Student</TableHead>
-                            <TableHead className="text-right">Status</TableHead>
+
+        {isLoadingStudents ? (
+            <div className="space-y-4">
+                {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+        ) : attendance.length > 0 ? (
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Student</TableHead>
+                        <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {attendance.map(record => (
+                        <TableRow key={record.studentId}>
+                            <TableCell>
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                        <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium">{record.name}</span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                                    <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
+                                    <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
+                                    <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
+                                </div>
+                            </TableCell>
                         </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {attendance.map(record => (
-                            <TableRow key={record.studentId}>
-                                <TableCell>
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="h-9 w-9">
-                                            <AvatarImage src={record.avatarUrl} alt={record.name} />
-                                            <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-medium">{record.name}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
-                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
-                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            ) : (
-                <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
-                    <p>No students in this class.</p>
-                </div>
-            )}
-        </CardContent>
-    </Card>
+                    ))}
+                </TableBody>
+            </Table>
+        ) : (
+            <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
+                <p>No students in this class.</p>
+            </div>
+        )}
+    </div>
   )
 }
 
@@ -218,15 +207,12 @@ export default function AttendancePage() {
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading } = useCollection<any>(classesQuery);
 
-  if (selectedClass) {
-    return <AttendanceTaker selectedClass={selectedClass} onBack={() => setSelectedClass(null)} />;
-  }
-
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">Select a Class for Attendance</h1>
-      </div>
+      <Sheet open={!!selectedClass} onOpenChange={(isOpen) => !isOpen && setSelectedClass(null)}>
+        <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold font-headline">Select a Class for Attendance</h1>
+        </div>
       
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
           {isLoading ? Array.from({length: 3}).map((_, i) => (
@@ -253,6 +239,20 @@ export default function AttendancePage() {
                 </div>
             </Card>
         )}
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+            {selectedClass && (
+                <>
+                    <SheetHeader>
+                        <SheetTitle>{selectedClass.name} - Attendance</SheetTitle>
+                        <SheetDescription>Mark daily attendance for each student.</SheetDescription>
+                    </SheetHeader>
+                    <div className="py-6">
+                        <AttendanceTaker selectedClass={selectedClass} />
+                    </div>
+                </>
+            )}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
