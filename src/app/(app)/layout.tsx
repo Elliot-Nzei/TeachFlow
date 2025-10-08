@@ -14,7 +14,8 @@ import {
   Moon,
   Sun,
   Notebook,
-  BookCopy
+  BookCopy,
+  CalendarCheck
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -50,6 +51,7 @@ const menuItems = [
   { href: '/classes', label: 'Classes', icon: Users },
   { href: '/students', label: 'Students', icon: User },
   { href: '/academics', label: 'Academics', icon: BookCopy },
+  { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { href: '/grades', label: 'Grades', icon: BookOpen },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },

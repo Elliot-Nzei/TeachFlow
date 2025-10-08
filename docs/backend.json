@@ -172,6 +172,21 @@
         "grade"
       ]
     },
+    "Attendance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Attendance",
+      "type": "object",
+      "description": "Represents a student's attendance record for a specific day.",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Late"] },
+        "term": { "type": "string" },
+        "session": { "type": "string" }
+      },
+      "required": ["studentId", "classId", "date", "status", "term", "session"]
+    },
     "Transfer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transfer",
@@ -251,6 +266,13 @@
             "$ref": "#/entities/Grade"
           },
           "description": "Stores all grades entered by a specific user."
+        }
+      },
+      {
+        "path": "users/{userId}/attendance/{attendanceId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/Attendance" },
+          "description": "Stores daily attendance records for students."
         }
       },
       {
