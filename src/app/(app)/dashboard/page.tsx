@@ -37,13 +37,15 @@ export default function DashboardPage() {
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile } = useDoc<any>(userProfileQuery);
 
+  const userCode = userProfile?.userCode;
+
   // For transfers, we query where the current user is either the sender or receiver
-  const transfersSentQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
+  const transfersSentQuery = useMemoFirebase(() => userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userCode)) : null, [firestore, userCode]);
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(transfersSentQuery);
 
-  const transfersReceivedQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
+  const transfersReceivedQuery = useMemoFirebase(() => userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userCode)) : null, [firestore, userCode]);
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(transfersReceivedQuery);
-
+  
   const allTransfers = useMemo(() => {
     const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
     // Simple de-duplication based on ID
