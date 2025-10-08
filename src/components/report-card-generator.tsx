@@ -17,6 +17,7 @@ import { Separator } from './ui/separator';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { SettingsContext } from '@/contexts/settings-context';
+import { Progress } from './ui/progress';
 
 type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
@@ -37,6 +38,8 @@ const gradingScale = [
 
 export default function ReportCardGenerator() {
   const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentStudent, setCurrentStudent] = useState('');
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [generatedReports, setGeneratedReports] = useState<ReportWithStudentAndGradeInfo[]>([]);
@@ -59,18 +62,25 @@ export default function ReportCardGenerator() {
     }
 
     setLoading(true);
+    setLoadingProgress(0);
+    setCurrentStudent('');
     setGeneratedReports([]);
 
     const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
     const term = settings.currentTerm;
     const session = settings.currentSession;
+    const newReports: ReportWithStudentAndGradeInfo[] = [];
     
     try {
-        const reportPromises = targets.map(async (student) => {
+        for (let i = 0; i < targets.length; i++) {
+            const student = targets[i];
+            setCurrentStudent(student.name);
+            setLoadingProgress(((i + 1) / targets.length) * 100);
+
             const studentGrades = (placeholderGrades[student.class] || []).filter(g => g.studentName === student.name);
 
             if (studentGrades.length === 0) {
-                return null;
+                continue; // Skip students with no grades
             }
 
             const input: GenerateReportCardInput = {
@@ -84,7 +94,7 @@ export default function ReportCardGenerator() {
             const result = await generateReportCard(input);
             const detailedGrades = studentGrades.map(g => ({ subject: g.subject, score: g.score, grade: g.grade }));
 
-            return {
+            newReports.push({
                 ...result,
                 studentName: student.name,
                 studentId: student.studentId,
@@ -92,14 +102,12 @@ export default function ReportCardGenerator() {
                 term: input.term,
                 session: input.session,
                 grades: detailedGrades,
-            };
-        });
-
-        const reports = (await Promise.all(reportPromises)).filter((report): report is ReportWithStudentAndGradeInfo => report !== null);
+            });
+        }
         
-        setGeneratedReports(reports);
+        setGeneratedReports(newReports);
 
-        if (reports.length === 0) {
+        if (newReports.length === 0) {
             const description = selectedStudent
                 ? `No grades have been recorded for ${selectedStudent.name}.`
                 : `No students in ${selectedClass?.name} have recorded grades.`;
@@ -118,6 +126,8 @@ export default function ReportCardGenerator() {
       });
     } finally {
       setLoading(false);
+      setCurrentStudent('');
+      setLoadingProgress(0);
     }
   };
   
@@ -188,7 +198,7 @@ export default function ReportCardGenerator() {
           <CardFooter>
             <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent)} className="w-full">
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate Reports
+              {loading ? 'Generating...' : 'Generate Reports'}
             </Button>
           </CardFooter>
         </Card>
@@ -219,8 +229,9 @@ export default function ReportCardGenerator() {
                     {loading && (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                        <p className="font-semibold">Generating Reports...</p>
-                        <p className="text-sm">This may take a moment for large classes.</p>
+                        <p className="font-semibold mb-2">Generating Reports...</p>
+                        {currentStudent && <p className="text-sm mb-2">Processing: {currentStudent}</p>}
+                        <Progress value={loadingProgress} className="w-3/4" />
                     </div>
                     )}
                     {!loading && generatedReports.length === 0 && (
