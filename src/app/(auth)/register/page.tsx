@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import placeholderImages from '@/lib/placeholder-images.json';
-import { useAuth, useFirebase, setDocumentNonBlocking, initiateEmailSignUp } from '@/firebase';
+import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -25,11 +26,13 @@ export default function RegisterPage() {
     const [schoolName, setSchoolName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
-            const userCredential = await initiateEmailSignUp(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             if (userCredential && userCredential.user) {
                 const user = userCredential.user;
                 const userRef = doc(firestore, "users", user.uid);
@@ -61,9 +64,11 @@ export default function RegisterPage() {
                  toast({
                     variant: 'destructive',
                     title: 'Registration Failed',
-                    description: 'An unexpected error occurred. Please try again.',
+                    description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
                 });
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -117,8 +122,8 @@ export default function RegisterPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
             </div>
-                <Button type="submit" className="w-full">
-                Create Account
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Creating Account...' : 'Create Account'}
                 </Button>
             </div>
           </form>
