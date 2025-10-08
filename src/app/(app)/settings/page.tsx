@@ -62,7 +62,7 @@ export default function SettingsPage() {
         });
     }
 
-    if (isLoading) {
+    if (isLoading && !settings) {
         return (
              <div className="space-y-8 max-w-4xl mx-auto">
                 <div>
@@ -92,10 +92,6 @@ export default function SettingsPage() {
                 </Card>
              </div>
         )
-    }
-    
-    if (!settings) {
-        return <div className="text-center">Could not load settings. Please try again later.</div>
     }
 
   return (
@@ -133,20 +129,20 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" value={settings.name} onChange={handleInputChange} />
+                        <Input id="name" value={settings?.name || ''} onChange={handleInputChange} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolName">School Name</Label>
-                        <Input id="schoolName" value={settings.schoolName} onChange={handleInputChange} />
+                        <Input id="schoolName" value={settings?.schoolName || ''} onChange={handleInputChange} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" value={settings.email} disabled />
+                        <Input id="email" value={settings?.email || ''} disabled />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="user-code">Your User Code</Label>
                         <div className="flex items-center gap-2">
-                        <Input id="user-code" value={settings.userCode} readOnly />
+                        <Input id="user-code" value={settings?.userCode || ''} readOnly />
                         <Button variant="outline" size="icon" onClick={handleCopyCode}>
                             <Clipboard className="h-4 w-4" />
                         </Button>
@@ -155,7 +151,10 @@ export default function SettingsPage() {
                 </div>
             </CardContent>
             <CardFooter>
-            <Button onClick={handleSaveChanges}>Save Profile</Button>
+            <Button onClick={handleSaveChanges} disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Profile
+            </Button>
             </CardFooter>
         </Card>
 
@@ -167,7 +166,7 @@ export default function SettingsPage() {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="current-term">Current Term</Label>
-            <Select value={settings.currentTerm} onValueChange={(value) => handleSelectChange('currentTerm', value)}>
+            <Select value={settings?.currentTerm || ''} onValueChange={(value) => handleSelectChange('currentTerm', value)}>
               <SelectTrigger id="current-term">
                 <SelectValue />
               </SelectTrigger>
@@ -180,11 +179,14 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="currentSession">Current Session</Label>
-            <Input id="currentSession" value={settings.currentSession} onChange={handleInputChange} />
+            <Input id="currentSession" value={settings?.currentSession || ''} onChange={handleInputChange} />
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleSaveChanges}>Save Academic Settings</Button>
+          <Button onClick={handleSaveChanges} disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save Academic Settings
+          </Button>
         </CardFooter>
       </Card>
     </div>
