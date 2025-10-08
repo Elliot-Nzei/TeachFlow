@@ -11,7 +11,10 @@ import {
   Settings,
   Users,
   User,
+  Moon,
+  Sun,
 } from 'lucide-react';
+import { useTheme } from "next-themes"
 import {
   SidebarProvider,
   Sidebar,
@@ -46,6 +49,7 @@ const menuItems = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { setTheme, theme } = useTheme()
 
   return (
     <SidebarProvider>
@@ -108,10 +112,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <Settings className="mr-2 h-4 w-4" />
-                            <span>Settings</span>
+                        <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                           {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                           <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
                         </DropdownMenuItem>
+                        <Link href="/settings">
+                            <DropdownMenuItem>
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Settings</span>
+                            </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuSeparator />
                         <Link href="/">
                             <DropdownMenuItem>
