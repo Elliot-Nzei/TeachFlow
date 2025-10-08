@@ -2,15 +2,21 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { placeholderStudents } from '@/lib/placeholder-data';
+import { placeholderStudents, placeholderClasses } from '@/lib/placeholder-data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, PlusCircle, UserPlus, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddStudentOpen, setAddStudentOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
 
   const filteredStudents = placeholderStudents.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -18,19 +24,86 @@ export default function StudentsPage() {
     student.class.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setPreviewImage(URL.createObjectURL(file));
+    }
+  };
+
   return (
     <>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold font-headline">All Students</h1>
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search students by name, ID, or class..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex items-center gap-4">
+            <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+                type="search"
+                placeholder="Search students..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            </div>
+            <Dialog open={isAddStudentOpen} onOpenChange={setAddStudentOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <UserPlus className="mr-2 h-4 w-4" /> Add Student
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[480px]">
+                    <DialogHeader>
+                        <DialogTitle>Add New Student</DialogTitle>
+                        <DialogDescription>
+                            Enter the details for the new student.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-4">
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-24 w-24">
+                                <AvatarImage src={previewImage} alt="Student preview" />
+                                <AvatarFallback className="text-3xl">
+                                    {previewImage ? '' : <UserPlus />}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="grid w-full max-w-sm items-center gap-1.5">
+                                <Label htmlFor="picture">Student Picture</Label>
+                                <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="student-name">Full Name</Label>
+                                <Input id="student-name" placeholder="e.g., John Doe" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="student-id">Student ID</Label>
+                                <Input id="student-id" placeholder="e.g., SPS-013" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="student-class">Class</Label>
+                            <Select>
+                                <SelectTrigger id="student-class">
+                                <SelectValue placeholder="Select a class" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                {placeholderClasses.map(cls => (
+                                    <SelectItem key={cls.id} value={cls.id}>
+                                    {cls.name}
+                                    </SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setAddStudentOpen(false)}>Cancel</Button>
+                        <Button type="submit">Save Student</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -1,4 +1,4 @@
-import type { Class, Grade, DataTransfer, Student } from './types';
+import type { Class, Grade, DataTransfer, Student, Subject } from './types';
 
 export const placeholderStudents: Student[] = [
     { id: 'student-1', studentId: 'SPS-001', name: 'Ada Okoro', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-1/100/100' },
@@ -34,6 +34,23 @@ export const placeholderClasses: Class[] = [
     students: ['Ifeanyi Uche', 'Jide Martins', 'Kemi Alabi', 'Lola Shodiya'],
     subjects: ['Mathematics', 'English', 'Basic Science', 'Social Studies', 'Home Economics'],
   },
+];
+
+export const placeholderSubjects: Subject[] = [
+    { id: 'subj-1', name: 'Mathematics' },
+    { id: 'subj-2', name: 'English' },
+    { id: 'subj-3', name: 'Basic Science' },
+    { id: 'subj-4', name: 'Social Studies' },
+    { id: 'subj-5', name: 'Integrated Science' },
+    { id: 'subj-6', name: 'Business Studies' },
+    { id: 'subj-7', name: 'Computer Science' },
+    { id: 'subj-8', name: 'Home Economics' },
+    { id: 'subj-9', name: 'Agricultural Science' },
+    { id: 'subj-10', name: 'Physical and Health Education' },
+    { id: 'subj-11', name: 'Creative Arts' },
+    { id: 'subj-12', name: 'Yoruba' },
+    { id: 'subj-13', name: 'Igbo' },
+    { id: 'subj-14', name: 'Hausa' },
 ];
 
 export const placeholderGrades: { [className: string]: Grade[] } = {

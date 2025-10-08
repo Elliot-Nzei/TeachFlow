@@ -22,6 +22,11 @@ export type Class = {
   subjects: string[];
 };
 
+export type Subject = {
+  id: string;
+  name: string;
+};
+
 export type Grade = {
   id: string;
   studentName: string;

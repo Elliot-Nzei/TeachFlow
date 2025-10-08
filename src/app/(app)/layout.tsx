@@ -14,6 +14,7 @@ import {
   Moon,
   Sun,
   Notebook,
+  BookCopy
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -43,6 +44,7 @@ const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/classes', label: 'Classes', icon: Users },
   { href: '/students', label: 'Students', icon: User },
+  { href: '/academics', label: 'Academics', icon: BookCopy },
   { href: '/grades', label: 'Grades', icon: BookOpen },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },
