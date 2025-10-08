@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { placeholderClasses, placeholderGrades, placeholderStudents } from '@/lib/placeholder-data';
 import type { Student, Class, Grade } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -18,6 +17,9 @@ import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Progress } from './ui/progress';
+import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { Skeleton } from './ui/skeleton';
 
 type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
@@ -37,6 +39,7 @@ const gradingScale = [
 ];
 
 export default function ReportCardGenerator() {
+  const { firestore, user } = useFirebase();
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentStudent, setCurrentStudent] = useState('');
@@ -47,9 +50,19 @@ export default function ReportCardGenerator() {
 
   const { toast } = useToast();
 
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
+
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+  
+  const allGradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
+  const { data: allGrades, isLoading: isLoadingGrades } = useCollection<Grade>(allGradesQuery);
+
+
   const studentsInClass = useMemo(() => {
-    return selectedClass ? placeholderStudents.filter(s => s.classId === selectedClass.id) : [];
-  }, [selectedClass]);
+    return selectedClass ? (allStudents || []).filter(s => s.classId === selectedClass.id) : [];
+  }, [selectedClass, allStudents]);
 
   const handleGenerateReports = async () => {
     if (!selectedClass && !selectedStudent) {
@@ -67,6 +80,11 @@ export default function ReportCardGenerator() {
     setGeneratedReports([]);
 
     const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
+    if (!settings) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load settings.'});
+        setLoading(false);
+        return;
+    }
     const term = settings.currentTerm;
     const session = settings.currentSession;
     const newReports: ReportWithStudentAndGradeInfo[] = [];
@@ -77,15 +95,15 @@ export default function ReportCardGenerator() {
             setCurrentStudent(student.name);
             setLoadingProgress(((i + 1) / targets.length) * 100);
 
-            const studentGrades = (placeholderGrades[student.class] || []).filter(g => g.studentName === student.name);
-
+            const studentGrades = (allGrades || []).filter(g => g.studentId === student.id && g.session === session && g.term === term);
+            
             if (studentGrades.length === 0) {
-                continue; // Skip students with no grades
+                continue; // Skip students with no grades for the current term/session
             }
 
             const input: GenerateReportCardInput = {
                 studentName: student.name,
-                className: student.class,
+                className: student.className,
                 grades: studentGrades.map(g => ({ subject: g.subject, score: g.score })),
                 term,
                 session
@@ -98,7 +116,7 @@ export default function ReportCardGenerator() {
                 ...result,
                 studentName: student.name,
                 studentId: student.studentId,
-                className: student.class,
+                className: student.className,
                 term: input.term,
                 session: input.session,
                 grades: detailedGrades,
@@ -109,8 +127,8 @@ export default function ReportCardGenerator() {
 
         if (newReports.length === 0) {
             const description = selectedStudent
-                ? `No grades have been recorded for ${selectedStudent.name}.`
-                : `No students in ${selectedClass?.name} have recorded grades.`;
+                ? `No grades have been recorded for ${selectedStudent.name} for the current term/session.`
+                : `No students in ${selectedClass?.name} have recorded grades for the current term/session.`;
             toast({
                 variant: "destructive",
                 title: "No Grades Found",
@@ -134,6 +152,8 @@ export default function ReportCardGenerator() {
   const handlePrint = () => {
     window.print();
   }
+  
+  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingGrades;
 
   return (
     <>
@@ -144,56 +164,60 @@ export default function ReportCardGenerator() {
             <CardDescription>Choose to generate reports for an entire class or a single student.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium">
-                <Users className="mr-2 h-4 w-4" /> Generate for a Whole Class
-              </label>
-              <Select
-                onValueChange={(classId) => {
-                  setSelectedClass(placeholderClasses.find(c => c.id === classId) || null);
-                  setSelectedStudent(null);
-                }}
-                value={selectedClass?.id || ''}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a class..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {placeholderClasses.map(cls => (
-                    <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {isLoading ? <div className="space-y-6"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div> : (
+              <>
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium">
+                    <Users className="mr-2 h-4 w-4" /> Generate for a Whole Class
+                  </label>
+                  <Select
+                    onValueChange={(classId) => {
+                      setSelectedClass(classes?.find(c => c.id === classId) || null);
+                      setSelectedStudent(null);
+                    }}
+                    value={selectedClass?.id || ''}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a class..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes?.map(cls => (
+                        <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <Separator>OR</Separator>
+                <Separator>OR</Separator>
 
-            <div className="space-y-2">
-                 <label className="flex items-center text-sm font-medium">
-                    <User className="mr-2 h-4 w-4" /> Generate for a Single Student
-                </label>
-                <Command className="rounded-lg border shadow-sm">
-                    <CommandInput placeholder="Type student name or ID..." />
-                    <CommandList>
-                        <CommandEmpty>No student found.</CommandEmpty>
-                        <CommandGroup>
-                        {placeholderStudents.map((student) => (
-                            <CommandItem
-                                key={student.id}
-                                value={`${student.name} ${student.studentId}`}
-                                onSelect={() => {
-                                    setSelectedStudent(student);
-                                    setSelectedClass(null);
-                                }}
-                            >
-                                {student.name}
-                                <span className="ml-2 text-xs text-muted-foreground">{student.studentId}</span>
-                            </CommandItem>
-                        ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </div>
+                <div className="space-y-2">
+                     <label className="flex items-center text-sm font-medium">
+                        <User className="mr-2 h-4 w-4" /> Generate for a Single Student
+                    </label>
+                    <Command className="rounded-lg border shadow-sm">
+                        <CommandInput placeholder="Type student name or ID..." />
+                        <CommandList>
+                            <CommandEmpty>No student found.</CommandEmpty>
+                            <CommandGroup>
+                            {(allStudents || []).map((student) => (
+                                <CommandItem
+                                    key={student.id}
+                                    value={`${student.name} ${student.studentId}`}
+                                    onSelect={() => {
+                                        setSelectedStudent(student);
+                                        setSelectedClass(null);
+                                    }}
+                                >
+                                    {student.name}
+                                    <span className="ml-2 text-xs text-muted-foreground">{student.studentId}</span>
+                                </CommandItem>
+                            ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </div>
+              </>
+            )}
           </CardContent>
           <CardFooter>
             <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent)} className="w-full">
@@ -250,12 +274,12 @@ export default function ReportCardGenerator() {
                         <header className="grid grid-cols-3 items-center mb-8">
                             <Logo />
                             <div className="text-center">
-                                <h2 className="text-2xl font-bold font-headline">{settings.schoolName}</h2>
+                                <h2 className="text-2xl font-bold font-headline">{settings?.schoolName}</h2>
                                 <p className="text-muted-foreground text-sm">Student Academic Report</p>
                             </div>
                             <div className="text-right text-xs">
                                 <p>123 School Lane, Lagos, Nigeria</p>
-                                <p>sunshine@school.ng</p>
+                                <p>{settings?.email}</p>
                             </div>
                         </header>
                         
