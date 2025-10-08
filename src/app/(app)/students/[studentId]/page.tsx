@@ -1,6 +1,6 @@
 
 'use client';
-import { use, Suspense, useState } from 'react';
+import { use, Suspense, useState, useEffect } from 'react';
 import { notFound, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,7 +30,7 @@ function StudentProfileContent({ studentId, userId }: { studentId: string, userI
   const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
 
   const handleDeleteStudent = async () => {
-    if (!student) return;
+    if (!student || !userId) return;
 
     try {
         const batch = writeBatch(firestore);
@@ -72,6 +72,13 @@ function StudentProfileContent({ studentId, userId }: { studentId: string, userI
     }
   };
 
+  useEffect(() => {
+    if (!isLoadingStudent && !student) {
+      notFound();
+    }
+  }, [isLoadingStudent, student]);
+
+
   if (isLoadingStudent) {
       return (
           <div className="grid gap-8 md:grid-cols-3">
@@ -84,11 +91,6 @@ function StudentProfileContent({ studentId, userId }: { studentId: string, userI
               </div>
           </div>
       )
-  }
-
-  // Only call notFound if loading is complete and there's no data
-  if (!isLoadingStudent && !student) {
-    notFound();
   }
 
   if (!student) {
