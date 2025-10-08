@@ -173,7 +173,6 @@ const generateReportCardFlow = ai.defineFlow(
     // Call the AI prompt with enhanced context
     const {output} = await prompt({
       ...input,
-      attendancePercentage,
     });
 
     if (!output) {
@@ -210,7 +209,7 @@ function calculateNigerianGrade(score: number): string {
 /**
  * Helper function to get grade interpretation
  */
-export function getGradeInterpretation(grade: string): string {
+function getGradeInterpretation(grade: string): string {
   const interpretations: Record<string, string> = {
     A: 'Excellent',
     B: 'Very Good',
@@ -225,7 +224,7 @@ export function getGradeInterpretation(grade: string): string {
 /**
  * Helper function to calculate subject-specific remarks
  */
-export function getSubjectRemark(score: number): string {
+function getSubjectRemark(score: number): string {
   if (score >= 75) return 'Excellent performance';
   if (score >= 70) return 'Very good work';
   if (score >= 60) return 'Good effort';
