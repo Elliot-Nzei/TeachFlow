@@ -193,8 +193,8 @@ export default function ReportCardGenerator() {
             </div>
              {generatedReports.length > 0 && (
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => toast({ title: "Coming Soon!", description: "Excel export will be available shortly."})}>
-                        <FileDown className="mr-2 h-4 w-4" /> Download All
+                    <Button variant="outline" onClick={handlePrint}>
+                        <FileDown className="mr-2 h-4 w-4" /> Download as PDF
                     </Button>
                      <Button onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" /> Print
