@@ -1,58 +1,71 @@
-'use client';
 
+'use client';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { placeholderStudents, placeholderClasses } from '@/lib/placeholder-data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, PlusCircle, UserPlus, Upload } from 'lucide-react';
+import { Search, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
 
 export default function StudentsPage() {
+  const { firestore } = useFirebase();
+  const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStudentOpen, setAddStudentOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
-  const [students, setStudents] = useState(placeholderStudents);
+  const [studentName, setStudentName] = useState('');
+  const [classId, setClassId] = useState('');
 
-  const filteredStudents = students.filter(student =>
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
+
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection<any>(classesQuery);
+
+  const filteredStudents = students?.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.class.toLowerCase().includes(searchTerm.toLowerCase())
+    student.className.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      setPreviewImage(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
   
-  const handleAddStudent = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    const studentName = (form.elements.namedItem('student-name') as HTMLInputElement).value;
-    const classId = (form.elements.namedItem('student-class') as HTMLInputElement).value;
-    
-    if (studentName && classId) {
-        const studentClass = placeholderClasses.find(c => c.id === classId);
+    if (studentName && classId && user) {
+        const studentClass = classes?.find(c => c.id === classId);
         if (studentClass) {
-            const newIdNumber = students.length + 1;
-            const newStudent = {
-                id: `student-${newIdNumber}`,
-                studentId: `SPS-${String(newIdNumber).padStart(3, '0')}`,
+            const studentCount = (students?.length || 0) + 1;
+            const newStudentId = `SPS-${String(studentCount).padStart(3, '0')}`;
+            const studentsCollection = collection(firestore, 'users', user.uid, 'students');
+            await addDocumentNonBlocking(studentsCollection, {
+                studentId: newStudentId,
                 name: studentName,
-                class: studentClass.name,
+                className: studentClass.name,
                 classId: classId,
-                avatarUrl: previewImage || `https://picsum.photos/seed/student-${newIdNumber}/100/100`,
-            };
-            setStudents([...students, newStudent]);
+                avatarUrl: previewImage || `https://picsum.photos/seed/student-${studentCount}/100/100`,
+            });
+            
             setAddStudentOpen(false);
             setPreviewImage('');
+            setStudentName('');
+            setClassId('');
         }
     }
   };
@@ -101,16 +114,17 @@ export default function StudentsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="student-name">Full Name</Label>
-                                <Input id="student-name" name="student-name" placeholder="e.g., John Doe" required />
+                                <Input id="student-name" value={studentName} onChange={e => setStudentName(e.target.value)} placeholder="e.g., John Doe" required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="student-class">Class</Label>
-                                <Select name="student-class" required>
+                                <Select onValueChange={setClassId} value={classId} required>
                                     <SelectTrigger id="student-class">
                                     <SelectValue placeholder="Select a class" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                    {placeholderClasses.map(cls => (
+                                    {isLoadingClasses ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
+                                    classes?.map(cls => (
                                         <SelectItem key={cls.id} value={cls.id}>
                                         {cls.name}
                                         </SelectItem>
@@ -129,27 +143,29 @@ export default function StudentsPage() {
         </div>
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredStudents.map((student) => (
+        {isLoadingStudents ? Array.from({length: 8}).map((_, i) => (
+            <Card key={i}><CardContent className="h-40 bg-muted rounded-lg animate-pulse" /></Card>
+        )) : filteredStudents?.map((student) => (
           <Link href={`/students/${student.id}`} key={student.id} className="group">
             <Card className="h-full overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
               <CardContent className="p-0 text-center">
                 <div className="bg-muted/50 p-6">
                     <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-background shadow-md">
                     <AvatarImage src={student.avatarUrl} alt={student.name} />
-                    <AvatarFallback className="text-2xl">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarFallback className="text-2xl">{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <CardTitle className="text-lg font-bold font-headline">{student.name}</CardTitle>
                     <CardDescription className="font-mono text-xs">{student.studentId}</CardDescription>
                 </div>
                 <div className="p-4">
-                    <Badge variant="secondary">{student.class}</Badge>
+                    <Badge variant="secondary">{student.className}</Badge>
                 </div>
               </CardContent>
             </Card>
           </Link>
         ))}
       </div>
-       {filteredStudents.length === 0 && (
+       {filteredStudents?.length === 0 && !isLoadingStudents && (
         <div className="text-center col-span-full py-12">
             <p className="text-muted-foreground">No students found matching your search.</p>
         </div>

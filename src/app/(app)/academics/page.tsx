@@ -1,57 +1,57 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { placeholderClasses, placeholderSubjects } from '@/lib/placeholder-data';
-import type { Subject, Class } from '@/lib/types';
 import { BookCopy, PlusCircle, Trash2, X, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-
+import { useCollection, useFirebase, useUser, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, doc, writeBatch, where, query } from 'firebase/firestore';
 
 export default function AcademicsPage() {
-  const [subjects, setSubjects] = useState<Subject[]>(placeholderSubjects);
-  const [classes, setClasses] = useState<Class[]>(placeholderClasses);
+  const { firestore } = useFirebase();
+  const { user } = useUser();
   const [newSubject, setNewSubject] = useState('');
-  const [open, setOpen] = useState(false)
+  const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({});
 
-  const handleAddSubject = () => {
-    if (newSubject.trim() !== '') {
-      const newSubjectObj: Subject = {
-        id: `subj-${subjects.length + 1}`,
-        name: newSubject.trim(),
-      };
-      setSubjects([...subjects, newSubjectObj]);
+  const subjectsQuery = useMemoFirebase(() => user && query(collection(firestore, 'users', user.uid, 'subjects')), [firestore, user]);
+  const { data: subjects, isLoading: isLoadingSubjects } = useCollection<any>(subjectsQuery);
+
+  const classesQuery = useMemoFirebase(() => user && query(collection(firestore, 'users', user.uid, 'classes')), [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection<any>(classesQuery);
+
+  const handleAddSubject = async () => {
+    if (newSubject.trim() !== '' && user) {
+      const subjectsCollection = collection(firestore, 'users', user.uid, 'subjects');
+      addDocumentNonBlocking(subjectsCollection, { name: newSubject.trim() });
       setNewSubject('');
     }
   };
 
   const handleRemoveSubject = (subjectId: string) => {
-    setSubjects(subjects.filter(s => s.id !== subjectId));
-    // Also remove this subject from any class that has it
-    setClasses(classes.map(c => ({
-        ...c,
-        subjects: c.subjects.filter(sName => subjects.find(sub => sub.id === subjectId)?.name !== sName)
-    })));
+    if (user) {
+      const subjectDoc = doc(firestore, 'users', user.uid, 'subjects', subjectId);
+      deleteDocumentNonBlocking(subjectDoc);
+    }
   };
 
   const handleToggleSubjectForClass = (classId: string, subjectName: string) => {
-    setClasses(classes.map(c => {
-        if (c.id === classId) {
-            const hasSubject = c.subjects.includes(subjectName);
-            if (hasSubject) {
-                return { ...c, subjects: c.subjects.filter(s => s !== subjectName) };
-            } else {
-                return { ...c, subjects: [...c.subjects, subjectName] };
-            }
+    if(user) {
+        const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
+        const selectedClass = classes?.find(c => c.id === classId);
+        if (selectedClass) {
+            const hasSubject = selectedClass.subjects?.includes(subjectName);
+            const updatedSubjects = hasSubject
+                ? selectedClass.subjects.filter((s: string) => s !== subjectName)
+                : [...(selectedClass.subjects || []), subjectName];
+            
+            updateDocumentNonBlocking(classRef, { subjects: updatedSubjects });
         }
-        return c;
-    }));
+    }
   };
 
   return (
@@ -76,7 +76,8 @@ export default function AcademicsPage() {
                 </Button>
               </div>
               <div className="space-y-2">
-                {subjects.map(subject => (
+                {(isLoadingSubjects || !subjects) ? Array.from({length: 3}).map((_,i) => <div key={i} className="h-10 bg-muted rounded-md animate-pulse" />) :
+                subjects.map(subject => (
                   <div key={subject.id} className="flex items-center justify-between p-2 bg-secondary rounded-md">
                     <span className="text-sm font-medium">{subject.name}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveSubject(subject.id)}>
@@ -95,11 +96,12 @@ export default function AcademicsPage() {
                     <CardDescription>Assign subjects from the master list to each class.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {classes.map(cls => (
+                    {(isLoadingClasses || !classes) ? Array.from({length: 2}).map((_,i) => <div key={i} className="h-40 bg-muted rounded-md animate-pulse" />) :
+                    classes.map(cls => (
                         <div key={cls.id} className="border p-4 rounded-lg">
                             <h3 className="font-bold text-lg font-headline mb-3">{cls.name}</h3>
                             <div className="flex flex-wrap gap-2 mb-4">
-                                {cls.subjects.length > 0 ? cls.subjects.map(subjectName => (
+                                {cls.subjects?.length > 0 ? cls.subjects.map((subjectName: string) => (
                                     <Badge key={subjectName} variant="default" className="flex items-center gap-1.5">
                                         {subjectName}
                                         <button onClick={() => handleToggleSubjectForClass(cls.id, subjectName)}>
@@ -111,7 +113,7 @@ export default function AcademicsPage() {
                                 )}
                             </div>
                             
-                            <Popover open={open && open[cls.id]} onOpenChange={(isOpen) => setOpen(prev => ({...prev, [cls.id]: isOpen}))}>
+                            <Popover open={openPopovers[cls.id]} onOpenChange={(isOpen) => setOpenPopovers(prev => ({...prev, [cls.id]: isOpen}))}>
                                 <PopoverTrigger asChild>
                                 <Button variant="outline" size="sm">
                                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -124,8 +126,8 @@ export default function AcademicsPage() {
                                     <CommandList>
                                         <CommandEmpty>No subject found.</CommandEmpty>
                                         <CommandGroup>
-                                            {subjects.map(subject => {
-                                                const isSelected = cls.subjects.includes(subject.name);
+                                            {subjects?.map(subject => {
+                                                const isSelected = cls.subjects?.includes(subject.name);
                                                 return (
                                                     <CommandItem
                                                         key={subject.id}

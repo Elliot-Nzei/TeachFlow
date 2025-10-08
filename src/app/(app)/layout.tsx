@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -5,7 +6,6 @@ import {
   ArrowRightLeft,
   BookOpen,
   ClipboardList,
-  Home,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -39,8 +39,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/logo';
-import { SettingsProvider, SettingsContext } from '@/contexts/settings-context';
-import { useContext } from 'react';
+import { useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase/provider';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,10 +55,68 @@ const menuItems = [
   { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft },
 ];
 
-function AppLayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function UserProfileDisplay() {
+  const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
+  
+  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
   const { setTheme, theme } = useTheme();
-  const { settings } = useContext(SettingsContext);
+
+  if (isUserLoading || isProfileLoading) {
+    return <Skeleton className="h-9 w-9 rounded-full" />;
+  }
+
+  if (!user || !userProfile) {
+    return (
+      <Link href="/login">
+        <Button variant="outline">Login</Button>
+      </Link>
+    )
+  }
+
+  return (
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Avatar className="h-9 w-9">
+                    <AvatarImage src={userProfile?.profilePicture} alt={userProfile?.name} />
+                    <AvatarFallback>{userProfile?.name?.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
+                </Avatar>
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{userProfile.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{userProfile.userCode}</p>
+                </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+               {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+               <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
+            </DropdownMenuItem>
+            <Link href="/settings">
+                <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                </DropdownMenuItem>
+            </Link>
+            <DropdownMenuSeparator />
+            <Link href="/">
+                <DropdownMenuItem>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                </DropdownMenuItem>
+            </Link>
+        </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
 
   return (
     <SidebarProvider>
@@ -110,42 +170,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                 <div className="ml-auto flex-1 sm:flex-initial">
                     {/* Search can go here */}
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                            <Avatar className="h-9 w-9">
-                                <AvatarImage src={settings.profilePicture} alt="User" />
-                                <AvatarFallback>{settings.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
-                        <DropdownMenuLabel className="font-normal">
-                            <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none">{settings.name}</p>
-                                <p className="text-xs leading-none text-muted-foreground">NSMS-53102</p>
-                            </div>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                           {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-                           <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
-                        </DropdownMenuItem>
-                        <Link href="/settings">
-                            <DropdownMenuItem>
-                                <Settings className="mr-2 h-4 w-4" />
-                                <span>Settings</span>
-                            </DropdownMenuItem>
-                        </Link>
-                        <DropdownMenuSeparator />
-                        <Link href="/">
-                            <DropdownMenuItem>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Log out</span>
-                            </DropdownMenuItem>
-                        </Link>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <UserProfileDisplay />
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -155,13 +180,4 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
     </SidebarProvider>
   );
-}
-
-
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <SettingsProvider>
-      <AppLayoutContent>{children}</AppLayoutContent>
-    </SettingsProvider>
-  )
 }

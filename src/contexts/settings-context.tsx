@@ -1,5 +1,8 @@
+
 'use client';
 import React, { createContext, useState, useEffect } from 'react';
+import { useUser, useDoc, useFirebase, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 type Settings = {
     name: string;
@@ -8,44 +11,46 @@ type Settings = {
     profilePicture: string;
     currentTerm: 'First Term' | 'Second Term' | 'Third Term';
     currentSession: string;
+    userCode: string;
 }
 
 type SettingsContextType = {
-    settings: Settings;
-    setSettings: React.Dispatch<React.SetStateAction<Settings>>;
+    settings: Settings | null;
+    setSettings: (newSettings: Partial<Settings>) => void;
+    isLoading: boolean;
 }
 
-const defaultSettings: Settings = {
-    name: 'John Doe',
-    schoolName: 'Sunshine Primary School',
-    email: 'j.doe@example.com',
-    profilePicture: 'https://picsum.photos/seed/user-avatar/100/100',
-    currentTerm: 'First Term',
-    currentSession: '2023/2024',
-};
-
 export const SettingsContext = createContext<SettingsContextType>({
-    settings: defaultSettings,
+    settings: null,
     setSettings: () => {},
+    isLoading: true,
 });
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-    const [settings, setSettings] = useState<Settings>(() => {
-        if (typeof window !== 'undefined') {
-            const savedSettings = localStorage.getItem('nsms-settings');
-            return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
-        }
-        return defaultSettings;
-    });
+    const { firestore } = useFirebase();
+    const { user } = useUser();
+    const [settings, setLocalSettings] = useState<Settings | null>(null);
+
+    const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<Settings>(userProfileQuery);
     
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('nsms-settings', JSON.stringify(settings));
+        if (userProfile) {
+            setLocalSettings(userProfile);
         }
-    }, [settings]);
+    }, [userProfile]);
+
+    const handleSetSettings = (newSettings: Partial<Settings>) => {
+        if (user && settings) {
+            const updatedSettings = { ...settings, ...newSettings };
+            setLocalSettings(updatedSettings);
+            const userRef = doc(firestore, 'users', user.uid);
+            updateDocumentNonBlocking(userRef, newSettings);
+        }
+    }
 
     return (
-        <SettingsContext.Provider value={{ settings, setSettings }}>
+        <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, isLoading: isProfileLoading }}>
             {children}
         </SettingsContext.Provider>
     );
