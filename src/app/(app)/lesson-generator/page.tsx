@@ -268,19 +268,22 @@ export default function LessonGeneratorPage() {
         </div>
         <style jsx global>{`
             @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-section, #print-section * {
-                visibility: visible;
-            }
-            #print-section {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                padding: 1rem;
-            }
+              body * {
+                  visibility: hidden;
+              }
+              #print-section, #print-section * {
+                  visibility: visible;
+              }
+              #print-section {
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  width: 100%;
+                  padding: 1rem;
+              }
+              #note-content-for-pdf, #note-content-for-pdf * {
+                  color: black !important;
+              }
             }
             @page {
                 size: A4;
