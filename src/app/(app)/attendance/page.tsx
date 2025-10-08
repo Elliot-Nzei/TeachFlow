@@ -142,114 +142,108 @@ export default function AttendancePage() {
 
 
   return (
-    <div className="grid md:grid-cols-[250px_1fr] gap-8 items-start">
-        <div className="hidden md:block sticky top-20">
-            <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-        </div>
-      
-        <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-4 mb-4 md:hidden">
-                <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="outline">
-                        <PanelLeft className="mr-2 h-4 w-4" /> Select Class
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-72 p-0">
-                        <SheetHeader>
-                        <SheetTitle className="sr-only">Select Class</SheetTitle>
-                        <SheetDescription className="sr-only">Choose a class from the list to manage attendance.</SheetDescription>
-                        </SheetHeader>
-                        <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
-                    </SheetContent>
-                </Sheet>
-                {selectedClass && <h2 className="font-bold text-lg">{selectedClass.name}</h2>}
-            </div>
-
-            {selectedClass ? (
-            <Card>
-                <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <CardTitle className="font-headline hidden md:block">{selectedClass.name} - Attendance</CardTitle>
-                    <CardDescription className="hidden md:block">Mark daily attendance for each student.</CardDescription>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className="w-full sm:w-[280px] justify-start text-left font-normal"
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                    <Button onClick={handleSaveAttendance} disabled={attendance.length === 0} className="w-full sm:w-auto">
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Attendance
+    <div className="space-y-4">
+        <div className="flex items-center gap-4">
+            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline">
+                    <PanelLeft className="mr-2 h-4 w-4" /> Select Class
                     </Button>
-                </div>
-                </CardHeader>
-                <CardContent>
-                    {isLoadingStudents ? (
-                        <div className="space-y-4">
-                            {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                        </div>
-                    ) : attendance.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead className="text-right">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {attendance.map(record => (
-                                    <TableRow key={record.studentId}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-9 w-9">
-                                                    <AvatarImage src={record.avatarUrl} alt={record.name} />
-                                                    <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="font-medium">{record.name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
-                                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
-                                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
-                            <p>No students in this class.</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-            ) : (
-                <Card className="flex items-center justify-center h-full min-h-[400px] text-center">
-                    <div className="text-muted-foreground">
-                        <p>Select a class to mark attendance.</p>
-                    </div>
-                </Card>
-            )}
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                    <SheetHeader>
+                    <SheetTitle className="sr-only">Select Class</SheetTitle>
+                    <SheetDescription className="sr-only">Choose a class from the list to manage attendance.</SheetDescription>
+                    </SheetHeader>
+                    <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+                </SheetContent>
+            </Sheet>
+            {selectedClass && <h2 className="font-bold text-lg">{selectedClass.name}</h2>}
         </div>
+
+        {selectedClass ? (
+        <Card>
+            <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <CardTitle className="font-headline">{selectedClass.name} - Attendance</CardTitle>
+                <CardDescription>Mark daily attendance for each student.</CardDescription>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className="w-full sm:w-[280px] justify-start text-left font-normal"
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+                <Button onClick={handleSaveAttendance} disabled={attendance.length === 0} className="w-full sm:w-auto">
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Attendance
+                </Button>
+            </div>
+            </CardHeader>
+            <CardContent>
+                {isLoadingStudents ? (
+                    <div className="space-y-4">
+                        {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                    </div>
+                ) : attendance.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Student</TableHead>
+                                <TableHead className="text-right">Status</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {attendance.map(record => (
+                                <TableRow key={record.studentId}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9">
+                                                <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                                <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-medium">{record.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                                            <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
+                                            <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
+                                            <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                ) : (
+                    <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
+                        <p>No students in this class.</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+        ) : (
+            <Card className="flex items-center justify-center h-full min-h-[400px] text-center">
+                <div className="text-muted-foreground">
+                    <p>Select a class to mark attendance.</p>
+                </div>
+            </Card>
+        )}
     </div>
   );
 }
