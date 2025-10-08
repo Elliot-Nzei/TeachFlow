@@ -41,8 +41,10 @@ export default function DashboardPage() {
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
   useEffect(() => {
-    if (!userProfile || !userProfile.userCode || !firestore) {
-      if(!isLoadingProfile) {
+    // Guard: Do not proceed if profile is loading or essential data is missing.
+    if (isLoadingProfile || !userProfile || !userProfile.userCode || !firestore) {
+      // If we stop loading but have no data, it means we can stop the spinner.
+      if (!isLoadingProfile) {
         setIsLoadingTransfers(false);
       }
       return;
@@ -53,6 +55,7 @@ export default function DashboardPage() {
       try {
         const transfersCollection = collection(firestore, 'transfers');
         
+        // These queries are now guaranteed to have a valid userCode.
         const sentQuery = query(transfersCollection, where('fromUser', '==', userProfile.userCode));
         const receivedQuery = query(transfersCollection, where('toUser', '==', userProfile.userCode));
 
@@ -65,7 +68,6 @@ export default function DashboardPage() {
         const receivedTransfers = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
 
         const combined = [...sentTransfers, ...receivedTransfers];
-        // Deduplicate in case a user sends data to themselves
         const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
         
         uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -206,5 +208,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
