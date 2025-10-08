@@ -171,9 +171,7 @@ const generateReportCardFlow = ai.defineFlow(
     const overallGrade = calculateNigerianGrade(averageScore);
 
     // Call the AI prompt with enhanced context
-    const {output} = await prompt({
-      ...input,
-    });
+    const {output} = await prompt(input);
 
     if (!output) {
       throw new Error('AI failed to generate report card comments.');
