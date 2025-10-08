@@ -216,7 +216,7 @@ export default function LessonGeneratorPage() {
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="prose prose-sm dark:prose-invert max-w-none text-xs">
-                                             <ReactMarkdown>{item.note.substring(0, 150)}...</ReactMarkdown>
+                                             <ReactMarkdown>{`${item.note.substring(0, 150)}...`}</ReactMarkdown>
                                         </AccordionContent>
                                     </AccordionItem>
                                 ))}
