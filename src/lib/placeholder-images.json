@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-students",
+      "description": "Happy Nigerian students in a classroom setting",
+      "imageUrl": "https://picsum.photos/seed/nsms-hero/600/400",
+      "imageHint": "nigerian students"
+    }
+  ]
 }
