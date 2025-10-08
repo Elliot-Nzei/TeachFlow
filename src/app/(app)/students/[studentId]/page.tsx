@@ -38,6 +38,7 @@ export default function StudentProfilePage({ params }: { params: { studentId: st
                     <AvatarFallback className="text-3xl">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <CardTitle className="text-2xl font-headline">{student.name}</CardTitle>
+                    <CardDescription className="font-mono text-sm">{student.studentId}</CardDescription>
                     <CardDescription>
                         <Link href={`/classes/${student.classId}`} className="hover:underline">
                             {student.class}

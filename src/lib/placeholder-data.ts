@@ -1,18 +1,18 @@
 import type { Class, Grade, DataTransfer, Student } from './types';
 
 export const placeholderStudents: Student[] = [
-    { id: 'student-1', name: 'Ada Okoro', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-1/100/100' },
-    { id: 'student-2', name: 'Bolu Adebayo', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-2/100/100' },
-    { id: 'student-3', name: 'Chidi Eze', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-3/100/100' },
-    { id: 'student-4', name: 'Dami Lola', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-4/100/100' },
-    { id: 'student-5', name: 'Emeka Nwosu', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-5/100/100' },
-    { id: 'student-6', name: 'Fatima Bello', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-6/100/100' },
-    { id: 'student-7', name: 'Gozie Anya', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-7/100/100' },
-    { id: 'student-8', name: 'Hassan Idris', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-8/100/100' },
-    { id: 'student-9', name: 'Ifeanyi Uche', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-9/100/100' },
-    { id: 'student-10', name: 'Jide Martins', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-10/100/100' },
-    { id: 'student-11', name: 'Kemi Alabi', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-11/100/100' },
-    { id: 'student-12', name: 'Lola Shodiya', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-12/100/100' },
+    { id: 'student-1', studentId: 'SPS-001', name: 'Ada Okoro', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-1/100/100' },
+    { id: 'student-2', studentId: 'SPS-002', name: 'Bolu Adebayo', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-2/100/100' },
+    { id: 'student-3', studentId: 'SPS-003', name: 'Chidi Eze', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-3/100/100' },
+    { id: 'student-4', studentId: 'SPS-004', name: 'Dami Lola', class: 'Primary 3B', classId: 'class-1', avatarUrl: 'https://picsum.photos/seed/student-4/100/100' },
+    { id: 'student-5', studentId: 'SPS-005', name: 'Emeka Nwosu', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-5/100/100' },
+    { id: 'student-6', studentId: 'SPS-006', name: 'Fatima Bello', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-6/100/100' },
+    { id: 'student-7', studentId: 'SPS-007', name: 'Gozie Anya', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-7/100/100' },
+    { id: 'student-8', studentId: 'SPS-008', name: 'Hassan Idris', class: 'JSS 1A', classId: 'class-2', avatarUrl: 'https://picsum.photos/seed/student-8/100/100' },
+    { id: 'student-9', studentId: 'SPS-009', name: 'Ifeanyi Uche', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-9/100/100' },
+    { id: 'student-10', studentId: 'SPS-010', name: 'Jide Martins', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-10/100/100' },
+    { id: 'student-11', studentId: 'SPS-011', name: 'Kemi Alabi', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-11/100/100' },
+    { id: 'student-12', studentId: 'SPS-012', name: 'Lola Shodiya', class: 'Primary 6A', classId: 'class-3', avatarUrl: 'https://picsum.photos/seed/student-12/100/100' },
 ];
 
 export const placeholderClasses: Class[] = [

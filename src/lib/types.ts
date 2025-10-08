@@ -8,6 +8,7 @@ export type User = {
 
 export type Student = {
   id: string;
+  studentId: string;
   name: string;
   class: string;
   classId: string;
