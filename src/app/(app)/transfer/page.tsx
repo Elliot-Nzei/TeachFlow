@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, getDocs } from 'firebase/firestore';
 import type { Class, DataTransfer, Grade, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,6 +31,8 @@ export default function TransferPage() {
   const [dataType, setDataType] = useState<DataType | ''>('');
   const [dataItem, setDataItem] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
+  const [allTransfers, setAllTransfers] = useState<DataTransfer[]>([]);
+  const [isLoadingTransfers, setIsLoadingTransfers] = useState(true);
 
   // Fetch all necessary data for dropdowns
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -39,25 +41,50 @@ export default function TransferPage() {
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  // Fetch transfers where the current user is either the sender or receiver
-  const transfersSentQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
-  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(transfersSentQuery);
-  
-  const transfersReceivedQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
-  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(transfersReceivedQuery);
+  useEffect(() => {
+    if (isLoadingProfile || !userProfile?.userCode) {
+      if (!isLoadingProfile) setIsLoadingTransfers(false);
+      return;
+    }
 
-  const allTransfers = useMemo(() => {
-    const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
-    const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-    // Ensure timestamp exists and is valid before sorting
-    return unique.sort((a, b) => {
-        const timeA = a.timestamp?.seconds || 0;
-        const timeB = b.timestamp?.seconds || 0;
-        return timeB - timeA;
-    });
-  }, [sentTransfers, receivedTransfers]);
+    const fetchTransfers = async () => {
+      setIsLoadingTransfers(true);
+      try {
+        const transfersCollection = collection(firestore, 'transfers');
+        
+        const sentQuery = query(transfersCollection, where('fromUser', '==', userProfile.userCode));
+        const receivedQuery = query(transfersCollection, where('toUser', '==', userProfile.userCode));
 
-  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingSent || isLoadingReceived || isLoadingProfile;
+        const [sentSnapshot, receivedSnapshot] = await Promise.all([
+          getDocs(sentQuery),
+          getDocs(receivedQuery)
+        ]);
+
+        const sentTransfers = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
+        const receivedTransfers = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
+
+        const combined = [...sentTransfers, ...receivedTransfers];
+        const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
+        
+        uniqueTransfers.sort((a, b) => {
+            const timeA = a.timestamp?.seconds ?? 0;
+            const timeB = b.timestamp?.seconds ?? 0;
+            return timeB - timeA;
+        });
+        
+        setAllTransfers(uniqueTransfers);
+      } catch (error) {
+        console.error("Error fetching transfers:", error);
+      } finally {
+        setIsLoadingTransfers(false);
+      }
+    };
+
+    fetchTransfers();
+  }, [userProfile, firestore, isLoadingProfile]);
+
+
+  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingProfile;
   
   const dataItemOptions = useMemo(() => {
     switch (dataType) {
@@ -206,7 +233,7 @@ export default function TransferPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                {isLoadingTransfers ? (
                     Array.from({length: 3}).map((_, i) => (
                         <TableRow key={i}>
                             <TableCell colSpan={5}><Skeleton className="h-10 w-full" /></TableCell>
