@@ -6,7 +6,7 @@
  *
  * Data Structure:
  * All data is nested under /users/{userId}, where {userId} corresponds to the Firebase Auth UID.
- * There is also a top-level /transfers collection that is writable only by backend.
+ * The 'transfers' collection is a global log, writable only by backend.
  *
  * Key Security Decisions:
  * - Users can only read and write their own data under /users/{userId}.
@@ -23,11 +23,8 @@ service cloud.firestore {
     /**
      * @description Secures the user profile. Only the authenticated user can read and write their own profile.
      * @path /users/{userId}
-     * @allow create: if isSignedIn() && isOwner(userId)
-     * @allow get: if isSignedIn() && isOwner(userId)
-     * @allow update: if isSignedIn() && isOwner(userId)
-     * @allow delete: if isSignedIn() && isOwner(userId)
-     * @deny list: Listing all users is not permitted.
+     * @allow (create, update, get, delete) if request.auth.uid == userId
+     * @deny (create, update, get, delete) if request.auth.uid != userId
      * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
@@ -39,20 +36,17 @@ service cloud.firestore {
         return request.auth != null;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if false; // Listing all users is not permitted.
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userCode == request.auth.uid;
-      allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.userCode == resource.data.userCode;
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
 
       /**
        * @description Secures classes created by a specific user.
        * @path /users/{userId}/classes/{classId}
-       * @allow create: if isSignedIn() && isOwner(userId)
-       * @allow get: if isSignedIn() && isOwner(userId)
-       * @allow list: if isSignedIn() && isOwner(userId)
-       * @allow update: if isSignedIn() && isOwner(userId)
-       * @allow delete: if isSignedIn() && isOwner(userId)
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
        * @principle Restricts access to a user's own data tree.
        */
       match /classes/{classId} {
@@ -66,11 +60,8 @@ service cloud.firestore {
       /**
        * @description Secures students belonging to a specific user/school.
        * @path /users/{userId}/students/{studentId}
-       * @allow create: if isSignedIn() && isOwner(userId)
-       * @allow get: if isSignedIn() && isOwner(userId)
-       * @allow list: if isSignedIn() && isOwner(userId)
-       * @allow update: if isSignedIn() && isOwner(userId)
-       * @allow delete: if isSignedIn() && isOwner(userId)
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
        * @principle Restricts access to a user's own data tree.
        */
       match /students/{studentId} {
@@ -84,11 +75,8 @@ service cloud.firestore {
       /**
        * @description Secures the master list of subjects for a user/school.
        * @path /users/{userId}/subjects/{subjectId}
-       * @allow create: if isSignedIn() && isOwner(userId)
-       * @allow get: if isSignedIn() && isOwner(userId)
-       * @allow list: if isSignedIn() && isOwner(userId)
-       * @allow update: if isSignedIn() && isOwner(userId)
-       * @allow delete: if isSignedIn() && isOwner(userId)
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
        * @principle Restricts access to a user's own data tree.
        */
       match /subjects/{subjectId} {
@@ -102,11 +90,8 @@ service cloud.firestore {
       /**
        * @description Secures all grades entered by a specific user.
        * @path /users/{userId}/grades/{gradeId}
-       * @allow create: if isSignedIn() && isOwner(userId)
-       * @allow get: if isSignedIn() && isOwner(userId)
-       * @allow list: if isSignedIn() && isOwner(userId)
-       * @allow update: if isSignedIn() && isOwner(userId)
-       * @allow delete: if isSignedIn() && isOwner(userId)
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
        * @principle Restricts access to a user's own data tree.
        */
       match /grades/{gradeId} {
@@ -120,11 +105,8 @@ service cloud.firestore {
        /**
         * @description Secures daily attendance records for students.
         * @path /users/{userId}/attendance/{attendanceId}
-        * @allow create: if isSignedIn() && isOwner(userId)
-        * @allow get: if isSignedIn() && isOwner(userId)
-        * @allow list: if isSignedIn() && isOwner(userId)
-        * @allow update: if isSignedIn() && isOwner(userId)
-        * @allow delete: if isSignedIn() && isOwner(userId)
+        * @allow (create, update, get, delete, list) if request.auth.uid == userId
+        * @deny (create, update, get, delete, list) if request.auth.uid != userId
         * @principle Restricts access to a user's own data tree.
         */
       match /attendance/{attendanceId} {
@@ -138,14 +120,26 @@ service cloud.firestore {
       /**
        * @description Secures a user's personal log of outgoing data transfer requests.
        * @path /users/{userId}/transfers/{transferId}
-       * @allow create: if isSignedIn() && isOwner(userId)
-       * @allow get: if isSignedIn() && isOwner(userId)
-       * @allow list: if isSignedIn() && isOwner(userId)
-       * @allow update: if isSignedIn() && isOwner(userId)
-       * @allow delete: if isSignedIn() && isOwner(userId)
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
        * @principle Restricts access to a user's own data tree.
        */
       match /transfers/{transferId} {
+        allow get: if isSignedIn() && isOwner(userId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId);
+        allow update: if isSignedIn() && isOwner(userId) && resource != null;
+        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      /**
+       * @description Secures behavioral traits/ratings for students.
+       * @path /users/{userId}/traits/{traitId}
+       * @allow (create, update, get, delete, list) if request.auth.uid == userId
+       * @deny (create, update, get, delete, list) if request.auth.uid != userId
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /traits/{traitId} {
         allow get: if isSignedIn() && isOwner(userId);
         allow list: if isSignedIn() && isOwner(userId);
         allow create: if isSignedIn() && isOwner(userId);
@@ -157,11 +151,8 @@ service cloud.firestore {
     /**
      * @description Global log of data transfers. Writable by a Cloud Function.
      * @path /transfers/{transferId}
-     * @allow get: if false;
-     * @allow list: if false;
-     * @allow create: if false; // TODO: Implement backend-only writes.
-     * @allow update: if false; // TODO: Implement backend-only writes.
-     * @allow delete: if false; // TODO: Implement backend-only writes.
+     * @allow get, list: if false;
+     * @allow create, update, delete: if false; // TODO: Implement backend-only writes.
      * @principle Restricts write access to a backend service account.
      */
     match /transfers/{transferId} {
