@@ -104,23 +104,8 @@ export default function LessonGeneratorPage() {
         format: 'a4'
     });
     
-    // It's better to target a specific element for conversion
-    const noteContentElement = document.getElementById('note-content-for-pdf');
-    if (noteContentElement) {
-        doc.html(noteContentElement, {
-            callback: function (doc) {
-                doc.save(`Lesson-Note-${formState.subject}-${formState.classLevel}.pdf`);
-            },
-            x: 40,
-            y: 40,
-            width: 375,
-            windowWidth: 750
-        });
-    } else {
-        // Fallback for just the text if the element isn't found
-        doc.text(generatedNote, 10, 10);
-        doc.save(`Lesson-Note-${formState.subject}-${formState.classLevel}.pdf`);
-    }
+    doc.text(generatedNote, 10, 10);
+    doc.save(`Lesson-Note-${formState.subject}-${formState.classLevel}.pdf`);
   };
 
 
@@ -281,7 +266,7 @@ export default function LessonGeneratorPage() {
                   width: 100%;
                   padding: 1rem;
               }
-              #note-content-for-pdf, #note-content-for-pdf * {
+              #note-content-for-pdf * {
                   color: black !important;
               }
             }
