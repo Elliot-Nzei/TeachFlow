@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirebase, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, arrayUnion, increment, addDoc, updateDoc } from 'firebase/firestore';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';

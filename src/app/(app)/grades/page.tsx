@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Class, Grade, Student } from '@/lib/types';
 import { PlusCircle, View, PanelLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassSidebar from '@/components/class-sidebar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -142,6 +142,10 @@ export default function GradesPage() {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 p-0">
+                  <SheetHeader>
+                    <SheetTitle className="sr-only">Select Class</SheetTitle>
+                    <SheetDescription className="sr-only">Choose a class from the list to manage grades.</SheetDescription>
+                  </SheetHeader>
                     <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
                 </SheetContent>
             </Sheet>
