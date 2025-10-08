@@ -38,9 +38,15 @@ function ClassDetailsContent({ classId }: { classId: string }) {
       )
   }
 
-  if (!classDetails) {
+  // Only call notFound if loading is complete and there's no data
+  if (!isLoadingClass && !classDetails) {
     notFound();
   }
+  
+  if (!classDetails) {
+      return null; // Return null while loading or if not found to avoid rendering flicker
+  }
+
 
   return (
     <>

@@ -40,8 +40,13 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
       )
   }
 
-  if (!student) {
+  // Only call notFound if loading is complete and there's no data
+  if (!isLoadingStudent && !student) {
     notFound();
+  }
+
+  if (!student) {
+      return null; // Return null while loading or if not found to avoid rendering flicker
   }
 
   return (
