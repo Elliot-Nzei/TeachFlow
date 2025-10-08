@@ -39,10 +39,10 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 
       // 1. Update the Student document with the new classId and className
       const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
-      batch.update(studentRef, { classId: classDetails.id, className: classDetails.name });
+      batch.update(studentRef, { classId: classId, className: classDetails.name });
 
       // 2. Update the Class document to include the student's ID in its list
-      const classRef = doc(firestore, 'users', user.uid, 'classes', classDetails.id);
+      const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
       batch.update(classRef, { students: arrayUnion(student.id) });
       
       try {
