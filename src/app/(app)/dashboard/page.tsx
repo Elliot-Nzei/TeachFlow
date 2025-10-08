@@ -14,8 +14,7 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, query, where, getDocs } from 'firebase/firestore';
-import type { Grade } from '@/lib/types';
-import { DataTransfer } from '@/lib/types';
+import type { Grade, DataTransfer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
@@ -24,6 +23,9 @@ export default function DashboardPage() {
 
   const [allTransfers, setAllTransfers] = useState<DataTransfer[]>([]);
   const [isLoadingTransfers, setIsLoadingTransfers] = useState(true);
+
+  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
@@ -36,9 +38,6 @@ export default function DashboardPage() {
 
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: grades, isLoading: isLoadingGrades } = useCollection<Grade>(gradesQuery);
-  
-  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
   useEffect(() => {
     // Guard: Do not proceed if profile is loading or essential data is missing.

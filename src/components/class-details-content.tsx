@@ -2,20 +2,18 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Users, Book, PlusCircle, UserPlus } from 'lucide-react';
+import { BookOpen, Users, Book, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, writeBatch } from 'firebase/firestore';
+import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Student, Class } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 
 function ClassDetailsContent({ classId }: { classId: string }) {
@@ -45,8 +43,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 
       // 2. Update the Class document to include the student's ID in its list
       const classRef = doc(firestore, 'users', user.uid, 'classes', classDetails.id);
-      const currentStudentIds = classDetails.students || [];
-      batch.update(classRef, { students: [...currentStudentIds, student.id] });
+      batch.update(classRef, { students: arrayUnion(student.id) });
       
       try {
         await batch.commit();
