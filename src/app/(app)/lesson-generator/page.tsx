@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, FileDown, Printer, Trash2, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateLessonNote } from '@/ai/flows/generate-lesson-note';
-import type { GenerateLessonNoteInput } from '@/ai/flows/generate-lesson-note';
+import { generateLessonNote, type GenerateLessonNoteInput, type GenerateLessonNoteOutput } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
