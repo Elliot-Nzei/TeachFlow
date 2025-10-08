@@ -25,14 +25,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 type DataType = 'Class' | 'Grades' | 'Report Card';
 
 export default function TransferPage() {
-  const { firestore, user } = useFirebase();
+  const { firestore, user, settings: userProfile, isSettingsLoading: isLoadingProfile } = useFirebase();
   const { toast } = useToast();
   const [recipientCode, setRecipientCode] = useState('');
   const [dataType, setDataType] = useState<DataType | ''>('');
   const [dataItem, setDataItem] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
-
-  const { data: userProfile, isLoading: isLoadingProfile } = useFirebase();
 
   // Fetch all necessary data for dropdowns
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -51,7 +49,12 @@ export default function TransferPage() {
   const allTransfers = useMemo(() => {
     const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
     const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-    return unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Ensure timestamp exists and is valid before sorting
+    return unique.sort((a, b) => {
+        const timeA = a.timestamp?.seconds || 0;
+        const timeB = b.timestamp?.seconds || 0;
+        return timeB - timeA;
+    });
   }, [sentTransfers, receivedTransfers]);
 
   const isLoading = isLoadingClasses || isLoadingStudents || isLoadingSent || isLoadingReceived || isLoadingProfile;
@@ -99,7 +102,7 @@ export default function TransferPage() {
             dataTransferredName = students?.find(s => s.id === dataItem)?.name || 'Unknown Student';
         }
 
-        await addDocumentNonBlocking(transfersCollection, {
+        addDocumentNonBlocking(transfersCollection, {
             fromUser: userProfile.userCode,
             toUser: recipientCode,
             dataType: dataType,
@@ -212,7 +215,7 @@ export default function TransferPage() {
                 ) : allTransfers.length > 0 ? (
                     allTransfers.map((transfer) => {
                         const isSent = transfer.fromUser === userProfile?.userCode;
-                        const date = transfer.timestamp ? new Date(transfer.timestamp.seconds * 1000) : new Date();
+                        const date = transfer.timestamp?.seconds ? new Date(transfer.timestamp.seconds * 1000) : new Date();
                         return (
                             <TableRow key={transfer.id}>
                                 <TableCell>
