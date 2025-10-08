@@ -74,7 +74,7 @@ export async function generateReportCard(input: GenerateReportCardInput): Promis
  */
 const prompt = ai.definePrompt({
   name: 'generateReportCardPrompt',
-  input: {schema: GenerateReportCardInputSchema},
+  input: {schema: GenerateReportCardInputSchema.extend({ attendancePercentage: z.number() })},
   output: {schema: GenerateReportCardOutputSchema},
   prompt: `You are an experienced Nigerian school administrator generating a comprehensive report card for a student in the Nigerian education system.
 
@@ -102,6 +102,7 @@ You are writing comments that will be read by parents/guardians. Your tone shoul
 {{#if attendance.lateDays}}
 - Days Late: {{attendance.lateDays}}
 {{/if}}
+- Attendance Rate: {{attendancePercentage}}%
 
 **BEHAVIORAL TRAITS (Rated 1-5, where 5 is Excellent):**
 {{#each traits}}
@@ -171,7 +172,10 @@ const generateReportCardFlow = ai.defineFlow(
     const overallGrade = calculateNigerianGrade(averageScore);
 
     // Call the AI prompt with enhanced context
-    const {output} = await prompt(input);
+    const {output} = await prompt({
+      ...input,
+      attendancePercentage,
+    });
 
     if (!output) {
       throw new Error('AI failed to generate report card comments.');
