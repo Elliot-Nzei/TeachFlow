@@ -14,19 +14,23 @@ import type { Student, Class, Grade } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from './ui/separator';
+import { Logo } from './logo';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
-type ReportWithStudentInfo = GenerateReportCardOutput & {
+type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
+  studentId: string;
   className: string;
   term: string;
   session: string;
+  grades: { subject: string; score: number, grade: string }[];
 };
 
 export default function ReportCardGenerator() {
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [generatedReports, setGeneratedReports] = useState<ReportWithStudentInfo[]>([]);
+  const [generatedReports, setGeneratedReports] = useState<ReportWithStudentAndGradeInfo[]>([]);
 
   const { toast } = useToast();
 
@@ -50,7 +54,7 @@ export default function ReportCardGenerator() {
     const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
 
     try {
-      const reports: ReportWithStudentInfo[] = [];
+      const reports: ReportWithStudentAndGradeInfo[] = [];
       for (const student of targets) {
         const studentGrades = (placeholderGrades[student.class] || []).filter(g => g.studentName === student.name);
         
@@ -67,12 +71,16 @@ export default function ReportCardGenerator() {
         };
 
         const result = await generateReportCard(input);
+        const detailedGrades = studentGrades.map(g => ({ subject: g.subject, score: g.score, grade: g.grade }));
+        
         reports.push({
           ...result,
           studentName: student.name,
+          studentId: student.studentId,
           className: student.class,
           term: input.term,
           session: input.session,
+          grades: detailedGrades,
         });
       }
       setGeneratedReports(reports);
@@ -204,12 +212,48 @@ export default function ReportCardGenerator() {
                     {generatedReports.map((report, index) => (
                         <Fragment key={index}>
                            <div className="report-card p-6 border rounded-lg bg-card text-card-foreground shadow-sm break-after-page">
-                                <div className="text-center mb-4">
-                                    <h3 className="text-2xl font-bold font-headline">{report.studentName}</h3>
-                                    <p className="text-muted-foreground">{report.className} - {report.term}, {report.session}</p>
+                                <header className="flex items-center justify-between mb-6 border-b pb-4">
+                                    <Logo />
+                                    <div className="text-right">
+                                        <h2 className="text-2xl font-bold font-headline">Sunshine Primary School</h2>
+                                        <p className="text-muted-foreground">End of Term Report</p>
+                                    </div>
+                                </header>
+                                
+                                <div className="mb-6">
+                                    <h3 className="text-lg font-semibold font-headline mb-2 text-center">Student Information</h3>
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 border rounded-lg p-4">
+                                        <div><strong className="font-medium">Name:</strong> {report.studentName}</div>
+                                        <div><strong className="font-medium">Class:</strong> {report.className}</div>
+                                        <div><strong className="font-medium">Student ID:</strong> {report.studentId}</div>
+                                        <div><strong className="font-medium">Session:</strong> {report.session}</div>
+                                        <div className="col-span-2"><strong className="font-medium">Term:</strong> {report.term}</div>
+                                    </div>
                                 </div>
-                                <Separator />
-                                <div className="grid grid-cols-3 gap-4 text-center my-4">
+
+                                <div className="mb-6">
+                                    <h3 className="text-lg font-semibold font-headline mb-2 text-center">Academic Performance</h3>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Subject</TableHead>
+                                                <TableHead className="text-center">Score</TableHead>
+                                                <TableHead className="text-right">Grade</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {report.grades.map((grade, idx) => (
+                                                <TableRow key={idx}>
+                                                    <TableCell className="font-medium">{grade.subject}</TableCell>
+                                                    <TableCell className="text-center">{grade.score}</TableCell>
+                                                    <TableCell className="text-right font-bold">{grade.grade}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4 text-center my-6 py-4 border-t border-b">
                                     <div>
                                         <p className="text-sm text-muted-foreground">Total Score</p>
                                         <p className="text-2xl font-bold">{report.totalScore}</p>
@@ -219,15 +263,19 @@ export default function ReportCardGenerator() {
                                         <p className="text-2xl font-bold">{report.averageScore.toFixed(1)}%</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Grade</p>
+                                        <p className="text-sm text-muted-foreground">Overall Grade</p>
                                         <p className="text-2xl font-bold text-primary">{report.grade}</p>
                                     </div>
                                 </div>
-                                <Separator />
-                                <div className="mt-4">
+
+                                <div>
                                     <h4 className="font-semibold mb-2">Teacher's Remark</h4>
-                                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md">{report.remark}</p>
+                                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md italic">"{report.remark}"</p>
                                 </div>
+
+                                <footer className="text-center text-xs text-muted-foreground mt-8 pt-4 border-t">
+                                    <p>Official School Stamp and Signature</p>
+                                </footer>
                             </div>
                         </Fragment>
                     ))}
@@ -255,6 +303,10 @@ export default function ReportCardGenerator() {
             border: 1px solid #ccc !important;
             box-shadow: none !important;
           }
+        }
+        @page {
+            size: A4;
+            margin: 0.5in;
         }
       `}</style>
     </>
