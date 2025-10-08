@@ -1,9 +1,12 @@
+
+'use client';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRightLeft, Send } from 'lucide-react';
+import { ArrowRightLeft, Send, Loader2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -12,10 +15,123 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { placeholderTransfers } from '@/lib/placeholder-data';
 import { formatDistanceToNow } from 'date-fns';
+import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, serverTimestamp } from 'firebase/firestore';
+import type { Class, DataTransfer, Grade, Student } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type DataType = 'Class' | 'Grades' | 'Report Card';
 
 export default function TransferPage() {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const [recipientCode, setRecipientCode] = useState('');
+  const [dataType, setDataType] = useState<DataType | ''>('');
+  const [dataItem, setDataItem] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  const { data: userProfile, isLoading: isLoadingProfile } = useFirebase();
+
+  // Fetch all necessary data for dropdowns
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
+
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+  
+  // Fetch transfers where the current user is either the sender or receiver
+  const transfersSentQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
+  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(transfersSentQuery);
+  
+  const transfersReceivedQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
+  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(transfersReceivedQuery);
+
+  const allTransfers = useMemo(() => {
+    const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
+    const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+    return unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [sentTransfers, receivedTransfers]);
+
+  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingSent || isLoadingReceived || isLoadingProfile;
+  
+  const dataItemOptions = useMemo(() => {
+    switch (dataType) {
+      case 'Class':
+        return classes || [];
+      case 'Grades':
+      case 'Report Card':
+        return students || [];
+      default:
+        return [];
+    }
+  }, [dataType, classes, students]);
+
+  const handleTransfer = async () => {
+    if (!recipientCode || !dataType || !dataItem || !userProfile?.userCode) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please fill in all fields to start a transfer.',
+      });
+      return;
+    }
+    
+    if (recipientCode === userProfile.userCode) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Recipient',
+            description: 'You cannot transfer data to yourself.',
+        });
+        return;
+    }
+
+    setIsTransferring(true);
+    
+    try {
+        const transfersCollection = collection(firestore, 'transfers');
+        
+        let dataTransferredName = '';
+        if (dataType === 'Class') {
+            dataTransferredName = classes?.find(c => c.id === dataItem)?.name || 'Unknown Class';
+        } else {
+            dataTransferredName = students?.find(s => s.id === dataItem)?.name || 'Unknown Student';
+        }
+
+        await addDocumentNonBlocking(transfersCollection, {
+            fromUser: userProfile.userCode,
+            toUser: recipientCode,
+            dataType: dataType,
+            dataId: dataItem,
+            dataTransferred: dataTransferredName,
+            status: 'pending', // A backend function would process this
+            timestamp: serverTimestamp(),
+        });
+
+        toast({
+            title: 'Transfer Initiated',
+            description: `Request to transfer ${dataTransferredName} to ${recipientCode} has been sent.`,
+        });
+
+        // Reset form
+        setRecipientCode('');
+        setDataType('');
+        setDataItem('');
+
+    } catch (error) {
+        console.error("Error initiating transfer:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Transfer Failed',
+            description: 'Could not initiate the transfer. Please try again.',
+        });
+    } finally {
+        setIsTransferring(false);
+    }
+  };
+
+
   return (
     <div className="space-y-8">
       <div>
@@ -32,30 +148,39 @@ export default function TransferPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="recipient-code">Recipient's User Code</Label>
-              <Input id="recipient-code" placeholder="NSMS-XXXXX" />
+              <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="data-type">Data Type</Label>
-              <Select>
+              <Select onValueChange={(value: DataType) => { setDataType(value); setDataItem(''); }} value={dataType}>
                 <SelectTrigger id="data-type">
                   <SelectValue placeholder="Select data to transfer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="class">Class Data</SelectItem>
-                  <SelectItem value="grades">Grades</SelectItem>
-                  <SelectItem value="report">Report Card</SelectItem>
+                  <SelectItem value="Class">Class Data (with students)</SelectItem>
+                  <SelectItem value="Grades">Student Grades</SelectItem>
+                  <SelectItem value="Report Card">Student Report Card</SelectItem>
                 </SelectContent>
               </Select>
             </div>
              <div className="space-y-2">
-              <Label htmlFor="data-item">Specific Item (Optional)</Label>
-              <Input id="data-item" placeholder="e.g., Primary 3B or Ada Okoro" />
+              <Label htmlFor="data-item">Specific Item</Label>
+              <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType}>
+                 <SelectTrigger id="data-item">
+                    <SelectValue placeholder="Select item" />
+                </SelectTrigger>
+                <SelectContent>
+                    {dataItemOptions.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
         <CardFooter>
-          <Button>
-            <Send className="mr-2 h-4 w-4" />
+          <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem}>
+            {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
             Transfer Data
           </Button>
         </CardFooter>
@@ -78,28 +203,41 @@ export default function TransferPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {placeholderTransfers.map((transfer) => {
-                    const isSent = transfer.fromUser.startsWith('You');
-                    return (
-                        <TableRow key={transfer.id}>
-                            <TableCell>
-                                {isSent ? (
-                                    <span className="flex items-center text-red-500">
-                                        <ArrowRightLeft className="mr-2 h-4 w-4" /> Sent
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center text-green-500">
-                                        <ArrowRightLeft className="mr-2 h-4 w-4" /> Received
-                                    </span>
-                                )}
-                            </TableCell>
-                            <TableCell className="font-mono">{isSent ? transfer.toUser : transfer.fromUser}</TableCell>
-                            <TableCell>{transfer.dataType}</TableCell>
-                            <TableCell>{transfer.dataTransferred}</TableCell>
-                            <TableCell className="text-right">{formatDistanceToNow(new Date(transfer.timestamp), { addSuffix: true })}</TableCell>
+                {isLoading ? (
+                    Array.from({length: 3}).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={5}><Skeleton className="h-10 w-full" /></TableCell>
                         </TableRow>
-                    )
-                })}
+                    ))
+                ) : allTransfers.length > 0 ? (
+                    allTransfers.map((transfer) => {
+                        const isSent = transfer.fromUser === userProfile?.userCode;
+                        const date = transfer.timestamp ? new Date(transfer.timestamp.seconds * 1000) : new Date();
+                        return (
+                            <TableRow key={transfer.id}>
+                                <TableCell>
+                                    {isSent ? (
+                                        <span className="flex items-center text-red-500">
+                                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Sent
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center text-green-500">
+                                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Received
+                                        </span>
+                                    )}
+                                </TableCell>
+                                <TableCell className="font-mono">{isSent ? transfer.toUser : transfer.fromUser}</TableCell>
+                                <TableCell>{transfer.dataType}</TableCell>
+                                <TableCell>{transfer.dataTransferred}</TableCell>
+                                <TableCell className="text-right">{formatDistanceToNow(date, { addSuffix: true })}</TableCell>
+                            </TableRow>
+                        )
+                    })
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">No transfer history found.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
         </CardContent>

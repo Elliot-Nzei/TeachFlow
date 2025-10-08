@@ -200,7 +200,20 @@
           "type": "string"
         },
         "dataType": {
-          "type": "string"
+          "type": "string",
+          "enum": ["Class", "Grades", "Report Card"]
+        },
+        "dataId": {
+            "type": "string",
+            "description": "The ID of the document being transferred (e.g., classId, studentId)."
+        },
+        "dataTransferred": {
+            "type": "string",
+            "description": "A human-readable name for the data being transferred (e.g., 'Primary 3B' or 'Ada Okoro')."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["pending", "completed", "failed"]
         },
         "timestamp": {
           "type": "string",
@@ -211,6 +224,8 @@
         "fromUser",
         "toUser",
         "dataType",
+        "dataId",
+        "status",
         "timestamp"
       ]
     }

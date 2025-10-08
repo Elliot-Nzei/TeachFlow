@@ -59,8 +59,10 @@ export type DataTransfer = {
   fromUser: string;
   toUser: string;
   dataType: 'Class' | 'Grades' | 'Report Card';
+  dataId: string;
   dataTransferred?: string;
-  timestamp: string;
+  status: 'pending' | 'completed' | 'failed';
+  timestamp: any;
 };
 
 export type Settings = {
