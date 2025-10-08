@@ -138,9 +138,9 @@ export default function StudentsPage() {
                         <div className="grid gap-6 py-4">
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-24 w-24">
-                                    <AvatarImage src={previewImage} alt="Student preview" />
+                                    {previewImage ? <AvatarImage src={previewImage} alt="Student preview" /> : null}
                                     <AvatarFallback className="text-3xl">
-                                        {previewImage ? '' : <UserPlus />}
+                                        <UserPlus />
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid w-full max-w-sm items-center gap-1.5">
@@ -187,12 +187,14 @@ export default function StudentsPage() {
               <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
                 <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
                   <CardContent className="p-0 text-center flex flex-col h-full relative">
-                    <Image 
-                      src={student.avatarUrl} 
-                      alt={student.name} 
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-110"
-                    />
+                    {student.avatarUrl && (
+                      <Image 
+                        src={student.avatarUrl} 
+                        alt={student.name} 
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-110"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="relative flex flex-col h-full justify-end p-3 text-white">
                         <p className="text-sm font-bold font-headline leading-tight">{student.name}</p>
