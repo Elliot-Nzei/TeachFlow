@@ -1,32 +1,32 @@
 
 'use client';
-import { use, Suspense } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { notFound } from 'next/navigation';
 import { BookOpen, Users, Book } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 
-function ClassDetailsContent({ classId, userId }: { classId: string, userId: string }) {
+function ClassDetailsContent({ classId }: { classId: string }) {
   const { firestore } = useFirebase();
+  const { user } = useUser();
 
-  const classDocQuery = useMemoFirebase(() => doc(firestore, 'users', userId, 'classes', classId), [firestore, userId, classId]);
+  const classDocQuery = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid, 'classes', classId) : null), [firestore, user, classId]);
   const { data: classDetails, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
 
-  const studentsQuery = useMemoFirebase(() => query(collection(firestore, 'users', userId, 'students'), where('classId', '==', classId)), [firestore, userId, classId]);
+  const studentIds = useMemo(() => classDetails?.students || [], [classDetails]);
+  const studentsQuery = useMemoFirebase(() => (user && studentIds.length > 0) ? query(collection(firestore, 'users', user.uid, 'students'), where('__name__', 'in', studentIds)) : null, [firestore, user, studentIds]);
   const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
 
 
   if (isLoadingClass) {
       return (
-          <div className="space-y-8">
+          <div className="space-y-8 p-6">
               <Skeleton className="h-12 w-48" />
               <Skeleton className="h-24 w-full" />
               <div className="grid md:grid-cols-2 gap-8">
@@ -36,33 +36,18 @@ function ClassDetailsContent({ classId, userId }: { classId: string, userId: str
           </div>
       )
   }
-
-  // Only call notFound if loading is complete and there's no data
-  if (!isLoadingClass && !classDetails) {
-    notFound();
-  }
   
   if (!classDetails) {
-      return null; // Should be handled by the checks above but as a safeguard.
+      return <div className="p-6">Class not found.</div>;
   }
 
   return (
     <>
-        <div className="mb-4">
-            <Link href="/classes" passHref>
-                <Button variant="outline">
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Back to Classes
-                </Button>
-            </Link>
-        </div>
-        <div className="space-y-8">
-        <Card>
-            <CardHeader>
-            <CardTitle className="text-3xl font-bold font-headline">{classDetails.name}</CardTitle>
-            <CardDescription>Details for the current session.</CardDescription>
-            </CardHeader>
-        </Card>
+      <SheetHeader className="p-6">
+        <SheetTitle className="text-3xl font-bold font-headline">{classDetails.name}</SheetTitle>
+        <SheetDescription>Details for the current session.</SheetDescription>
+      </SheetHeader>
+      <div className="space-y-8 p-6">
         <div className="grid md:grid-cols-2 gap-8">
             <Card>
             <CardHeader>
@@ -77,15 +62,13 @@ function ClassDetailsContent({ classId, userId }: { classId: string, userId: str
                     <div className="space-y-1">
                     {studentsInClass && studentsInClass.length > 0 ? (
                         studentsInClass.map((student) => (
-                            <Link href={`/students/${student.id}`} key={student.id} className="block">
-                                <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={student.avatarUrl} alt={student.name} />
-                                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-medium">{student.name}</span>
-                                </div>
-                            </Link>
+                            <div key={student.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={student.avatarUrl} alt={student.name} />
+                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{student.name}</span>
+                            </div>
                         ))
                     ) : (
                         <div className="text-center text-sm text-muted-foreground p-4">
@@ -122,32 +105,10 @@ function ClassDetailsContent({ classId, userId }: { classId: string, userId: str
             </CardContent>
             </Card>
         </div>
-        </div>
+      </div>
     </>
   );
 }
 
-function ClassDetailsLoader({ classId }: { classId: string }) {
-    const { user, isUserLoading } = useUser();
 
-    if (isUserLoading) {
-        return <div>Loading class details...</div>;
-    }
-
-    if (!user) {
-        // Handle case where user is not logged in, maybe redirect
-        return <div>Please log in to view this page.</div>;
-    }
-
-    return <ClassDetailsContent classId={classId} userId={user.uid} />;
-}
-
-
-export default function ClassDetailsPage({ params }: { params: Promise<{ classId: string }> }) {
-    const { classId } = use(params);
-    return (
-        <Suspense fallback={<div>Loading class details...</div>}>
-            <ClassDetailsLoader classId={classId} />
-        </Suspense>
-    )
-}
+export default ClassDetailsContent;

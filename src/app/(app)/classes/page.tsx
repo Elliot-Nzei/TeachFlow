@@ -7,15 +7,18 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BookOpen, PlusCircle, Users } from 'lucide-react';
-import Link from 'next/link';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import ClassDetailsContent from '@/components/class-details-content';
+
 
 export default function ClassesPage() {
     const { firestore } = useFirebase();
     const { user } = useUser();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
+    const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading } = useCollection<any>(classesQuery);
@@ -32,6 +35,10 @@ export default function ClassesPage() {
             setNewClassName('');
             setIsDialogOpen(false);
         }
+    };
+
+    const handleCardClick = (classId: string) => {
+      setSelectedClassId(classId);
     };
 
   return (
@@ -65,33 +72,38 @@ export default function ClassesPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? Array.from({length: 3}).map((_, i) => (
-            <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
-        )) : classes?.map((cls) => (
-          <Card key={cls.id}>
-            <CardHeader>
-              <CardTitle className="font-headline">{cls.name}</CardTitle>
-              <CardDescription>A class for the current session.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{cls.students?.length || 0} Students</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{cls.subjects?.length || 0} Subjects</span>
-                </div>
-            </CardContent>
-            <CardFooter>
-              <Link href={`/classes/${cls.id}`} className="w-full">
-                <Button variant="outline" className="w-full">View Details</Button>
-              </Link>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {isLoading ? Array.from({length: 3}).map((_, i) => (
+              <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
+          )) : classes?.map((cls) => (
+            <SheetTrigger asChild key={cls.id}>
+              <Card onClick={() => handleCardClick(cls.id)} className="cursor-pointer hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="font-headline">{cls.name}</CardTitle>
+                  <CardDescription>A class for the current session.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>{cls.students?.length || 0} Students</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <BookOpen className="h-4 w-4" />
+                        <span>{cls.subjects?.length || 0} Subjects</span>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" className="w-full">View Details</Button>
+                </CardFooter>
+              </Card>
+            </SheetTrigger>
+          ))}
+        </div>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

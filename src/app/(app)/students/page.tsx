@@ -3,7 +3,6 @@
 import { useState, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, UserPlus } from 'lucide-react';
@@ -12,9 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, arrayUnion, increment } from 'firebase/firestore';
+import { collection, query, doc, arrayUnion, increment, addDoc } from 'firebase/firestore';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import StudentProfileContent from '@/components/student-profile-content';
 
 export default function StudentsPage() {
   const { firestore } = useFirebase();
@@ -26,6 +27,7 @@ export default function StudentsPage() {
   const [previewImage, setPreviewImage] = useState('');
   const [studentName, setStudentName] = useState('');
   const [classId, setClassId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
@@ -57,9 +59,9 @@ export default function StudentsPage() {
         if (studentClass) {
             const newStudentCount = (settings.studentCounter || 0) + 1;
             const newStudentId = `SPS-${String(newStudentCount).padStart(3, '0')}`;
-            const studentsCollection = collection(firestore, 'users', user.uid, 'students');
             
             try {
+                const studentsCollection = collection(firestore, 'users', user.uid, 'students');
                 const newStudentDoc = await addDoc(studentsCollection, {
                     studentId: newStudentId,
                     name: studentName,
@@ -68,16 +70,14 @@ export default function StudentsPage() {
                     avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/100/100`,
                 });
                 
-                // Update class
                 const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
-                updateDocumentNonBlocking(classRef, {
+                await updateDoc(classRef, {
                     students: arrayUnion(newStudentDoc.id)
                 });
 
-                // Update counter
                 const userRef = doc(firestore, 'users', user.uid);
-                updateDocumentNonBlocking(userRef, { studentCounter: increment(1) });
-                setSettings({ studentCounter: newStudentCount }); // Update context
+                await updateDoc(userRef, { studentCounter: increment(1) });
+                setSettings({ studentCounter: newStudentCount });
 
                 setAddStudentOpen(false);
                 setPreviewImage('');
@@ -99,6 +99,10 @@ export default function StudentsPage() {
             }
         }
     }
+  };
+
+  const handleCardClick = (studentId: string) => {
+    setSelectedStudentId(studentId);
   };
 
   return (
@@ -173,34 +177,41 @@ export default function StudentsPage() {
             </Dialog>
         </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {isLoadingStudents ? Array.from({length: 8}).map((_, i) => (
-            <Card key={i}><CardContent className="h-40 bg-muted rounded-lg animate-pulse" /></Card>
-        )) : filteredStudents?.map((student) => (
-          <Link href={`/students/${student.id}`} key={student.id} className="group">
-            <Card className="h-full overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
-              <CardContent className="p-0 text-center">
-                <div className="bg-muted/50 p-6">
-                    <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-background shadow-md">
-                    <AvatarImage src={student.avatarUrl} alt={student.name} />
-                    <AvatarFallback className="text-2xl">{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <CardTitle className="text-lg font-bold font-headline">{student.name}</CardTitle>
-                    <CardDescription className="font-mono text-xs">{student.studentId}</CardDescription>
-                </div>
-                <div className="p-4">
-                    <Badge variant="secondary">{student.className}</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-       {filteredStudents?.length === 0 && !isLoadingStudents && (
-        <div className="text-center col-span-full py-12">
-            <p className="text-muted-foreground">No students found matching your search.</p>
+      <Sheet open={!!selectedStudentId} onOpenChange={(isOpen) => !isOpen && setSelectedStudentId(null)}>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {isLoadingStudents ? Array.from({length: 8}).map((_, i) => (
+              <Card key={i}><CardContent className="h-40 bg-muted rounded-lg animate-pulse" /></Card>
+          )) : filteredStudents?.map((student) => (
+            <SheetTrigger asChild key={student.id}>
+              <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
+                <Card className="h-full overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
+                  <CardContent className="p-0 text-center">
+                    <div className="bg-muted/50 p-6">
+                        <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-background shadow-md">
+                        <AvatarImage src={student.avatarUrl} alt={student.name} />
+                        <AvatarFallback className="text-2xl">{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <CardTitle className="text-lg font-bold font-headline">{student.name}</CardTitle>
+                        <CardDescription className="font-mono text-xs">{student.studentId}</CardDescription>
+                    </div>
+                    <div className="p-4">
+                        <Badge variant="secondary">{student.className}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </SheetTrigger>
+          ))}
         </div>
-      )}
+         {filteredStudents?.length === 0 && !isLoadingStudents && (
+          <div className="text-center col-span-full py-12">
+              <p className="text-muted-foreground">No students found matching your search.</p>
+          </div>
+        )}
+        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+            {selectedStudentId && <StudentProfileContent studentId={selectedStudentId} />}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
