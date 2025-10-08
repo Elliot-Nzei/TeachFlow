@@ -35,18 +35,25 @@ export default function DashboardPage() {
   const { data: grades, isLoading: isLoadingGrades } = useCollection<Grade>(gradesQuery);
   
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile } = useDoc<any>(userProfileQuery);
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
   const userCode = userProfile?.userCode;
 
   // For transfers, we query where the current user is either the sender or receiver
-  const transfersSentQuery = useMemoFirebase(() => userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userCode)) : null, [firestore, userCode]);
+  const transfersSentQuery = useMemoFirebase(() => {
+    if (!firestore || !userCode) return null;
+    return query(collection(firestore, 'transfers'), where('fromUser', '==', userCode));
+  }, [firestore, userCode]);
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(transfersSentQuery);
 
-  const transfersReceivedQuery = useMemoFirebase(() => userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userCode)) : null, [firestore, userCode]);
+  const transfersReceivedQuery = useMemoFirebase(() => {
+    if (!firestore || !userCode) return null;
+    return query(collection(firestore, 'transfers'), where('toUser', '==', userCode));
+  }, [firestore, userCode]);
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(transfersReceivedQuery);
   
   const allTransfers = useMemo(() => {
+    if (!sentTransfers && !receivedTransfers) return [];
     const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
     // Simple de-duplication based on ID
     const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
@@ -55,18 +62,18 @@ export default function DashboardPage() {
   }, [sentTransfers, receivedTransfers]);
 
   
-  const gradeCounts = (grades || []).reduce((acc, grade) => {
+  const gradeCounts = useMemo(() => (grades || []).reduce((acc, grade) => {
     acc[grade.grade] = (acc[grade.grade] || 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>), [grades]);
   
-  const chartData = [
+  const chartData = useMemo(() => [
     { grade: "A", count: gradeCounts['A'] || 0 },
     { grade: "B", count: gradeCounts['B'] || 0 },
     { grade: "C", count: gradeCounts['C'] || 0 },
     { grade: "D", count: gradeCounts['D'] || 0 },
     { grade: "F", count: gradeCounts['F'] || 0 },
-  ]
+  ], [gradeCounts]);
 
   const chartConfig = {
     count: {
@@ -75,7 +82,7 @@ export default function DashboardPage() {
     },
   } satisfies ChartConfig
 
-  const isLoadingTransfers = isLoadingSent || isLoadingReceived;
+  const isLoadingTransfers = isLoadingProfile || (!sentTransfers && !receivedTransfers);
 
   const stats = [
     { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
@@ -133,7 +140,7 @@ export default function DashboardPage() {
                             {transfer.fromUser === userProfile?.userCode ? `To: ${transfer.toUser}` : `From: ${transfer.fromUser}`}
                           </div>
                         </TableCell>
-                        <TableCell>{transfer.dataTransferred}</TableCell>
+                        <TableCell>{transfer.dataTransferred ?? 'N/A'}</TableCell>
                         <TableCell className="text-right">{formatDistanceToNow(new Date(transfer.timestamp), { addSuffix: true })}</TableCell>
                       </TableRow>
                     ))
@@ -182,3 +189,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
