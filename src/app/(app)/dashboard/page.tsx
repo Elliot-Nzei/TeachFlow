@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, BookOpen, ClipboardList, ArrowRightLeft } from 'lucide-react';
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs } from 'firebase/firestore';
 import type { Grade } from '@/lib/types';
 import { DataTransfer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function DashboardPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+
+  const [allTransfers, setAllTransfers] = useState<DataTransfer[]>([]);
+  const [isLoadingTransfers, setIsLoadingTransfers] = useState(true);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
@@ -36,31 +39,41 @@ export default function DashboardPage() {
   
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
-
-  const userCode = userProfile?.userCode;
-
-  // For transfers, we query where the current user is either the sender or receiver
-  const transfersSentQuery = useMemoFirebase(() => {
-    if (!firestore || !userCode) return null;
-    return query(collection(firestore, 'transfers'), where('fromUser', '==', userCode));
-  }, [firestore, userCode]);
-  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(transfersSentQuery);
-
-  const transfersReceivedQuery = useMemoFirebase(() => {
-    if (!firestore || !userCode) return null;
-    return query(collection(firestore, 'transfers'), where('toUser', '==', userCode));
-  }, [firestore, userCode]);
-  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(transfersReceivedQuery);
   
-  const allTransfers = useMemo(() => {
-    if (!sentTransfers && !receivedTransfers) return [];
-    const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
-    // Simple de-duplication based on ID
-    const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
-    // Sort by timestamp descending
-    return uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [sentTransfers, receivedTransfers]);
+  useEffect(() => {
+    if (userProfile && userProfile.userCode) {
+      const fetchTransfers = async () => {
+        setIsLoadingTransfers(true);
+        try {
+          const sentQuery = query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode));
+          const receivedQuery = query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode));
 
+          const [sentSnapshot, receivedSnapshot] = await Promise.all([
+            getDocs(sentQuery),
+            getDocs(receivedQuery),
+          ]);
+          
+          const sentData = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id })) as DataTransfer[];
+          const receivedData = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id })) as DataTransfer[];
+
+          const combined = [...sentData, ...receivedData];
+          const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
+          uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+          setAllTransfers(uniqueTransfers);
+        } catch (error) {
+            console.error("Error fetching transfers:", error);
+        } finally {
+            setIsLoadingTransfers(false);
+        }
+      };
+
+      fetchTransfers();
+    } else if (!isLoadingProfile) {
+        // If profile is loaded but there's no userCode, we're done loading.
+        setIsLoadingTransfers(false);
+    }
+  }, [userProfile, firestore, isLoadingProfile]);
   
   const gradeCounts = useMemo(() => (grades || []).reduce((acc, grade) => {
     acc[grade.grade] = (acc[grade.grade] || 0) + 1;
@@ -81,8 +94,6 @@ export default function DashboardPage() {
       color: "hsl(var(--chart-1))",
     },
   } satisfies ChartConfig
-
-  const isLoadingTransfers = isLoadingProfile || (!sentTransfers && !receivedTransfers);
 
   const stats = [
     { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
@@ -189,5 +200,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
