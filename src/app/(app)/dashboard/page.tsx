@@ -39,15 +39,17 @@ export default function DashboardPage() {
 
   // For transfers, we query where the current user is either the sender or receiver
   const transfersSentQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
-  const { data: sentTransfers } = useCollection<DataTransfer>(transfersSentQuery);
+  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(transfersSentQuery);
 
   const transfersReceivedQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
-  const { data: receivedTransfers } = useCollection<DataTransfer>(transfersReceivedQuery);
+  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(transfersReceivedQuery);
 
   const allTransfers = useMemo(() => {
     const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
+    // Simple de-duplication based on ID
+    const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
     // Sort by timestamp descending
-    return combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [sentTransfers, receivedTransfers]);
 
   
@@ -71,11 +73,13 @@ export default function DashboardPage() {
     },
   } satisfies ChartConfig
 
+  const isLoadingTransfers = isLoadingSent || isLoadingReceived;
+
   const stats = [
     { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Total Classes', value: classes?.length, isLoading: isLoadingClasses, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Total Subjects', value: subjects?.length, isLoading: isLoadingSubjects, icon: <BookOpen className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Data Transfers', value: allTransfers.length, isLoading: !userProfile, icon: <ArrowRightLeft className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Data Transfers', value: allTransfers.length, isLoading: isLoadingTransfers, icon: <ArrowRightLeft className="h-4 w-4 text-muted-foreground" /> },
   ];
 
   return (
@@ -112,19 +116,26 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allTransfers.slice(0, 5).map((transfer) => (
-                    <TableRow key={transfer.id}>
-                      <TableCell>
-                        <div className="font-medium">{transfer.dataType}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {transfer.fromUser === userProfile?.userCode ? `To: ${transfer.toUser}` : `From: ${transfer.fromUser}`}
-                        </div>
-                      </TableCell>
-                      <TableCell>{transfer.dataTransferred}</TableCell>
-                      <TableCell className="text-right">{formatDistanceToNow(new Date(transfer.timestamp), { addSuffix: true })}</TableCell>
-                    </TableRow>
-                  ))}
-                   {allTransfers.length === 0 && (
+                  {isLoadingTransfers ? (
+                    Array.from({length: 3}).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : allTransfers.length > 0 ? (
+                    allTransfers.slice(0, 5).map((transfer) => (
+                      <TableRow key={transfer.id}>
+                        <TableCell>
+                          <div className="font-medium">{transfer.dataType}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {transfer.fromUser === userProfile?.userCode ? `To: ${transfer.toUser}` : `From: ${transfer.fromUser}`}
+                          </div>
+                        </TableCell>
+                        <TableCell>{transfer.dataTransferred}</TableCell>
+                        <TableCell className="text-right">{formatDistanceToNow(new Date(transfer.timestamp), { addSuffix: true })}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
                       <TableRow>
                           <TableCell colSpan={3} className="h-24 text-center">
                           No data transfers found.
