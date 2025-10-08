@@ -23,6 +23,7 @@ import { PlusCircle, BookOpen, View, PanelLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import ClassSidebar from '@/components/class-sidebar';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type GradeInput = { studentId: string; studentName: string; score: number | string };
 
@@ -100,6 +101,14 @@ export default function GradesPage() {
     setSelectedSubject('');
     setGradeInputs([]);
   };
+
+  const gradesBySubject = selectedClass ? (grades[selectedClass.name] || []).reduce((acc, grade) => {
+    if (!acc[grade.subject]) {
+      acc[grade.subject] = [];
+    }
+    acc[grade.subject].push(grade);
+    return acc;
+  }, {} as Record<string, Grade[]>) : {};
 
   return (
     <div className="flex">
@@ -197,38 +206,41 @@ export default function GradesPage() {
             </CardHeader>
             {showGrades && (
               <CardContent>
-                  <div className="border rounded-lg">
-                      <Table>
-                          <TableHeader>
-                          <TableRow>
-                              <TableHead>Student Name</TableHead>
-                              <TableHead>Subject</TableHead>
-                              <TableHead>Score</TableHead>
-                              <TableHead className="text-right">Grade</TableHead>
-                          </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {grades[selectedClass.name]?.length > 0 ? (
-                                  grades[selectedClass.name]
-                                  .sort((a,b) => a.studentName.localeCompare(b.studentName) || a.subject.localeCompare(b.subject))
-                                  .map((grade) => (
-                                      <TableRow key={grade.id}>
-                                          <TableCell className="font-medium">{grade.studentName}</TableCell>
-                                          <TableCell>{grade.subject}</TableCell>
-                                          <TableCell>{grade.score}</TableCell>
-                                          <TableCell className="text-right font-bold">{grade.grade}</TableCell>
-                                      </TableRow>
-                                  ))
-                              ) : (
-                                  <TableRow>
-                                      <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                                          No grades recorded for this class yet.
-                                      </TableCell>
-                                  </TableRow>
-                              )}
-                          </TableBody>
-                      </Table>
+                {Object.keys(gradesBySubject).length > 0 ? (
+                  <Accordion type="multiple" className="w-full">
+                    {Object.entries(gradesBySubject).map(([subject, subjectGrades]) => (
+                      <AccordionItem value={subject} key={subject}>
+                        <AccordionTrigger className="text-lg font-semibold font-headline">
+                          {subject}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Student Name</TableHead>
+                                <TableHead>Score</TableHead>
+                                <TableHead className="text-right">Grade</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {subjectGrades.map((grade) => (
+                                <TableRow key={grade.id}>
+                                  <TableCell className="font-medium">{grade.studentName}</TableCell>
+                                  <TableCell>{grade.score}</TableCell>
+                                  <TableCell className="text-right font-bold">{grade.grade}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                    <p>No grades recorded for this class yet.</p>
                   </div>
+                )}
               </CardContent>
             )}
           </Card>
