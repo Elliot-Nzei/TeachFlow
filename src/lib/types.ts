@@ -11,7 +11,7 @@ export type Student = {
   id: string;
   studentId: string;
   name: string;
-  class: string;
+  className: string;
   classId: string;
   avatarUrl: string;
 };
@@ -30,12 +30,15 @@ export type Subject = {
 
 export type Grade = {
   id: string;
-  studentName: string;
+  studentId: string;
+  classId: string;
   subject: string;
-  score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';
   term: string;
   session: string;
+  score: number;
+  studentName: string;
+  className: string;
+  grade: "A" | "B" | "C" | "D" | "F";
 };
 
 export type ReportCard = {

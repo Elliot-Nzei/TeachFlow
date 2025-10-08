@@ -1,7 +1,7 @@
+
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { placeholderClasses, placeholderGrades, placeholderTransfers } from '@/lib/placeholder-data';
 import { Users, BookOpen, ClipboardList, ArrowRightLeft } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -11,13 +11,45 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, doc, query, where } from 'firebase/firestore';
+import type { Grade, DataTransfer } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
-  const totalStudents = placeholderClasses.reduce((sum, current) => sum + current.students.length, 0);
-  const totalSubjects = placeholderClasses.reduce((sum, current) => sum + current.subjects.length, 0);
-  const totalClasses = placeholderClasses.length;
+  const { firestore } = useFirebase();
+  const { user } = useUser();
+
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
+
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection(classesQuery);
   
-  const gradeCounts = Object.values(placeholderGrades).flat().reduce((acc, grade) => {
+  const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
+  const { data: subjects, isLoading: isLoadingSubjects } = useCollection(subjectsQuery);
+
+  const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
+  const { data: grades, isLoading: isLoadingGrades } = useCollection<Grade>(gradesQuery);
+  
+  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<any>(userProfileQuery);
+
+  // For transfers, we query where the current user is either the sender or receiver
+  const transfersSentQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('fromUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
+  const { data: sentTransfers } = useCollection<DataTransfer>(transfersSentQuery);
+
+  const transfersReceivedQuery = useMemoFirebase(() => userProfile?.userCode ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode)) : null, [firestore, userProfile]);
+  const { data: receivedTransfers } = useCollection<DataTransfer>(transfersReceivedQuery);
+
+  const allTransfers = useMemo(() => {
+    const combined = [...(sentTransfers || []), ...(receivedTransfers || [])];
+    // Sort by timestamp descending
+    return combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [sentTransfers, receivedTransfers]);
+
+  
+  const gradeCounts = (grades || []).reduce((acc, grade) => {
     acc[grade.grade] = (acc[grade.grade] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -38,10 +70,10 @@ export default function DashboardPage() {
   } satisfies ChartConfig
 
   const stats = [
-    { title: 'Total Students', value: totalStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Total Classes', value: totalClasses, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Total Subjects', value: totalSubjects, icon: <BookOpen className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Data Transfers', value: placeholderTransfers.length, icon: <ArrowRightLeft className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Total Classes', value: classes?.length, isLoading: isLoadingClasses, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Total Subjects', value: subjects?.length, isLoading: isLoadingSubjects, icon: <BookOpen className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Data Transfers', value: allTransfers.length, isLoading: !userProfile, icon: <ArrowRightLeft className="h-4 w-4 text-muted-foreground" /> },
   ];
 
   return (
@@ -54,7 +86,9 @@ export default function DashboardPage() {
               {stat.icon}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              {stat.isLoading ? <Skeleton className="h-8 w-1/4 mt-1" /> : (
+                <div className="text-2xl font-bold">{stat.value ?? 0}</div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -76,18 +110,25 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {placeholderTransfers.slice(0, 5).map((transfer) => (
+                  {allTransfers.slice(0, 5).map((transfer) => (
                     <TableRow key={transfer.id}>
                       <TableCell>
                         <div className="font-medium">{transfer.dataType}</div>
                         <div className="text-sm text-muted-foreground">
-                          {transfer.fromUser.startsWith('You') ? `To: ${transfer.toUser}` : `From: ${transfer.fromUser}`}
+                          {transfer.fromUser === userProfile?.userCode ? `To: ${transfer.toUser}` : `From: ${transfer.fromUser}`}
                         </div>
                       </TableCell>
                       <TableCell>{transfer.dataTransferred}</TableCell>
                       <TableCell className="text-right">{formatDistanceToNow(new Date(transfer.timestamp), { addSuffix: true })}</TableCell>
                     </TableRow>
                   ))}
+                   {allTransfers.length === 0 && (
+                      <TableRow>
+                          <TableCell colSpan={3} className="h-24 text-center">
+                          No data transfers found.
+                          </TableCell>
+                      </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -100,23 +141,25 @@ export default function DashboardPage() {
               <CardDescription>Distribution of grades across all classes.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-                  <BarChart accessibilityLayer data={chartData}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="grade"
-                      tickLine={false}
-                      tickMargin={10}
-                      axisLine={false}
-                      tickFormatter={(value) => value}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={<ChartTooltipContent indicator="line" />}
-                    />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-                  </BarChart>
-                </ChartContainer>
+                {isLoadingGrades ? <Skeleton className="h-[200px] w-full" /> : (
+                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                    <BarChart accessibilityLayer data={chartData}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                        dataKey="grade"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value}
+                        />
+                        <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="line" />}
+                        />
+                        <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+                    </BarChart>
+                    </ChartContainer>
+                )}
             </CardContent>
           </Card>
         </div>
