@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useMemo, useContext } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,25 +8,25 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, Save, Users, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Class, Student } from '@/lib/types';
-import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import type { Class, Student, User } from '@/lib/types';
+import { useCollection, useFirebase, useUser as useAuthUser, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { SettingsContext } from '@/contexts/settings-context';
-
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Late';
 type AttendanceRecord = { studentId: string; status: AttendanceStatus; name: string; avatarUrl: string; recordId?: string; };
 
 function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBack: () => void }) {
   const { firestore, user } = useFirebase();
-  const { settings } = useContext(SettingsContext);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const { toast } = useToast();
+
+  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
@@ -72,8 +72,8 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   };
 
   const handleSaveAttendance = async () => {
-    if (!user || !selectedClass || !date || !settings) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Please select a class and date, and ensure settings are loaded.' });
+    if (!user || !selectedClass || !date || !userProfile) {
+        toast({ variant: 'destructive', title: 'Error', description: 'User profile, class, or date is not available. Cannot save.' });
         return;
     }
     
@@ -86,8 +86,8 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
             classId: selectedClass.id,
             date: formattedDate,
             status: record.status,
-            term: settings.currentTerm,
-            session: settings.currentSession,
+            term: userProfile.currentTerm,
+            session: userProfile.currentSession,
         };
         
         const recordId = record.recordId;
@@ -129,6 +129,8 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
         </Button>
     )
   };
+  
+  const isLoading = isLoadingStudents || isLoadingProfile;
 
   return (
     <Card className="h-full">
@@ -162,13 +164,13 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
                     />
                     </PopoverContent>
                 </Popover>
-                <Button onClick={handleSaveAttendance} disabled={attendance.length === 0} className="w-full sm:w-auto">
+                <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0} className="w-full sm:w-auto">
                     <Save className="mr-2 h-4 w-4" />
                     Save Attendance
                 </Button>
             </div>
 
-            {isLoadingStudents ? (
+            {isLoading ? (
                 <div className="space-y-4">
                     {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
                 </div>
