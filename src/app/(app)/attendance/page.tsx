@@ -72,8 +72,17 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   };
 
   const handleSaveAttendance = async () => {
-    if (!user || !selectedClass || !date || !userProfile) {
-        toast({ variant: 'destructive', title: 'Error', description: 'User profile, class, or date is not available. Cannot save.' });
+    if (!user || !selectedClass || !date) {
+        toast({ variant: 'destructive', title: 'Error', description: 'User, class, or date is not available. Cannot save.' });
+        return;
+    }
+
+    if (!userProfile || !userProfile.currentTerm || !userProfile.currentSession) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Academic Information',
+            description: 'Please set the current term and session in your settings before saving attendance.',
+        });
         return;
     }
     
