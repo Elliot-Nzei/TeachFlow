@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo, Fragment, useContext } from 'react';
 import {
   generateReportCard,
   type GenerateReportCardInput,
@@ -16,6 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Separator } from './ui/separator';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { SettingsContext } from '@/contexts/settings-context';
 
 type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
@@ -39,6 +40,7 @@ export default function ReportCardGenerator() {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [generatedReports, setGeneratedReports] = useState<ReportWithStudentAndGradeInfo[]>([]);
+  const { settings } = useContext(SettingsContext);
 
   const { toast } = useToast();
 
@@ -73,8 +75,8 @@ export default function ReportCardGenerator() {
         const input: GenerateReportCardInput = {
           studentName: student.name,
           className: student.class,
-          term: 'First Term', // Placeholder
-          session: '2023/2024', // Placeholder
+          term: settings.currentTerm,
+          session: settings.currentSession,
           grades: studentGrades.map(g => ({ subject: g.subject, score: g.score })),
         };
 
@@ -223,7 +225,7 @@ export default function ReportCardGenerator() {
                                 <header className="grid grid-cols-3 items-center mb-8">
                                     <Logo />
                                     <div className="text-center">
-                                        <h2 className="text-2xl font-bold font-headline">Sunshine Primary School</h2>
+                                        <h2 className="text-2xl font-bold font-headline">{settings.schoolName}</h2>
                                         <p className="text-muted-foreground text-sm">Student Academic Report</p>
                                     </div>
                                     <div className="text-right text-xs">

@@ -39,6 +39,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/logo';
+import { SettingsProvider, SettingsContext } from '@/contexts/settings-context';
+import { useContext } from 'react';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -51,9 +53,10 @@ const menuItems = [
   { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft },
 ];
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { setTheme, theme } = useTheme()
+  const { setTheme, theme } = useTheme();
+  const { settings } = useContext(SettingsContext);
 
   return (
     <SidebarProvider>
@@ -111,15 +114,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src="https://picsum.photos/seed/user-avatar/40/40" alt="User" />
-                                <AvatarFallback>JD</AvatarFallback>
+                                <AvatarImage src={settings.profilePicture} alt="User" />
+                                <AvatarFallback>{settings.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                             <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none">John Doe</p>
+                                <p className="text-sm font-medium leading-none">{settings.name}</p>
                                 <p className="text-xs leading-none text-muted-foreground">NSMS-53102</p>
                             </div>
                         </DropdownMenuLabel>
@@ -152,4 +155,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     </SidebarProvider>
   );
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SettingsProvider>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </SettingsProvider>
+  )
 }

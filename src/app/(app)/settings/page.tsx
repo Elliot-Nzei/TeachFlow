@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,16 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Clipboard, User as UserIcon, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { SettingsContext } from '@/contexts/settings-context';
 
 export default function SettingsPage() {
-    const [previewImage, setPreviewImage] = useState('https://picsum.photos/seed/user-avatar/100/100');
+    const { settings, setSettings } = useContext(SettingsContext);
+    const [previewImage, setPreviewImage] = useState(settings.profilePicture);
     const userCode = 'NSMS-53102';
     const { toast } = useToast();
 
     const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
         const file = event.target.files[0];
-        setPreviewImage(URL.createObjectURL(file));
+        const imageUrl = URL.createObjectURL(file);
+        setPreviewImage(imageUrl);
+        setSettings(prev => ({...prev, profilePicture: imageUrl}));
         }
     };
 
@@ -28,6 +32,22 @@ export default function SettingsPage() {
             description: 'Your user code has been copied.',
         });
     };
+    
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setSettings(prev => ({...prev, [id]: value}));
+    };
+    
+    const handleSelectChange = (id: string, value: string) => {
+        setSettings(prev => ({...prev, [id]: value}));
+    };
+    
+    const handleSaveChanges = () => {
+        toast({
+            title: 'Settings Saved',
+            description: 'Your changes have been saved successfully.',
+        });
+    }
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -64,15 +84,15 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" defaultValue="John Doe" />
+                        <Input id="name" value={settings.name} onChange={handleInputChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="school-name">School Name</Label>
-                        <Input id="school-name" defaultValue="Sunshine Primary School" />
+                        <Label htmlFor="schoolName">School Name</Label>
+                        <Input id="schoolName" value={settings.schoolName} onChange={handleInputChange} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" defaultValue="j.doe@example.com" disabled />
+                        <Input id="email" value={settings.email} disabled />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="user-code">Your User Code</Label>
@@ -86,7 +106,7 @@ export default function SettingsPage() {
                 </div>
             </CardContent>
             <CardFooter>
-            <Button>Save Profile</Button>
+            <Button onClick={handleSaveChanges}>Save Profile</Button>
             </CardFooter>
         </Card>
 
@@ -98,7 +118,7 @@ export default function SettingsPage() {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="current-term">Current Term</Label>
-            <Select defaultValue="First Term">
+            <Select value={settings.currentTerm} onValueChange={(value) => handleSelectChange('currentTerm', value)}>
               <SelectTrigger id="current-term">
                 <SelectValue />
               </SelectTrigger>
@@ -110,12 +130,12 @@ export default function SettingsPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="current-session">Current Session</Label>
-            <Input id="current-session" defaultValue="2023/2024" />
+            <Label htmlFor="currentSession">Current Session</Label>
+            <Input id="currentSession" value={settings.currentSession} onChange={handleInputChange} />
           </div>
         </CardContent>
         <CardFooter>
-          <Button>Save Academic Settings</Button>
+          <Button onClick={handleSaveChanges}>Save Academic Settings</Button>
         </CardFooter>
       </Card>
     </div>

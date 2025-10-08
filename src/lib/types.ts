@@ -4,6 +4,7 @@ export type User = {
   email: string;
   userCode: string;
   schoolName: string;
+  profilePicture: string;
 };
 
 export type Student = {
@@ -60,7 +61,10 @@ export type DataTransfer = {
 };
 
 export type Settings = {
+  name: string;
+  schoolName: string;
+  email: string;
+  profilePicture: string;
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;
-  currency: '₦';
 };
