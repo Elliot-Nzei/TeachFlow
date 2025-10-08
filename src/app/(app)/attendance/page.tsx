@@ -14,7 +14,7 @@ import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/fir
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { SettingsContext } from '@/contexts/settings-context';
 import ClassSidebar from '@/components/class-sidebar';
