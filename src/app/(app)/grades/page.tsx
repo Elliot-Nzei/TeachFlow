@@ -18,9 +18,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { placeholderClasses, placeholderGrades, placeholderStudents } from '@/lib/placeholder-data';
 import type { Class, Grade, Student } from '@/lib/types';
-import { PlusCircle, BookOpen, View } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { PlusCircle, BookOpen, View, PanelLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import ClassSidebar from '@/components/class-sidebar';
 
 type GradeInput = { studentId: string; studentName: string; score: number | string };
 
@@ -30,6 +31,7 @@ export default function GradesPage() {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showGrades, setShowGrades] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const studentsInSelectedClass = selectedClass ? placeholderStudents.filter(s => s.classId === selectedClass.id) : [];
 
@@ -38,6 +40,7 @@ export default function GradesPage() {
   const handleSelectClass = (cls: Class) => {
     setSelectedClass(cls);
     setShowGrades(false); // Hide grades when a new class is selected
+    setIsSidebarOpen(false); // Close sidebar on mobile after selection
   };
 
   const handleSubjectSelect = (subject: string) => {
@@ -97,40 +100,31 @@ export default function GradesPage() {
     setGradeInputs([]);
   };
 
-  const openDialogAndSetSubject = (subject: string) => {
-    handleSubjectSelect(subject);
-    setIsDialogOpen(true);
-  }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
-      <div className="md:col-span-1 space-y-4">
-        <h1 className="text-2xl font-bold font-headline px-2">Classes</h1>
-        <div className="space-y-2">
-            {placeholderClasses.map((cls) => (
-                <Button 
-                    key={cls.id} 
-                    variant={selectedClass?.id === cls.id ? 'secondary' : 'ghost'} 
-                    className={cn(
-                        "w-full justify-start",
-                        selectedClass?.id === cls.id && "font-bold"
-                    )}
-                    onClick={() => handleSelectClass(cls)}
-                >
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    {cls.name}
-                </Button>
-            ))}
+    <div className="flex">
+        <div className="hidden md:block">
+            <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
         </div>
-      </div>
-
-      <div className="md:col-span-3">
+      <div className="flex-1">
         {selectedClass ? (
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
-              <div>
-                <CardTitle className="font-headline">{selectedClass.name}</CardTitle>
-                <CardDescription>Manage grades for this class.</CardDescription>
+              <div className="flex items-center gap-4">
+                  <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                      <SheetTrigger asChild>
+                          <Button variant="ghost" size="icon" className="md:hidden">
+                            <PanelLeft className="h-5 w-5" />
+                            <span className="sr-only">Select Class</span>
+                          </Button>
+                      </SheetTrigger>
+                      <SheetContent side="left" className="w-72 p-0">
+                          <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+                      </SheetContent>
+                  </Sheet>
+                <div>
+                    <CardTitle className="font-headline">{selectedClass.name}</CardTitle>
+                    <CardDescription>Manage grades for this class.</CardDescription>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowGrades(!showGrades)}>
@@ -239,6 +233,16 @@ export default function GradesPage() {
         ) : (
             <div className="flex items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
                 <p>Select a class to view and manage grades.</p>
+                 <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                    <SheetTrigger asChild>
+                        <Button variant="outline" className="md:hidden ml-4">
+                        <PanelLeft className="mr-2 h-4 w-4" /> Select Class
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-72 p-0">
+                        <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+                    </SheetContent>
+                </Sheet>
             </div>
         )}
       </div>
