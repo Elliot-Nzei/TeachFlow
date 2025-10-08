@@ -179,7 +179,7 @@ export default function AttendancePage() {
                     {!isLoadingStudents && attendance.length > 0 ? (
                         <div className="space-y-4">
                             {attendance.map(record => (
-                                <div key={record.studentId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg gap-4">
+                                <div key={record.studentId} className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 border rounded-lg gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar>
                                             <AvatarImage src={record.avatarUrl} alt={record.name} />
@@ -190,7 +190,7 @@ export default function AttendancePage() {
                                     <RadioGroup 
                                         defaultValue={record.status} 
                                         onValueChange={(status: AttendanceStatus) => handleStatusChange(record.studentId, status)} 
-                                        className="flex gap-4"
+                                        className="flex gap-4 pl-14 md:pl-0"
                                     >
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="Present" id={`present-${record.studentId}`} />
