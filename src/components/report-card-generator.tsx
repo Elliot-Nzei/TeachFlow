@@ -83,6 +83,14 @@ export default function ReportCardGenerator() {
     return selectedClass ? (allStudents || []).filter(s => s.classId === selectedClass.id) : [];
   }, [selectedClass, allStudents]);
 
+  const getRemarkFromScore = (score: number) => {
+    if (score >= 70) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 50) return 'Credit';
+    if (score >= 45) return 'Pass';
+    return 'Fail';
+  };
+
   const handleGenerateReports = async () => {
     if (!selectedClass && !selectedStudent) {
       toast({
@@ -151,7 +159,15 @@ export default function ReportCardGenerator() {
             };
 
             const result = await generateReportCard(input);
-            const detailedGrades = studentGrades.map(g => ({ subject: g.subject, ca1: g.ca1, ca2: g.ca2, exam: g.exam, total: g.total, grade: g.grade, remark: g.remark }));
+            const detailedGrades = studentGrades.map(g => ({ 
+              subject: g.subject, 
+              ca1: g.ca1, 
+              ca2: g.ca2, 
+              exam: g.exam, 
+              total: g.total, 
+              grade: g.grade, 
+              remark: getRemarkFromScore(g.total) 
+            }));
 
             newReports.push({
                 ...result,
