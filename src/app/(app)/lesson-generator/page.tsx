@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateLessonNote, type GenerateLessonNoteInput, type GenerateLessonNoteOutput } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import jsPDF from 'jspdf';
 
 type SavedNote = {
   id: string;
@@ -93,6 +94,35 @@ export default function LessonGeneratorPage() {
   const handlePrint = () => {
     window.print();
   }
+  
+  const handleDownloadPdf = () => {
+    if (!generatedNote) return;
+
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'px',
+        format: 'a4'
+    });
+    
+    // It's better to target a specific element for conversion
+    const noteContentElement = document.getElementById('note-content-for-pdf');
+    if (noteContentElement) {
+        doc.html(noteContentElement, {
+            callback: function (doc) {
+                doc.save(`Lesson-Note-${formState.subject}-${formState.classLevel}.pdf`);
+            },
+            x: 40,
+            y: 40,
+            width: 375,
+            windowWidth: 750
+        });
+    } else {
+        // Fallback for just the text if the element isn't found
+        doc.text(generatedNote, 10, 10);
+        doc.save(`Lesson-Note-${formState.subject}-${formState.classLevel}.pdf`);
+    }
+  };
+
 
   const loadFromHistory = (note: SavedNote) => {
     setFormState(note.formState);
@@ -205,7 +235,7 @@ export default function LessonGeneratorPage() {
                         </div>
                         {generatedNote && (
                             <div className="flex gap-2 @media print:hidden">
-                                <Button variant="outline" onClick={handlePrint}>
+                                <Button variant="outline" onClick={handleDownloadPdf}>
                                     <FileDown className="mr-2 h-4 w-4" /> Download as PDF
                                 </Button>
                                 <Button onClick={handlePrint}>
@@ -214,7 +244,7 @@ export default function LessonGeneratorPage() {
                             </div>
                         )}
                     </CardHeader>
-                    <CardContent className="min-h-[600px] prose prose-sm dark:prose-invert max-w-none" id="print-section">
+                    <CardContent className="min-h-[600px]" id="print-section">
                         {loading && (
                             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -229,7 +259,9 @@ export default function LessonGeneratorPage() {
                                 <p className="text-sm">You can also view past notes in the history section.</p>
                             </div>
                         )}
-                        {generatedNote && <ReactMarkdown>{generatedNote}</ReactMarkdown>}
+                        <div id="note-content-for-pdf" className="prose prose-sm dark:prose-invert max-w-none">
+                          {generatedNote && <ReactMarkdown>{generatedNote}</ReactMarkdown>}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
