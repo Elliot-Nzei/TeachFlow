@@ -58,8 +58,17 @@ export default function StudentsPage() {
     if (studentName && classId && user && settings) {
         const studentClass = classes?.find(c => c.id === classId);
         if (studentClass) {
+
+            const schoolAcronym = settings.schoolName
+              ? settings.schoolName
+                  .split(' ')
+                  .map(word => word[0])
+                  .join('')
+                  .toUpperCase()
+              : 'SPS';
+
             const newStudentCount = (settings.studentCounter || 0) + 1;
-            const newStudentId = `SPS-${String(newStudentCount).padStart(3, '0')}`;
+            const newStudentId = `${schoolAcronym}-${String(newStudentCount).padStart(3, '0')}`;
             
             try {
                 const studentsCollection = collection(firestore, 'users', user.uid, 'students');
@@ -137,11 +146,14 @@ export default function StudentsPage() {
                     <form onSubmit={handleAddStudent}>
                         <div className="grid gap-6 py-4">
                             <div className="flex items-center gap-4">
-                                <Avatar className="h-24 w-24">
-                                    {previewImage ? <AvatarImage src={previewImage} alt="Student preview" /> : null}
-                                    <AvatarFallback className="text-3xl">
-                                        <UserPlus />
-                                    </AvatarFallback>
+                                 <Avatar className="h-24 w-24">
+                                    {previewImage ? (
+                                        <AvatarImage src={previewImage} alt="Student preview" />
+                                    ) : (
+                                        <AvatarFallback className="text-3xl">
+                                            <UserPlus />
+                                        </AvatarFallback>
+                                    )}
                                 </Avatar>
                                 <div className="grid w-full max-w-sm items-center gap-1.5">
                                     <Label htmlFor="picture">Student Picture</Label>
@@ -225,3 +237,5 @@ export default function StudentsPage() {
     </>
   );
 }
+
+    
