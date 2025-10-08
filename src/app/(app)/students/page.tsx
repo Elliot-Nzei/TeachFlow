@@ -16,6 +16,7 @@ import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import StudentProfileContent from '@/components/student-profile-content';
+import Image from 'next/image';
 
 export default function StudentsPage() {
   const { firestore } = useFirebase();
@@ -67,7 +68,7 @@ export default function StudentsPage() {
                     name: studentName,
                     className: studentClass.name,
                     classId: classId,
-                    avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/100/100`,
+                    avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
                 });
                 
                 const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
@@ -184,18 +185,19 @@ export default function StudentsPage() {
           )) : filteredStudents?.map((student) => (
             <SheetTrigger asChild key={student.id}>
               <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
-                <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/50 group-hover:-translate-y-1">
-                  <CardContent className="p-0 text-center flex flex-col h-full">
-                    <div className="bg-muted/50 p-2 flex-grow flex flex-col items-center justify-center">
-                        <Avatar className="h-12 w-12 mx-auto mb-2 border-2 border-background shadow-md">
-                          <AvatarImage src={student.avatarUrl} alt={student.name} />
-                          <AvatarFallback>{student.name.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
+                <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
+                  <CardContent className="p-0 text-center flex flex-col h-full relative">
+                    <Image 
+                      src={student.avatarUrl} 
+                      alt={student.name} 
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="relative flex flex-col h-full justify-end p-3 text-white">
                         <p className="text-sm font-bold font-headline leading-tight">{student.name}</p>
-                        <p className="font-mono text-xs text-muted-foreground">{student.studentId}</p>
-                    </div>
-                    <div className="p-1 border-t">
-                        <Badge variant="secondary" className="text-xs">{student.className}</Badge>
+                        <p className="font-mono text-xs text-white/80">{student.studentId}</p>
+                        <Badge variant="secondary" className="text-xs mt-1 self-center">{student.className}</Badge>
                     </div>
                   </CardContent>
                 </Card>
