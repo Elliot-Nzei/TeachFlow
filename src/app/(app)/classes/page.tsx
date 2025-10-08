@@ -101,6 +101,12 @@ export default function ClassesPage() {
           ))}
         </div>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Class Details</SheetTitle>
+            <SheetDescription>
+              View the students and subjects for this class.
+            </SheetDescription>
+          </SheetHeader>
           {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
         </SheetContent>
       </Sheet>

@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
+
 
 function ClassDetailsContent({ classId }: { classId: string }) {
   const { firestore } = useFirebase();
@@ -27,8 +27,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   if (isLoadingClass) {
       return (
           <div className="space-y-8 p-6">
-              <Skeleton className="h-12 w-48" />
-              <Skeleton className="h-24 w-full" />
+              
               <div className="grid md:grid-cols-2 gap-8">
                   <Skeleton className="h-64 w-full" />
                   <Skeleton className="h-64 w-full" />
@@ -43,10 +42,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 
   return (
     <>
-      <SheetHeader className="p-6">
-        <SheetTitle className="text-3xl font-bold font-headline">{classDetails.name}</SheetTitle>
-        <SheetDescription>Details for the current session.</SheetDescription>
-      </SheetHeader>
+      
       <div className="space-y-8 p-6">
         <div className="grid md:grid-cols-2 gap-8">
             <Card>

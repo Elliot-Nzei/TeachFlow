@@ -11,10 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, arrayUnion, increment, addDoc } from 'firebase/firestore';
+import { collection, query, doc, arrayUnion, increment, addDoc, updateDoc } from 'firebase/firestore';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import StudentProfileContent from '@/components/student-profile-content';
 
 export default function StudentsPage() {
@@ -209,6 +209,12 @@ export default function StudentsPage() {
           </div>
         )}
         <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+            <SheetHeader>
+                <SheetTitle>Student Profile</SheetTitle>
+                <SheetDescription>
+                    View the academic record and details for this student.
+                </SheetDescription>
+            </SheetHeader>
             {selectedStudentId && <StudentProfileContent studentId={selectedStudentId} />}
         </SheetContent>
       </Sheet>

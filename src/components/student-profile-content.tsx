@@ -14,7 +14,7 @@ import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, update
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
+
 
 function StudentProfileContent({ studentId }: { studentId: string }) {
   const { firestore } = useFirebase();
@@ -99,7 +99,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 
   return (
     <>
-      <SheetHeader className="p-6">
+      <div className="p-6 border-b">
         <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
                 <Avatar className="h-24 w-24">
@@ -107,9 +107,9 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     <AvatarFallback className="text-3xl">{student.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <SheetTitle className="text-2xl font-headline">{student.name}</SheetTitle>
-                    <SheetDescription className="font-mono text-sm">{student.studentId}</SheetDescription>
-                    <SheetDescription>{student.className}</SheetDescription>
+                    <h2 className="text-2xl font-bold font-headline">{student.name}</h2>
+                    <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
+                    <p className="text-muted-foreground">{student.className}</p>
                 </div>
             </div>
             <AlertDialog>
@@ -134,7 +134,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 </AlertDialogContent>
             </AlertDialog>
         </div>
-      </SheetHeader>
+      </div>
       <div className="grid gap-8 md:grid-cols-3 p-6">
         <div className="md:col-span-1 space-y-8">
              {isLoadingClass ? <Skeleton className="h-40 w-full" /> : studentClass && (
