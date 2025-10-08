@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const GenerateLessonNoteInputSchema = z.object({
+const GenerateLessonNoteInputSchema = z.object({
   classLevel: z.string().describe('The class level for the lesson note (e.g., Primary 4, JSS 2).'),
   subject: z.string().describe('The subject for the lesson note (e.g., English, Mathematics).'),
   schemeOfWork: z.string().describe('The scheme of work or topic outline.'),
@@ -19,7 +19,7 @@ export const GenerateLessonNoteInputSchema = z.object({
 });
 export type GenerateLessonNoteInput = z.infer<typeof GenerateLessonNoteInputSchema>;
 
-export const GenerateLessonNoteOutputSchema = z.object({
+const GenerateLessonNoteOutputSchema = z.object({
   note: z.string().describe('The generated lesson note in Markdown format.'),
 });
 export type GenerateLessonNoteOutput = z.infer<typeof GenerateLessonNoteOutputSchema>;
