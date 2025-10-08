@@ -1,5 +1,7 @@
 'use client';
 import { useState, useMemo, Fragment, useContext } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import {
   generateReportCard,
   type GenerateReportCardInput,
@@ -27,7 +29,13 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   className: string;
   term: string;
   session: string;
-  grades: { subject: string; score: number, grade: string }[];
+  grades: { subject: string; ca1?: number; ca2?: number; exam?: number; total: number, grade: string }[];
+  age?: number;
+  gender?: 'Male' | 'Female';
+  attendance?: { schoolOpened: number; timesPresent: number; timesAbsent: number };
+  traits?: { name: string; domain: string; rating: number }[];
+  principalComment?: string;
+  nextTermBegins?: string;
 };
 
 const gradingScale = [
@@ -104,13 +112,13 @@ export default function ReportCardGenerator() {
             const input: GenerateReportCardInput = {
                 studentName: student.name,
                 className: student.className,
-                grades: studentGrades.map(g => ({ subject: g.subject, score: g.score })),
+                grades: studentGrades.map(g => ({ subject: g.subject, score: g.total })),
                 term,
                 session
             };
 
             const result = await generateReportCard(input);
-            const detailedGrades = studentGrades.map(g => ({ subject: g.subject, score: g.score, grade: g.grade }));
+            const detailedGrades = studentGrades.map(g => ({ subject: g.subject, ca1: g.ca1, ca2: g.ca2, exam: g.exam, total: g.total, grade: g.grade }));
 
             newReports.push({
                 ...result,
@@ -120,6 +128,21 @@ export default function ReportCardGenerator() {
                 term: input.term,
                 session: input.session,
                 grades: detailedGrades,
+                age: student.age,
+                gender: student.gender,
+                schoolName: settings.schoolName,
+                schoolMotto: settings.schoolMotto,
+                nextTermBegins: settings.nextTermBegins,
+                principalComment: "An outstanding performance. Continue to maintain this excellent standard.",
+                // Dummy data for now, to be replaced with real data later
+                attendance: { schoolOpened: 98, timesPresent: 94, timesAbsent: 4},
+                traits: [
+                  { name: "Punctuality", rating: 4, domain: "Affective" },
+                  { name: "Honesty", rating: 5, domain: "Affective" },
+                  { name: "Leadership", rating: 4, domain: "Affective" },
+                  { name: "Handwriting", rating: 4, domain: "Psychomotor" },
+                  { name: "Sports", rating: 3, domain: "Psychomotor" },
+                ]
             });
         }
         
@@ -151,13 +174,65 @@ export default function ReportCardGenerator() {
   
   const handlePrint = () => {
     window.print();
-  }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (generatedReports.length === 0) {
+      toast({ title: "No reports to download." });
+      return;
+    }
+    setLoading(true);
+    setLoadingProgress(0);
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const a4_width = 210;
+    const a4_height = 297;
+    
+    try {
+        for (let i = 0; i < generatedReports.length; i++) {
+            const report = generatedReports[i];
+            setCurrentStudent(`Processing ${report.studentName}...`);
+            setLoadingProgress(((i + 1) / generatedReports.length) * 100);
+
+            const reportElement = document.getElementById(`report-card-${report.studentId}`);
+            if (reportElement) {
+                const canvas = await html2canvas(reportElement, { scale: 3 });
+                const imgData = canvas.toDataURL('image/png');
+                
+                if (i > 0) {
+                    doc.addPage();
+                }
+                
+                doc.addImage(imgData, 'PNG', 0, 0, a4_width, a4_height, undefined, 'FAST');
+            }
+        }
+
+        const studentName = selectedStudent?.name || selectedClass?.name || 'Reports';
+        doc.save(`${studentName}-Report-Cards.pdf`);
+        toast({ title: "Success", description: "PDF has been downloaded." });
+
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ variant: 'destructive', title: 'PDF Generation Failed', description: 'An error occurred while generating the PDF.' });
+    } finally {
+        setLoading(false);
+        setCurrentStudent('');
+        setLoadingProgress(0);
+    }
+  };
   
+  const getRatingText = (rating: number) => {
+    const ratings: Record<number, string> = {
+      5: "Excellent", 4: "Very Good", 3: "Good", 2: "Fair", 1: "Poor"
+    };
+    return ratings[rating] || "N/A";
+  };
+
   const isLoading = isLoadingClasses || isLoadingStudents || isLoadingGrades;
 
   return (
     <>
-      <div className="grid gap-8 md:grid-cols-12 @media print:hidden">
+      <div className="grid gap-8 md:grid-cols-12 print:hidden">
         <Card className="md:col-span-4">
           <CardHeader>
             <CardTitle>Select Target</CardTitle>
@@ -240,7 +315,7 @@ export default function ReportCardGenerator() {
                     </div>
                     {generatedReports.length > 0 && (
                         <div className="flex gap-2">
-                            <Button variant="outline" onClick={handlePrint}>
+                            <Button variant="outline" onClick={handleDownloadPdf}>
                                 <FileDown className="mr-2 h-4 w-4" /> Download All
                             </Button>
                             <Button onClick={handlePrint}>
@@ -253,8 +328,7 @@ export default function ReportCardGenerator() {
                     {loading && (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                        <p className="font-semibold mb-2">Generating Reports...</p>
-                        {currentStudent && <p className="text-sm mb-2">Processing: {currentStudent}</p>}
+                        <p className="font-semibold mb-2">{currentStudent || 'Generating Reports...'}</p>
                         <Progress value={loadingProgress} className="w-3/4" />
                     </div>
                     )}
@@ -268,140 +342,142 @@ export default function ReportCardGenerator() {
         </div>
       </div>
        <div id="print-section" className="space-y-8 mt-8">
-            {!loading && generatedReports.length > 0 && generatedReports.map((report, index) => (
-                <Fragment key={index}>
-                    <div className="report-card p-6 border rounded-lg bg-card text-card-foreground shadow-sm break-after-page">
-                        <header className="grid grid-cols-3 items-center mb-8">
-                            <Logo />
-                            <div className="text-center">
-                                <h2 className="text-2xl font-bold font-headline">{settings?.schoolName}</h2>
-                                <p className="text-muted-foreground text-sm">Student Academic Report</p>
-                            </div>
-                            <div className="text-right text-xs">
-                                <p>123 School Lane, Lagos, Nigeria</p>
-                                <p>{settings?.email}</p>
-                            </div>
-                        </header>
-                        
-                        <div className="mb-6 bg-muted/50 rounded-lg p-4">
-                            <h3 className="text-lg font-semibold font-headline mb-3 text-center">Student Information</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-                                <div><strong className="font-medium text-muted-foreground block">Name:</strong> {report.studentName}</div>
-                                <div><strong className="font-medium text-muted-foreground block">Class:</strong> {report.className}</div>
-                                <div><strong className="font-medium text-muted-foreground block">Student ID:</strong> {report.studentId}</div>
-                                <div><strong className="font-medium text-muted-foreground block">Session:</strong> {report.session}</div>
-                                <div className="md:col-span-2"><strong className="font-medium text-muted-foreground block">Term:</strong> {report.term}</div>
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h3 className="text-lg font-semibold font-headline mb-3 text-center">Academic Performance</h3>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[50%]">Subject</TableHead>
-                                        <TableHead className="text-center">Score</TableHead>
-                                        <TableHead className="text-right">Grade</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {report.grades.map((grade, idx) => (
-                                        <TableRow key={idx}>
-                                            <TableCell className="font-medium">{grade.subject}</TableCell>
-                                            <TableCell className="text-center">{grade.score}</TableCell>
-                                            <TableCell className="text-right font-bold">{grade.grade}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-6 items-start">
-                            <div className="space-y-4">
-                                <div>
-                                    <h4 className="font-semibold mb-2">Academic Summary</h4>
-                                    <div className="grid grid-cols-3 gap-2 text-center border rounded-lg p-3">
-                                            <div>
-                                            <p className="text-xs text-muted-foreground">Total</p>
-                                            <p className="text-xl font-bold">{report.totalScore}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Average</p>
-                                            <p className="text-xl font-bold">{report.averageScore.toFixed(1)}%</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Grade</p>
-                                            <p className="text-xl font-bold text-primary">{report.grade}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                    <div>
-                                    <h4 className="font-semibold mb-2">Teacher's General Remark</h4>
-                                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md italic">"{report.remark}"</p>
-                                </div>
+            {!loading && generatedReports.map((report, index) => (
+                <div key={report.studentId} id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-lg">
+                    <div className="text-center border-b-4 border-green-700 pb-2 mb-2">
+                        <div className="flex items-center justify-center gap-3 mb-1">
+                            <div className="w-12 h-12 bg-green-700 rounded-full flex items-center justify-center">
+                            <span className="text-lg font-bold text-white">{(report.schoolName || 'S').charAt(0)}</span>
                             </div>
                             <div>
-                                <h4 className="font-semibold mb-2">Grading Scale</h4>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Grade</TableHead>
-                                            <TableHead>Score Range</TableHead>
-                                            <TableHead>Remark</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {gradingScale.map((scale) => (
-                                            <TableRow key={scale.grade}>
-                                                <TableCell className="font-bold">{scale.grade}</TableCell>
-                                                <TableCell>{scale.range}</TableCell>
-                                                <TableCell>{scale.remark}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <h1 className="text-xl font-bold text-green-800">{(report.schoolName || '').toUpperCase()}</h1>
+                            <p className="text-[9px] text-gray-600">{settings?.schoolAddress}</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-8 mt-12 pt-8 border-t">
-                                <div className="text-center">
-                                <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
-                                <p className="text-sm mt-1">Class Teacher's Signature</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
-                                <p className="text-sm mt-1">Principal's Signature</p>
-                            </div>
-                        </div>
-                        <footer className="text-center text-xs text-muted-foreground mt-8 pt-4 border-t">
-                            <p>Official School Stamp</p>
-                        </footer>
+                        <p className="text-[9px] font-semibold italic text-gray-700">"{report.schoolMotto}"</p>
+                        <h2 className="text-sm font-bold text-green-700 mt-1 bg-green-50 py-1">TERMINAL REPORT CARD</h2>
                     </div>
-                </Fragment>
+
+                    <div className="grid grid-cols-3 gap-x-4 gap-y-1 mb-2 text-[9px] border-b pb-2">
+                        <div className="flex"><span className="font-semibold w-24">Name:</span><span className="flex-1">{report.studentName}</span></div>
+                        <div className="flex"><span className="font-semibold w-20">Adm. No:</span><span className="flex-1">{report.studentId}</span></div>
+                        <div className="flex"><span className="font-semibold w-16">Class:</span><span className="flex-1">{report.className}</span></div>
+                        <div className="flex"><span className="font-semibold w-24">Term:</span><span className="flex-1">{report.term}</span></div>
+                        <div className="flex"><span className="font-semibold w-20">Session:</span><span className="flex-1">{report.session}</span></div>
+                        <div className="flex"><span className="font-semibold w-16">Age:</span><span className="flex-1">{report.age} years</span></div>
+                    </div>
+                    
+                    {report.attendance && (
+                    <div className="grid grid-cols-3 gap-2 mb-2 text-[9px]">
+                        <div className="bg-gray-50 p-1 text-center border"><p className="text-gray-600">School Opened</p><p className="text-base font-bold text-green-700">{report.attendance.schoolOpened}</p></div>
+                        <div className="bg-gray-50 p-1 text-center border"><p className="text-gray-600">Times Present</p><p className="text-base font-bold text-blue-600">{report.attendance.timesPresent}</p></div>
+                        <div className="bg-gray-50 p-1 text-center border"><p className="text-gray-600">Times Absent</p><p className="text-base font-bold text-red-600">{report.attendance.timesAbsent}</p></div>
+                    </div>
+                    )}
+                    
+                    <div className="mb-2">
+                        <h3 className="font-bold text-green-700 text-[10px] mb-1 bg-green-50 px-2 py-0.5">ACADEMIC PERFORMANCE</h3>
+                        <table className="w-full text-[8px] border-collapse">
+                            <thead>
+                            <tr className="bg-green-700 text-white">
+                                <th className="border border-green-600 p-0.5 text-left">Subject</th>
+                                <th className="border border-green-600 p-0.5">CA1<br/>(20)</th>
+                                <th className="border border-green-600 p-0.5">CA2<br/>(20)</th>
+                                <th className="border border-green-600 p-0.5">Exam<br/>(60)</th>
+                                <th className="border border-green-600 p-0.5">Total<br/>(100)</th>
+                                <th className="border border-green-600 p-0.5">Grade</th>
+                                <th className="border border-green-600 p-0.5">Remark</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {report.grades.map((subject, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                <td className="border border-gray-300 p-0.5 font-semibold">{subject.subject}</td>
+                                <td className="border border-gray-300 p-0.5 text-center">{subject.ca1 ?? 'N/A'}</td>
+                                <td className="border border-gray-300 p-0.5 text-center">{subject.ca2 ?? 'N/A'}</td>
+                                <td className="border border-gray-300 p-0.5 text-center">{subject.exam ?? 'N/A'}</td>
+                                <td className="border border-gray-300 p-0.5 text-center font-bold">{subject.total}</td>
+                                <td className="border border-gray-300 p-0.5 text-center font-bold text-green-700">{subject.grade}</td>
+                                <td className="border border-gray-300 p-0.5 text-center">{subject.remark}</td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                        <div className="grid grid-cols-4 gap-1 mt-2 text-[9px]">
+                            <div className="bg-green-50 p-1 text-center border border-green-200"><p className="text-gray-600">Total</p><p className="text-sm font-bold text-green-700">{report.totalScore}</p></div>
+                            <div className="bg-blue-50 p-1 text-center border border-blue-200"><p className="text-gray-600">Average</p><p className="text-sm font-bold text-blue-700">{report.averageScore.toFixed(1)}</p></div>
+                            <div className="bg-yellow-50 p-1 text-center border border-yellow-200"><p className="text-gray-600">Position</p><p className="text-sm font-bold text-yellow-700">1st</p></div>
+                            <div className="bg-purple-50 p-1 text-center border border-purple-200"><p className="text-gray-600">Out of</p><p className="text-sm font-bold text-purple-700">{studentsInClass.length || 1}</p></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">AFFECTIVE DOMAIN</h3>
+                            <table className="w-full text-[8px] border-collapse">
+                                <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-0.5 text-left">Trait</th><th className="border border-green-600 p-0.5">Rate</th><th className="border border-green-600 p-0.5">Remark</th></tr></thead>
+                                <tbody>
+                                {(report.traits || []).filter(t=>t.domain === 'Affective').map((trait, index) => (
+                                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-0.5">{trait.name}</td><td className="border border-gray-300 p-0.5 text-center font-bold">{trait.rating}</td><td className="border border-gray-300 p-0.5 text-center">{getRatingText(trait.rating)}</td></tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">PSYCHOMOTOR DOMAIN</h3>
+                            <table className="w-full text-[8px] border-collapse">
+                            <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-0.5 text-left">Skill</th><th className="border border-green-600 p-0.5">Rate</th><th className="border border-green-600 p-0.5">Remark</th></tr></thead>
+                            <tbody>
+                                {(report.traits || []).filter(t=>t.domain === 'Psychomotor').map((skill, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-0.5">{skill.name}</td><td className="border border-gray-300 p-0.5 text-center font-bold">{skill.rating}</td><td className="border border-gray-300 p-0.5 text-center">{getRatingText(skill.rating)}</td></tr>
+                                ))}
+                            </tbody>
+                            </table>
+                            <p className="text-[7px] text-gray-600 mt-0.5 italic">Rating: 5-Excellent, 4-Very Good, 3-Good, 2-Fair, 1-Poor</p>
+                        </div>
+                    </div>
+                    <div className="mb-2">
+                        <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.remark}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
+                        <div><h3 className="font-bold text-green-700 text-[9px] mb-0.5">PRINCIPAL'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.principalComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
+                    </div>
+                    <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: {report.nextTermBegins}</p></div>
+                </div>
             ))}
         </div>
        <style jsx global>{`
+        @media screen {
+          .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+          }
+        }
         @media print {
-            body * {
-                visibility: hidden;
+            body {
+                margin: 0;
+                padding: 0;
             }
-            #print-section, #print-section * {
-                visibility: visible;
-            }
-            #print-section {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-            .report-card {
+            .a4-page {
+                width: 210mm;
+                height: 297mm;
+                padding: 15mm;
+                margin: 0;
+                box-shadow: none;
                 page-break-after: always;
-                border: 1px solid #ccc !important;
-                box-shadow: none !important;
+                box-sizing: border-box;
+            }
+            .print\\:hidden {
+                display: none !important;
+            }
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
         }
         @page {
             size: A4;
-            margin: 0.5in;
+            margin: 0;
         }
       `}</style>
     </>
