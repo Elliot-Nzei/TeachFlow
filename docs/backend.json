@@ -1,0 +1,360 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the Nigerian School Management System.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "userCode": {
+          "type": "string",
+          "description": "Unique system-generated code for the user."
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "The name of the school the user is associated with."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "userCode",
+        "schoolName",
+        "createdAt"
+      ]
+    },
+    "Class": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Class",
+      "type": "object",
+      "description": "Represents a class within the school management system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Class entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Class).  The ID of the user who created the class."
+        },
+        "className": {
+          "type": "string",
+          "description": "The name of the class (e.g., Primary 3A)."
+        },
+        "students": {
+          "type": "array",
+          "description": "List of student IDs belonging to the class.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "className",
+        "students"
+      ]
+    },
+    "Grade": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Grade",
+      "type": "object",
+      "description": "Represents a grade for a student in a specific subject.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Grade entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Grade). The ID of the user who entered the grade."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "The ID of the student who received the grade."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject for which the grade was given."
+        },
+        "score": {
+          "type": "number",
+          "description": "The student's score in the subject."
+        },
+        "term": {
+          "type": "string",
+          "description": "The academic term for the grade (e.g., First Term)."
+        },
+        "remark": {
+          "type": "string",
+          "description": "The remark or comment on the student's performance."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "studentId",
+        "subject",
+        "score",
+        "term",
+        "remark"
+      ]
+    },
+    "Report": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Report",
+      "type": "object",
+      "description": "Represents a report card for a student.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Report entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Report). The ID of the user who generated the report."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "The ID of the student for whom the report is generated."
+        },
+        "totalScore": {
+          "type": "number",
+          "description": "The student's total score across all subjects."
+        },
+        "average": {
+          "type": "number",
+          "description": "The student's average score across all subjects."
+        },
+        "remark": {
+          "type": "string",
+          "description": "Overall remark on the student's performance."
+        },
+        "dateGenerated": {
+          "type": "string",
+          "description": "Timestamp indicating when the report was generated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "studentId",
+        "totalScore",
+        "average",
+        "remark",
+        "dateGenerated"
+      ]
+    },
+    "Transfer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transfer",
+      "type": "object",
+      "description": "Represents a data transfer between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transfer entity."
+        },
+        "fromUser": {
+          "type": "string",
+          "description": "The user code of the sender."
+        },
+        "toUser": {
+          "type": "string",
+          "description": "The user code of the recipient."
+        },
+        "dataType": {
+          "type": "string",
+          "description": "The type of data transferred (e.g., class, grades)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the data transfer occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "fromUser",
+        "toUser",
+        "dataType",
+        "timestamp"
+      ]
+    },
+    "Setting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Setting",
+      "type": "object",
+      "description": "Represents user-specific settings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Setting entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Setting).  The ID of the user these settings belong to."
+        },
+        "currentTerm": {
+          "type": "string",
+          "description": "The current academic term (e.g., First Term)."
+        },
+        "session": {
+          "type": "string",
+          "description": "The current academic session (e.g., 2023/2024)."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency used (e.g., ₦ for Naira)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "currentTerm",
+        "session",
+        "currency"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  The `userId` is the Firebase Auth UID. Contains the denormalized `userCode` for data transfers.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "classes/{userId}/{classId}",
+        "definition": {
+          "entityName": "Class",
+          "schema": {
+            "$ref": "#/backend/entities/Class"
+          },
+          "description": "Stores classes created by users. Each class is owned by a user, identified by `userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who created the class."
+            },
+            {
+              "name": "classId",
+              "description": "The unique ID of the class."
+            }
+          ]
+        }
+      },
+      {
+        "path": "grades/{userId}/{studentId}",
+        "definition": {
+          "entityName": "Grade",
+          "schema": {
+            "$ref": "#/backend/entities/Grade"
+          },
+          "description": "Stores grades entered by users for specific students. Each grade is associated with a user, identified by `userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who entered the grade."
+            },
+            {
+              "name": "studentId",
+              "description": "The unique ID of the student receiving the grade."
+            }
+          ]
+        }
+      },
+      {
+        "path": "reports/{userId}/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": {
+            "$ref": "#/backend/entities/Report"
+          },
+          "description": "Stores report cards generated by users. Each report is associated with a user, identified by `userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who generated the report."
+            },
+            {
+              "name": "reportId",
+              "description": "The unique ID of the report."
+            }
+          ]
+        }
+      },
+      {
+        "path": "transfers/{transferId}",
+        "definition": {
+          "entityName": "Transfer",
+          "schema": {
+            "$ref": "#/backend/entities/Transfer"
+          },
+          "description": "Stores records of data transfers between users. Accessible to all authenticated users for auditing purposes. Writes must be handled by Cloud Functions only.",
+          "params": [
+            {
+              "name": "transferId",
+              "description": "The unique ID of the data transfer record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "settings/{userId}",
+        "definition": {
+          "entityName": "Setting",
+          "schema": {
+            "$ref": "#/backend/entities/Setting"
+          },
+          "description": "Stores user-specific settings. Each setting is associated with a user, identified by `userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user whose settings are stored."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support a user-centric school management system where users can manage their data (classes, grades, reports, settings) and transfer data between each other using unique user codes. This design prioritizes authorization independence and ease of management.\n\n**Authorization Independence:** The data is structured such that access control is based on the `userId` in the path. Each user has their own collections for classes, grades, reports, and settings. This eliminates the need for complex `get()` calls in security rules because authorization is determined solely by the authenticated user's ID matching the ID in the path.  The `transfers` collection is an exception, allowing read access to any authenticated user because transfers involve two users and restricting access would hinder functionality. Writing to the transfers collection is also allowed for any authenticated user, but cloud functions handle the writing to ensure that the only thing written is a valid transfer document.\n\n**QAPs (Rules are not Filters):**\n*   The path-based ownership (`/users/{userId}/...`) and the structural segregation of data prevent the need for filtering data based on user roles or ownership in the rules. Each user's data is stored in their own path, ensuring that listing data under a specific user's path only returns data owned by that user.\n\n**Invariants:** The path based ownership enforces ownership and prevents data modification of other users documents. Timestamps are recorded inside the documents to record the creation time."
+  }
+}
