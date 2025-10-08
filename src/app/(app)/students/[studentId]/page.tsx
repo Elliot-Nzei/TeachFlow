@@ -1,5 +1,7 @@
-import { notFound, redirect } from 'next/navigation';
-import { placeholderStudents, placeholderGrades, placeholderClasses } from '@/lib/placeholder-data';
+
+'use client';
+import { use, Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,17 +9,40 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
+import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function StudentProfilePage({ params }: { params: { studentId: string } }) {
-  const student = placeholderStudents.find(s => s.id === params.studentId);
+function StudentProfileContent({ studentId }: { studentId: string }) {
+  const { firestore } = useFirebase();
+  const { user } = useUser();
+
+  const studentDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId]);
+  const { data: student, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
+  
+  const classDocQuery = useMemoFirebase(() => (user && student) ? doc(firestore, 'users', user.uid, 'classes', student.classId) : null, [firestore, user, student]);
+  const { data: studentClass, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
+
+  const gradesQuery = useMemoFirebase(() => (user && student) ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
+  const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
+
+  if (isLoadingStudent) {
+      return (
+          <div className="grid gap-8 md:grid-cols-3">
+              <div className="md:col-span-1 space-y-8">
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-40 w-full" />
+              </div>
+              <div className="md:col-span-2">
+                  <Skeleton className="h-96 w-full" />
+              </div>
+          </div>
+      )
+  }
 
   if (!student) {
     notFound();
   }
-
-  const studentClass = placeholderClasses.find(c => c.id === student.classId);
-  const studentGrades = placeholderGrades[student.class] || [];
-  const gradesForStudent = studentGrades.filter(g => g.studentName === student.name);
 
   return (
     <>
@@ -25,7 +50,7 @@ export default function StudentProfilePage({ params }: { params: { studentId: st
         <Link href={`/classes/${student.classId}`} passHref>
           <Button variant="outline">
             <ChevronLeft className="mr-2 h-4 w-4" />
-            Back to {student.class}
+            Back to {student.className}
           </Button>
         </Link>
       </div>
@@ -35,25 +60,25 @@ export default function StudentProfilePage({ params }: { params: { studentId: st
                 <CardHeader className="items-center text-center">
                     <Avatar className="h-24 w-24 mb-4">
                     <AvatarImage src={student.avatarUrl} alt={student.name} />
-                    <AvatarFallback className="text-3xl">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarFallback className="text-3xl">{student.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <CardTitle className="text-2xl font-headline">{student.name}</CardTitle>
                     <CardDescription className="font-mono text-sm">{student.studentId}</CardDescription>
                     <CardDescription>
                         <Link href={`/classes/${student.classId}`} className="hover:underline">
-                            {student.class}
+                            {student.className}
                         </Link>
                     </CardDescription>
                 </CardHeader>
             </Card>
-             {studentClass && (
+             {isLoadingClass ? <Skeleton className="h-40 w-full" /> : studentClass && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Subjects</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex flex-wrap gap-2">
-                        {studentClass.subjects.map((subject, index) => (
+                        {studentClass.subjects.map((subject: string, index: number) => (
                             <Badge key={index} variant="secondary">{subject}</Badge>
                         ))}
                         </div>
@@ -79,8 +104,10 @@ export default function StudentProfilePage({ params }: { params: { studentId: st
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {gradesForStudent.length > 0 ? (
-                            gradesForStudent.map(grade => (
+                        {isLoadingGrades ? (
+                           <TableRow><TableCell colSpan={4}><Skeleton className="h-24 w-full" /></TableCell></TableRow> 
+                        ) : gradesForStudent && gradesForStudent.length > 0 ? (
+                            gradesForStudent.map((grade: any) => (
                                 <TableRow key={grade.id}>
                                     <TableCell className="font-medium">{grade.subject}</TableCell>
                                     <TableCell>{grade.term}</TableCell>
@@ -103,4 +130,13 @@ export default function StudentProfilePage({ params }: { params: { studentId: st
       </div>
     </>
   );
+}
+
+export default function StudentProfilePage({ params }: { params: Promise<{ studentId: string }> }) {
+  const { studentId } = use(params);
+  return (
+      <Suspense fallback={<div>Loading student profile...</div>}>
+          <StudentProfileContent studentId={studentId} />
+      </Suspense>
+  )
 }

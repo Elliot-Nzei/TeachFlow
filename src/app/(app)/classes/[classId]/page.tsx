@@ -1,6 +1,6 @@
 
 'use client';
-import { use } from 'react';
+import { use, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
 import { BookOpen, Users, User, Book } from 'lucide-react';
@@ -14,10 +14,9 @@ import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function ClassDetailsPage({ params }: { params: Promise<{ classId: string }> }) {
+function ClassDetailsContent({ classId }: { classId: string }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
-  const { classId } = use(params);
 
   const classDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'classes', classId) : null, [firestore, user, classId]);
   const { data: classDetails, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
@@ -110,4 +109,14 @@ export default function ClassDetailsPage({ params }: { params: Promise<{ classId
         </div>
     </>
   );
+}
+
+
+export default function ClassDetailsPage({ params }: { params: Promise<{ classId: string }> }) {
+    const { classId } = use(params);
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ClassDetailsContent classId={classId} />
+        </Suspense>
+    )
 }
