@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,15 +17,17 @@ import {
 } from "@/components/ui/table"
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, getDocs, addDoc } from 'firebase/firestore';
 import type { Class, DataTransfer, Grade, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SettingsContext } from '@/contexts/settings-context';
 
 type DataType = 'Class' | 'Grades' | 'Report Card';
 
 export default function TransferPage() {
-  const { firestore, user, settings: userProfile, isSettingsLoading: isLoadingProfile } = useFirebase();
+  const { firestore, user } = useFirebase();
+  const { settings: userProfile, isLoading: isLoadingProfile } = useContext(SettingsContext);
   const { toast } = useToast();
   const [recipientCode, setRecipientCode] = useState('');
   const [dataType, setDataType] = useState<DataType | ''>('');
@@ -50,14 +52,10 @@ export default function TransferPage() {
     const fetchTransfers = async () => {
       setIsLoadingTransfers(true);
       try {
-        // We query the user's own transfers subcollection for sent items
         const sentTransfersCollection = collection(firestore, 'users', user.uid, 'transfers');
         const sentSnapshot = await getDocs(sentTransfersCollection);
         const sentTransfers = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id, isSent: true }) as DataTransfer & {isSent: boolean});
         
-        // We still need a way to find transfers sent TO this user.
-        // This query remains potentially problematic if rules are strict.
-        // For now, we assume a rule exists that allows querying transfers where toUser === currentUser.userCode
         const globalTransfersCollection = collection(firestore, 'transfers');
         const receivedQuery = query(globalTransfersCollection, where('toUser', '==', userProfile.userCode));
         const receivedSnapshot = await getDocs(receivedQuery);
@@ -76,7 +74,6 @@ export default function TransferPage() {
         setAllTransfers(uniqueTransfers);
       } catch (error) {
         console.error("Error fetching transfers:", error);
-        // Don't show toast for permission errors on load, as it might be expected
         if (!(error instanceof Error && error.message.includes("permission"))) {
             toast({ variant: 'destructive', title: 'Could not load transfer history.' });
         }
@@ -125,7 +122,6 @@ export default function TransferPage() {
     setIsTransferring(true);
     
     try {
-        // Write to the user-specific 'transfers' sub-collection
         const transfersCollection = collection(firestore, 'users', user.uid, 'transfers');
         
         let dataTransferredName = '';
@@ -135,14 +131,13 @@ export default function TransferPage() {
             dataTransferredName = students?.find(s => s.id === dataItem)?.name || 'Unknown Student';
         }
 
-        // The await here ensures we catch permission errors from this specific write.
         await addDoc(transfersCollection, {
             fromUser: userProfile.userCode,
             toUser: recipientCode,
             dataType: dataType,
             dataId: dataItem,
             dataTransferred: dataTransferredName,
-            status: 'pending', // A backend function would process this
+            status: 'pending', 
             timestamp: serverTimestamp(),
         });
 
@@ -151,7 +146,6 @@ export default function TransferPage() {
             description: `Request to transfer ${dataTransferredName} to ${recipientCode} has been sent.`,
         });
 
-        // Reset form
         setRecipientCode('');
         setDataType('');
         setDataItem('');
@@ -282,5 +276,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    

@@ -1,7 +1,7 @@
 
 'use client';
 import React, { createContext, useState, useEffect } from 'react';
-import { useFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 type Settings = {
@@ -28,14 +28,17 @@ export const SettingsContext = createContext<SettingsContextType>({
 });
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-    const { firestore, user, settings: globalSettings, isSettingsLoading } = useFirebase();
+    const { firestore, user, isUserLoading } = useFirebase();
     const [localSettings, setLocalSettings] = useState<Settings | null>(null);
 
+    const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: fetchedSettings, isLoading: isSettingsLoading } = useDoc<Settings>(userProfileQuery);
+    
     useEffect(() => {
-        if (globalSettings) {
-            setLocalSettings(globalSettings);
+        if (fetchedSettings) {
+            setLocalSettings(fetchedSettings);
         }
-    }, [globalSettings]);
+    }, [fetchedSettings]);
 
     const handleSetSettings = (newSettings: Partial<Settings>) => {
         if (user && localSettings) {
@@ -46,8 +49,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         }
     }
 
+    const isLoading = isUserLoading || isSettingsLoading;
+
     return (
-        <SettingsContext.Provider value={{ settings: localSettings, setSettings: handleSetSettings, isLoading: isSettingsLoading }}>
+        <SettingsContext.Provider value={{ settings: localSettings, setSettings: handleSetSettings, isLoading }}>
             {children}
         </SettingsContext.Provider>
     );
