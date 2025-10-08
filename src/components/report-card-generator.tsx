@@ -26,6 +26,14 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   grades: { subject: string; score: number, grade: string }[];
 };
 
+const gradingScale = [
+    { grade: 'A', range: '70–100', remark: 'Excellent' },
+    { grade: 'B', range: '60–69', remark: 'Good' },
+    { grade: 'C', range: '50–59', remark: 'Credit' },
+    { grade: 'D', range: '45–49', remark: 'Pass' },
+    { grade: 'F', range: 'Below 45', remark: 'Fail' },
+];
+
 export default function ReportCardGenerator() {
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -212,31 +220,35 @@ export default function ReportCardGenerator() {
                     {generatedReports.map((report, index) => (
                         <Fragment key={index}>
                            <div className="report-card p-6 border rounded-lg bg-card text-card-foreground shadow-sm break-after-page">
-                                <header className="flex items-center justify-between mb-6 border-b pb-4">
+                                <header className="grid grid-cols-3 items-center mb-8">
                                     <Logo />
-                                    <div className="text-right">
+                                    <div className="text-center">
                                         <h2 className="text-2xl font-bold font-headline">Sunshine Primary School</h2>
-                                        <p className="text-muted-foreground">End of Term Report</p>
+                                        <p className="text-muted-foreground text-sm">Student Academic Report</p>
+                                    </div>
+                                    <div className="text-right text-xs">
+                                        <p>123 School Lane, Lagos, Nigeria</p>
+                                        <p>sunshine@school.ng</p>
                                     </div>
                                 </header>
                                 
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-semibold font-headline mb-2 text-center">Student Information</h3>
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 border rounded-lg p-4">
-                                        <div><strong className="font-medium">Name:</strong> {report.studentName}</div>
-                                        <div><strong className="font-medium">Class:</strong> {report.className}</div>
-                                        <div><strong className="font-medium">Student ID:</strong> {report.studentId}</div>
-                                        <div><strong className="font-medium">Session:</strong> {report.session}</div>
-                                        <div className="col-span-2"><strong className="font-medium">Term:</strong> {report.term}</div>
+                                <div className="mb-6 bg-muted/50 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold font-headline mb-3 text-center">Student Information</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                                        <div><strong className="font-medium text-muted-foreground block">Name:</strong> {report.studentName}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Class:</strong> {report.className}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Student ID:</strong> {report.studentId}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Session:</strong> {report.session}</div>
+                                        <div className="md:col-span-2"><strong className="font-medium text-muted-foreground block">Term:</strong> {report.term}</div>
                                     </div>
                                 </div>
 
                                 <div className="mb-6">
-                                    <h3 className="text-lg font-semibold font-headline mb-2 text-center">Academic Performance</h3>
+                                    <h3 className="text-lg font-semibold font-headline mb-3 text-center">Academic Performance</h3>
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Subject</TableHead>
+                                                <TableHead className="w-[50%]">Subject</TableHead>
                                                 <TableHead className="text-center">Score</TableHead>
                                                 <TableHead className="text-right">Grade</TableHead>
                                             </TableRow>
@@ -253,28 +265,64 @@ export default function ReportCardGenerator() {
                                     </Table>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-4 text-center my-6 py-4 border-t border-b">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Total Score</p>
-                                        <p className="text-2xl font-bold">{report.totalScore}</p>
+                                <div className="grid md:grid-cols-2 gap-6 items-start">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h4 className="font-semibold mb-2">Academic Summary</h4>
+                                            <div className="grid grid-cols-3 gap-2 text-center border rounded-lg p-3">
+                                                 <div>
+                                                    <p className="text-xs text-muted-foreground">Total</p>
+                                                    <p className="text-xl font-bold">{report.totalScore}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">Average</p>
+                                                    <p className="text-xl font-bold">{report.averageScore.toFixed(1)}%</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">Grade</p>
+                                                    <p className="text-xl font-bold text-primary">{report.grade}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                         <div>
+                                            <h4 className="font-semibold mb-2">Teacher's General Remark</h4>
+                                            <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md italic">"{report.remark}"</p>
+                                        </div>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Average</p>
-                                        <p className="text-2xl font-bold">{report.averageScore.toFixed(1)}%</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Overall Grade</p>
-                                        <p className="text-2xl font-bold text-primary">{report.grade}</p>
+                                        <h4 className="font-semibold mb-2">Grading Scale</h4>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Grade</TableHead>
+                                                    <TableHead>Score Range</TableHead>
+                                                    <TableHead>Remark</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {gradingScale.map((scale) => (
+                                                    <TableRow key={scale.grade}>
+                                                        <TableCell className="font-bold">{scale.grade}</TableCell>
+                                                        <TableCell>{scale.range}</TableCell>
+                                                        <TableCell>{scale.remark}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </div>
-
-                                <div>
-                                    <h4 className="font-semibold mb-2">Teacher's Remark</h4>
-                                    <p className="text-sm text-muted-foreground p-3 bg-secondary rounded-md italic">"{report.remark}"</p>
+                                <div className="grid grid-cols-2 gap-8 mt-12 pt-8 border-t">
+                                     <div className="text-center">
+                                        <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
+                                        <p className="text-sm mt-1">Class Teacher's Signature</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="w-4/5 h-px bg-foreground mx-auto mt-12"></div>
+                                        <p className="text-sm mt-1">Principal's Signature</p>
+                                    </div>
                                 </div>
-
                                 <footer className="text-center text-xs text-muted-foreground mt-8 pt-4 border-t">
-                                    <p>Official School Stamp and Signature</p>
+                                    <p>Official School Stamp</p>
                                 </footer>
                             </div>
                         </Fragment>
