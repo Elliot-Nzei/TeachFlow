@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar as CalendarIcon, Save, Users, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Save, Users, ArrowLeft, PanelLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Class, Student } from '@/lib/types';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
@@ -16,12 +16,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { SettingsContext } from '@/contexts/settings-context';
+import ClassSidebar from '@/components/class-sidebar';
+
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Late';
 type AttendanceRecord = { studentId: string; status: AttendanceStatus; name: string; avatarUrl: string; recordId?: string; };
 
 function AttendanceTaker({ selectedClass }: { selectedClass: Class }) {
-  const { firestore, user, settings } = useFirebase();
+  const { firestore, user } = useFirebase();
+  const { settings } = useContext(SettingsContext);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const { toast } = useToast();
@@ -201,58 +205,48 @@ function AttendanceTaker({ selectedClass }: { selectedClass: Class }) {
 }
 
 export default function AttendancePage() {
-  const { firestore, user } = useFirebase();
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
-  const { data: classes, isLoading } = useCollection<any>(classesQuery);
-
+  const handleSelectClass = (cls: Class) => {
+    setSelectedClass(cls);
+    setIsSidebarOpen(false);
+  };
+  
   return (
-    <>
-      <Sheet open={!!selectedClass} onOpenChange={(isOpen) => !isOpen && setSelectedClass(null)}>
-        <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold font-headline">Select a Class for Attendance</h1>
+    <div className="flex h-full">
+      <div className="hidden md:block md:w-80">
+        <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+      </div>
+      <div className="flex-1 md:pl-8">
+        <div className="flex items-center gap-4 mb-4 md:hidden">
+          <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline">
+                <PanelLeft className="mr-2 h-4 w-4" /> Select Class
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
+            </SheetContent>
+          </Sheet>
         </div>
-      
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-          {isLoading ? Array.from({length: 3}).map((_, i) => (
-              <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
-          )) : classes?.map((cls) => (
-            <Card key={cls.id} onClick={() => setSelectedClass(cls)} className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="font-headline">{cls.name}</CardTitle>
-                  <CardDescription>Click to take attendance</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>{cls.students?.length || 0} Students</span>
-                    </div>
-                </CardContent>
-              </Card>
-          ))}
-        </div>
-        {classes?.length === 0 && !isLoading && (
-            <Card className="flex items-center justify-center h-full min-h-[400px] text-center">
-                <div className="text-muted-foreground">
-                    <p>No classes found. Please create a class first.</p>
-                </div>
-            </Card>
+        {selectedClass ? (
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>{selectedClass.name} - Attendance</CardTitle>
+              <CardDescription>Mark daily attendance for each student.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AttendanceTaker selectedClass={selectedClass} />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
+            <p>Select a class to view and manage attendance.</p>
+          </div>
         )}
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-            {selectedClass && (
-                <>
-                    <SheetHeader>
-                        <SheetTitle>{selectedClass.name} - Attendance</SheetTitle>
-                        <SheetDescription>Mark daily attendance for each student.</SheetDescription>
-                    </SheetHeader>
-                    <div className="py-6">
-                        <AttendanceTaker selectedClass={selectedClass} />
-                    </div>
-                </>
-            )}
-        </SheetContent>
-      </Sheet>
-    </>
+      </div>
+    </div>
   );
 }
