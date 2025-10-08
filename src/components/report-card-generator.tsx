@@ -482,6 +482,9 @@ export default function ReportCardGenerator() {
             ))}
         </div>
        <style jsx global>{`
+        .a4-page {
+            color: black;
+        }
         @media screen {
           .a4-page {
             width: 210mm;
@@ -504,6 +507,11 @@ export default function ReportCardGenerator() {
                 box-shadow: none;
                 page-break-after: always;
                 box-sizing: border-box;
+                background-color: white !important;
+                color: black !important;
+            }
+             .a4-page * {
+                color: black !important;
             }
             .print\\:hidden {
                 display: none !important;
