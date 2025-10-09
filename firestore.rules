@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,11 +11,19 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isSignedIn();
+    // --- RULES ---
 
-      // Subcollections
+    // USER PROFILE
+    // Allow users to query for other users by code, but only manage their own document.
+    match /users/{userId} {
+      allow list: if isSignedIn();
+      allow get, update, delete: if isOwner(userId);
+      allow create: if isOwner(userId);
+
+      // SUBCOLLECTIONS
+      // Generic rule to allow owners full access to their own subcollections.
+      // This applies to classes, students, grades, etc.
+
       match /classes/{classId} {
         allow read, write: if isOwner(userId);
       }
@@ -24,24 +33,30 @@ service cloud.firestore {
       match /grades/{gradeId} {
         allow read, write: if isOwner(userId);
       }
-      match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /traits/{traitId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /outgoingTransfers/{transferId} {
-        allow read, write: if isOwner(userId);
-      }
       match /subjects/{subjectId} {
         allow read, write: if isOwner(userId);
       }
-    }
+       match /attendance/{attendanceId} {
+        allow read, write: if isOwner(userId);
+      }
+       match /traits/{traitId} {
+        allow read, write: if isOwner(userId);
+      }
 
-    // Separate match for incoming transfers as it has a different logic for creation
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow read, update, delete: if isOwner(userId);
-      allow create: if isSignedIn() && request.resource.data.toUserId == userId;
+      // TRANSFERS
+      // Users can read their own outgoing transfers.
+      match /outgoingTransfers/{transferId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Users can read/update their incoming transfers.
+      // Other users can ONLY create new transfers for them.
+      match /incomingTransfers/{transferId} {
+        allow get, list, update, delete: if isOwner(userId);
+        allow create: if isSignedIn()
+                      && request.resource.data.toUserId == userId
+                      && request.resource.data.fromUserId == request.auth.uid;
+      }
     }
   }
 }
