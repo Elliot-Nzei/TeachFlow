@@ -408,7 +408,7 @@ export default function ReportCardGenerator() {
               newReports.push({
                   ...result,
                   studentName: student.name,
-                  studentId: student.id, // Use the actual document ID for student
+                  studentId: student.studentId,
                   className: student.className,
                   term: input.term,
                   session: input.session,
@@ -743,7 +743,7 @@ export default function ReportCardGenerator() {
                                     <div>
                                     <CardTitle className="text-lg">{report.studentName}</CardTitle>
                                     <CardDescription>
-                                        {report.className} • ID: {report.studentId.startsWith('student-') ? 'N/A' : report.studentId}
+                                        {report.className} • ID: {report.studentId}
                                     </CardDescription>
                                     </div>
                                     <Badge variant="outline">
