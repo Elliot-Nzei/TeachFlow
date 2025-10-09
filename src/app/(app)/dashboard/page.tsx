@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, orderBy } from 'firebase/firestore';
 import type { Grade, DataTransfer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -37,15 +37,20 @@ export default function DashboardPage() {
   const { data: grades, isLoading: isLoadingGrades } = useCollection<Grade>(gradesQuery);
   
   const sentTransfersQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'transfers')) : null,
+    () => user ? query(collection(firestore, 'users', user.uid, 'transfers'), orderBy('timestamp', 'desc')) : null,
     [firestore, user]
   );
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
 
   const receivedTransfersQuery = useMemoFirebase(
-    () => (user && userProfile?.userCode)
-      ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode))
-      : null,
+    () => {
+      if (!user || !userProfile?.userCode) return null;
+      return query(
+        collection(firestore, 'transfers'), 
+        where('toUser', '==', userProfile.userCode),
+        orderBy('timestamp', 'desc')
+      );
+    },
     [firestore, user, userProfile?.userCode]
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
@@ -54,8 +59,8 @@ export default function DashboardPage() {
     if (!sentTransfers && !receivedTransfers) return [];
     
     const combined = [
-      ...(sentTransfers || []),
-      ...(receivedTransfers || [])
+      ...(sentTransfers || []).map(t => ({...t, id: t.id ?? Math.random().toString()})),
+      ...(receivedTransfers || []).map(t => ({...t, id: t.id ?? Math.random().toString()}))
     ];
     
     const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());

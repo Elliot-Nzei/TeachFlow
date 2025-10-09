@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy } from 'firebase/firestore';
 import type { Class, DataTransfer, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -54,16 +54,21 @@ export default function TransferPage() {
 
   // Fetch sent transfers
   const sentTransfersQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'transfers')) : null,
+    () => user ? query(collection(firestore, 'users', user.uid, 'transfers'), orderBy('timestamp', 'desc')) : null,
     [firestore, user]
   );
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
 
   // Fetch received transfers
   const receivedTransfersQuery = useMemoFirebase(
-    () => (user && userProfile?.userCode)
-      ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode))
-      : null,
+    () => {
+      if (!user || !userProfile?.userCode) return null;
+      return query(
+        collection(firestore, 'transfers'), 
+        where('toUser', '==', userProfile.userCode),
+        orderBy('timestamp', 'desc')
+      );
+    },
     [firestore, user, userProfile?.userCode]
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
@@ -75,15 +80,15 @@ export default function TransferPage() {
     const sent: TransferWithDirection[] = (sentTransfers || []).map(t => ({ ...t, isSent: true }));
     const received: TransferWithDirection[] = (receivedTransfers || []).map(t => ({ ...t, isSent: false }));
     
-    // Use Map for O(1) deduplication
     const transferMap = new Map<string, TransferWithDirection>();
     [...sent, ...received].forEach(transfer => {
-      if (!transferMap.has(transfer.id)) {
-        transferMap.set(transfer.id, transfer);
+      // Ensure each transfer has a unique ID for the map key
+      const transferId = transfer.id || `${transfer.fromUser}-${transfer.toUser}-${transfer.dataId}-${transfer.timestamp?.seconds}`;
+      if (!transferMap.has(transferId)) {
+        transferMap.set(transferId, transfer);
       }
     });
     
-    // Convert to array and sort by timestamp descending
     return Array.from(transferMap.values()).sort((a, b) => {
       const timeA = a.timestamp?.seconds ?? 0;
       const timeB = b.timestamp?.seconds ?? 0;
@@ -139,13 +144,14 @@ export default function TransferPage() {
     setIsTransferring(true);
     
     try {
+      if (!user || !userProfile) throw new Error("User not available");
       const batch = writeBatch(firestore);
       const dataName = getItemName(dataItem, dataType as DataType);
       
       // Add to user's transfers collection
-      const userTransferRef = doc(collection(firestore, 'users', user!.uid, 'transfers'));
+      const userTransferRef = doc(collection(firestore, 'users', user.uid, 'transfers'));
       batch.set(userTransferRef, {
-        fromUser: userProfile!.userCode,
+        fromUser: userProfile.userCode,
         toUser: recipientCode.trim().toUpperCase(),
         dataType,
         dataId: dataItem,
@@ -157,7 +163,7 @@ export default function TransferPage() {
       // Add to global transfers collection for recipient to see
       const globalTransferRef = doc(collection(firestore, 'transfers'));
       batch.set(globalTransferRef, {
-        fromUser: userProfile!.userCode,
+        fromUser: userProfile.userCode,
         toUser: recipientCode.trim().toUpperCase(),
         dataType,
         dataId: dataItem,
