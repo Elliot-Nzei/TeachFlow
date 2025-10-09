@@ -57,7 +57,7 @@ export default function DashboardPage() {
     });
   }, [sentTransfers]);
 
-  const isLoadingTransfers = isLoadingSent || isLoadingProfile;
+  const isLoadingTransfers = isLoadingSent;
   
   const gradeCounts = useMemo(() => (grades || []).reduce((acc: Record<string, number>, grade: any) => {
     if (grade.grade) {
@@ -186,5 +186,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
