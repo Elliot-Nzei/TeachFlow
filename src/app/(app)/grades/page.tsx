@@ -25,8 +25,9 @@ import ClassSidebar from '@/components/class-sidebar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-type GradeInput = { studentId: string; studentName: string; ca1: number | string; ca2: number | string; exam: number | string; };
+type GradeInput = { studentId: string; studentName: string; avatarUrl: string; ca1: number | string; ca2: number | string; exam: number | string; };
 
 export default function GradesPage() {
   const { firestore } = useFirebase();
@@ -60,6 +61,7 @@ export default function GradesPage() {
             return {
                 studentId: student.id,
                 studentName: student.name,
+                avatarUrl: student.avatarUrl,
                 ca1: existingGrade?.ca1 || '',
                 ca2: existingGrade?.ca2 || '',
                 exam: existingGrade?.exam || '',
@@ -86,15 +88,16 @@ export default function GradesPage() {
         const ca2 = Number(input.ca2);
         const exam = Number(input.exam);
         
-        if (isNaN(ca1) || isNaN(ca2) || isNaN(exam)) return;
+        if (isNaN(ca1) && isNaN(ca2) && isNaN(exam)) return;
 
-        const total = ca1 + ca2 + exam;
+        const total = (ca1 || 0) + (ca2 || 0) + (exam || 0);
         
-        let grade: 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
+        let grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' = 'F';
         if (total >= 70) grade = 'A';
         else if (total >= 60) grade = 'B';
         else if (total >= 50) grade = 'C';
         else if (total >= 45) grade = 'D';
+        else if (total > 40) grade = 'E';
         
         const existingGrade = (grades || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject);
 
@@ -104,9 +107,9 @@ export default function GradesPage() {
             subject: selectedSubject,
             term: 'First Term', // Replace with dynamic data from settings context later
             session: '2023/2024', // Replace with dynamic data from settings context later
-            ca1,
-            ca2,
-            exam,
+            ca1: ca1 || 0,
+            ca2: ca2 || 0,
+            exam: exam || 0,
             total,
             grade,
             studentName: input.studentName,
@@ -193,7 +196,7 @@ export default function GradesPage() {
                                           <SelectValue placeholder="Select a subject" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                          {selectedClass.subjects.map(sub => (
+                                          {(selectedClass.subjects || []).map(sub => (
                                               <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                                           ))}
                                       </SelectContent>
@@ -201,35 +204,34 @@ export default function GradesPage() {
                               </div>
                               
                               {selectedSubject && (
-                                  <ScrollArea className="h-72 mt-4 border rounded-md">
-                                  <div className="relative w-full overflow-auto">
-                                      <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="min-w-[150px] sticky left-0 bg-background z-10">Student Name</TableHead>
-                                                <TableHead className="min-w-[100px]">CA1 (20)</TableHead>
-                                                <TableHead className="min-w-[100px]">CA2 (20)</TableHead>
-                                                <TableHead className="min-w-[100px]">Exam (60)</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {gradeInputs.map((input) => (
-                                              <TableRow key={input.studentId}>
-                                                  <TableCell className="font-medium sticky left-0 bg-background">{input.studentName}</TableCell>
-                                                  <TableCell>
-                                                      <Input type="number" min="0" max="20" value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} />
-                                                  </TableCell>
-                                                   <TableCell>
-                                                      <Input type="number" min="0" max="20" value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} />
-                                                  </TableCell>
-                                                   <TableCell>
-                                                      <Input type="number" min="0" max="60" value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} />
-                                                  </TableCell>
-                                              </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                  </div>
+                                  <ScrollArea className="h-72 mt-4 border rounded-md p-2">
+                                    <div className="space-y-4">
+                                      {gradeInputs.map((input) => (
+                                        <Card key={input.studentId} className="p-4">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <Avatar className="h-9 w-9">
+                                                    <AvatarImage src={input.avatarUrl} alt={input.studentName} />
+                                                    <AvatarFallback>{input.studentName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <p className="font-semibold">{input.studentName}</p>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label htmlFor={`ca1-${input.studentId}`} className="text-xs">CA1 (20)</Label>
+                                                    <Input type="number" min="0" max="20" id={`ca1-${input.studentId}`} value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor={`ca2-${input.studentId}`} className="text-xs">CA2 (20)</Label>
+                                                    <Input type="number" min="0" max="20" id={`ca2-${input.studentId}`} value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor={`exam-${input.studentId}`} className="text-xs">Exam (60)</Label>
+                                                    <Input type="number" min="0" max="60" id={`exam-${input.studentId}`} value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                      ))}
+                                    </div>
                                   </ScrollArea>
                               )}
                           </div>
