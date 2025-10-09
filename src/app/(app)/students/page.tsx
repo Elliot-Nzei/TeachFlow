@@ -206,6 +206,7 @@ export default function StudentsPage() {
                         src={student.avatarUrl} 
                         alt={student.name} 
                         fill
+                        sizes="160px"
                         className="object-cover transition-transform duration-300 group-hover:scale-110"
                       />
                     )}
