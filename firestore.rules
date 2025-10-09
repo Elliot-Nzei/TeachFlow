@@ -1,201 +1,8 @@
-/**
- * @file Firestore Security Rules for Nigerian School Management System
- *
- * @core_philosophy This ruleset enforces a strict user-ownership model. Each user has full control over their own data, and no data is shared between users unless explicitly transferred via the "Transfer" mechanism.
- * @data_structure All data is nested under /users/{userId}, ensuring that data is partitioned by user. Subcollections under each user store specific data types like classes, students, grades, attendance, and traits.  The /incomingTransfers/{transferId} subcollection stores transfer requests intended *for* that user.
- * @key_security_decisions
- *   - Users can only read/write their own data. Listing other users is disallowed.
- *   - The `create` operation on /users/{userId} is allowed only if the `userId` matches the authenticated user's UID, enabling self-registration.
- *   - Data Transfers: Users can only create Transfer documents in *another* user's incomingTransfers collection if they own the data being transferred.
- * @denormalization_for_authorization No denormalization is explicitly required as ownership is based on path structure (/users/{userId}/...).
- * @structural_segregation No structural segregation is needed as all data is private to each user.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Controls access to user profile data.
-     * @path /users/{userId}
-     * @allow (create) Signed-in user with UID 'user_abc' can create their own profile at /users/user_abc.
-     * @deny (create) Signed-in user with UID 'user_abc' cannot create a profile at /users/user_xyz.
-     * @allow (get) Signed-in user with UID 'user_abc' can read their own profile at /users/user_abc.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read the profile at /users/user_xyz.
-     * @deny (list) Listing all users is not allowed.
-     * @allow (update) Signed-in user with UID 'user_abc' can update their own profile at /users/user_abc.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update the profile at /users/user_xyz.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete their own profile at /users/user_abc.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete the profile at /users/user_xyz.
-     * @principle Enforces document ownership; users can only access their own profile data.
-     */
-    match /users/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to classes created by a user.
-     * @path /users/{userId}/classes/{classId}
-     * @allow (create) Signed-in user with UID 'user_abc' can create a class under their profile at /users/user_abc/classes/class_123.
-     * @deny (create) Signed-in user with UID 'user_abc' cannot create a class under another user's profile at /users/user_xyz/classes/class_123.
-     * @allow (get) Signed-in user with UID 'user_abc' can read a class under their profile at /users/user_abc/classes/class_123.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read a class under another user's profile at /users/user_xyz/classes/class_123.
-     * @allow (list) Signed-in user with UID 'user_abc' can list classes under their own profile.
-     * @allow (update) Signed-in user with UID 'user_abc' can update a class under their profile at /users/user_abc/classes/class_123.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update a class under another user's profile at /users/user_xyz/classes/class_123.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete a class under their profile at /users/user_abc/classes/class_123.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete a class under another user's profile at /users/user_xyz/classes/class_123.
-     * @principle Enforces document ownership; users can only access their own class data.
-     */
-    match /users/{userId}/classes/{classId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to student data for a user/school.
-     * @path /users/{userId}/students/{studentId}
-     * @allow (create) Signed-in user with UID 'user_abc' can create a student under their profile at /users/user_abc/students/student_123.
-     * @deny (create) Signed-in user with UID 'user_abc' cannot create a student under another user's profile at /users/user_xyz/students/student_123.
-     * @allow (get) Signed-in user with UID 'user_abc' can read a student under their profile at /users/user_abc/students/student_123.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read a student under another user's profile at /users/user_xyz/students/student_123.
-     * @allow (list) Signed-in user with UID 'user_abc' can list students under their own profile.
-     * @allow (update) Signed-in user with UID 'user_abc' can update a student under their profile at /users/user_abc/students/student_123.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update a student under another user's profile at /users/user_xyz/students/student_123.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete a student under their profile at /users/user_abc/students/student_123.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete a student under another user's profile at /users/user_xyz/students/student_123.
-     * @principle Enforces document ownership; users can only access their own student data.
-     */
-    match /users/{userId}/students/{studentId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to the master list of subjects for a user/school.
-     * @path /users/{userId}/subjects/{subjectId}
-     * @allow (create) Signed-in user with UID 'user_abc' can create a subject under their profile at /users/user_abc/subjects/subject_123.
-     * @deny (create) Signed-in user with UID 'user_abc' cannot create a subject under another user's profile at /users/user_xyz/subjects/subject_123.
-     * @allow (get) Signed-in user with UID 'user_abc' can read a subject under their profile at /users/user_abc/subjects/subject_123.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read a subject under another user's profile at /users/user_xyz/subjects/subject_123.
-     * @allow (list) Signed-in user with UID 'user_abc' can list subjects under their own profile.
-     * @allow (update) Signed-in user with UID 'user_abc' can update a subject under their profile at /users/user_abc/subjects/subject_123.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update a subject under another user's profile at /users/user_xyz/subjects/subject_123.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete a subject under their profile at /users/user_abc/subjects/subject_123.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete a subject under another user's profile at /users/user_xyz/subjects/subject_123.
-     * @principle Enforces document ownership; users can only access their own subject data.
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to grades entered by a user.
-     * @path /users/{userId}/grades/{gradeId}
-     * @allow (create) Signed-in user with UID 'user_abc' can create a grade under their profile at /users/user_abc/grades/grade_123.
-     * @deny (create) Signed-in user with UID 'user_abc' cannot create a grade under another user's profile at /users/user_xyz/grades/grade_123.
-     * @allow (get) Signed-in user with UID 'user_abc' can read a grade under their profile at /users/user_abc/grades/grade_123.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read a grade under another user's profile at /users/user_xyz/grades/grade_123.
-     * @allow (list) Signed-in user with UID 'user_abc' can list grades under their own profile.
-     * @allow (update) Signed-in user with UID 'user_abc' can update a grade under their profile at /users/user_abc/grades/grade_123.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update a grade under another user's profile at /users/user_xyz/grades/grade_123.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete a grade under their profile at /users/user_abc/grades/grade_123.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete a grade under another user's profile at /users/user_xyz/grades/grade_123.
-     * @principle Enforces document ownership; users can only access their own grade data.
-     */
-    match /users/{userId}/grades/{gradeId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-     /**
-      * @description Controls access to attendance records for students.
-      * @path /users/{userId}/attendance/{attendanceId}
-      * @allow (create) Signed-in user with UID 'user_abc' can create an attendance record under their profile at /users/user_abc/attendance/attendance_123.
-      * @deny (create) Signed-in user with UID 'user_abc' cannot create an attendance record under another user's profile at /users/user_xyz/attendance/attendance_123.
-      * @allow (get) Signed-in user with UID 'user_abc' can read an attendance record under their profile at /users/user_abc/attendance/attendance_123.
-      * @deny (get) Signed-in user with UID 'user_abc' cannot read an attendance record under another user's profile at /users/user_xyz/attendance/attendance_123.
-      * @allow (list) Signed-in user with UID 'user_abc' can list attendance records under their own profile.
-      * @allow (update) Signed-in user with UID 'user_abc' can update an attendance record under their profile at /users/user_abc/attendance/attendance_123.
-      * @deny (update) Signed-in user with UID 'user_abc' cannot update an attendance record under another user's profile at /users/user_xyz/attendance/attendance_123.
-      * @allow (delete) Signed-in user with UID 'user_abc' can delete an attendance record under their profile at /users/user_abc/attendance/attendance_123.
-      * @deny (delete) Signed-in user with UID 'user_abc' cannot delete an attendance record under another user's profile at /users/user_xyz/attendance/attendance_123.
-      * @principle Enforces document ownership; users can only access their own attendance data.
-      */
-    match /users/{userId}/attendance/{attendanceId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to behavioral traits and ratings for students.
-     * @path /users/{userId}/traits/{traitId}
-     * @allow (create) Signed-in user with UID 'user_abc' can create a trait record under their profile at /users/user_abc/traits/trait_123.
-     * @deny (create) Signed-in user with UID 'user_abc' cannot create a trait record under another user's profile at /users/user_xyz/traits/trait_123.
-     * @allow (get) Signed-in user with UID 'user_abc' can read a trait record under their profile at /users/user_abc/traits/trait_123.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read a trait record under another user's profile at /users/user_xyz/traits/trait_123.
-     * @allow (list) Signed-in user with UID 'user_abc' can list trait records under their own profile.
-     * @allow (update) Signed-in user with UID 'user_abc' can update a trait record under their profile at /users/user_abc/traits/trait_123.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update a trait record under another user's profile at /users/user_xyz/traits/trait_123.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete a trait record under their profile at /users/user_abc/traits/trait_123.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete a trait record under another user's profile at /users/user_xyz/traits/trait_123.
-     * @principle Enforces document ownership; users can only access their own trait data.
-     */
-    match /users/{userId}/traits/{traitId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to incoming data transfer requests. A user can only write to *another* user's incomingTransfers collection if they themselves own the data being transferred (i.e. the transfer concerns classes/students/grades that they own).  The recipient can then accept or reject the transfer.
-     * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (create) User A with UID 'user_abc' can create a transfer request in User B's incomingTransfers collection (/users/user_xyz/incomingTransfers/transfer_123) IF User A owns the data being transferred.
-     * @deny (create) User A with UID 'user_abc' cannot create a transfer request in User B's incomingTransfers collection if User A *doesn't* own the data being transferred.
-     * @allow (get) Signed-in user with UID 'user_abc' can read an incoming transfer request under their profile at /users/user_abc/incomingTransfers/transfer_123.
-     * @deny (get) Signed-in user with UID 'user_abc' cannot read an incoming transfer request under another user's profile at /users/user_xyz/incomingTransfers/transfer_123.
-     * @allow (list) Signed-in user with UID 'user_abc' can list incoming transfer requests under their own profile.
-     * @allow (update) Signed-in user with UID 'user_abc' can update an incoming transfer request under their profile at /users/user_abc/incomingTransfers/transfer_123.
-     * @deny (update) Signed-in user with UID 'user_abc' cannot update an incoming transfer request under another user's profile at /users/user_xyz/incomingTransfers/transfer_123.
-     * @allow (delete) Signed-in user with UID 'user_abc' can delete an incoming transfer request under their profile at /users/user_abc/incomingTransfers/transfer_123.
-     * @deny (delete) Signed-in user with UID 'user_abc' cannot delete an incoming transfer request under another user's profile at /users/user_xyz/incomingTransfers/transfer_123.
-     * @principle Enforces document ownership for creation, allowing data transfer requests between users. Only the recipient can modify or delete the request. The sender cannot directly modify data they don't own.
-     */
-    match /users/{userId}/incomingTransfers/{transferId} {
-      // The *recipient* can read, update, and delete.  The *sender* creates the document.
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-
-      // CRITICAL: A user can only create a transfer in *another* user's inbox if they own the data.
-      // This rule ONLY checks the `toUserId` field to authorize the write.  It does *NOT* validate that the sender actually owns the underlying data (class, grade, etc.) being transferred.  That requires a more complex get() operation, which we will avoid for prototyping.
-      // TODO: Implement a secure `canInitiateTransfer()` function that verifies data ownership before allowing the create operation.
-      allow create: if isSignedIn() && request.resource.data.toUserId == userId;
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    // --- HELPER FUNCTIONS ---
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -204,8 +11,26 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isSignedIn() && isOwner(userId) && resource != null;
+    // Allow authenticated users to query the users collection to find other users by code
+    match /users/{userId} {
+      allow list: if isSignedIn();
+      allow get, update, delete: if isOwner(userId);
+
+      // Subcollections
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Special rule for incoming transfers
+      match /incomingTransfers/{transferId} {
+        allow read, update, delete: if isOwner(userId);
+
+        // Allow any authenticated user to CREATE a transfer request for another user,
+        // but only if the data is valid.
+        allow create: if isSignedIn()
+                      && request.resource.data.toUserId == userId
+                      && request.resource.data.fromUserId == request.auth.uid;
+      }
     }
   }
 }
