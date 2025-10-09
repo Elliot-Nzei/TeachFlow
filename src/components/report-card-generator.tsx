@@ -67,7 +67,7 @@ const PositionBadge = ({ position }: { position: number }) => {
     { threshold: 1, color: "text-yellow-500", Icon: Trophy, label: "1st" },
     { threshold: 2, color: "text-slate-400", Icon: Medal, label: "2nd" },
     { threshold: 3, color: "text-amber-700", Icon: Award, label: "3rd" },
-    { threshold: 10, color: "text-blue-600", Icon: Star, label: getOrdinal(position) },
+    { threshold: 10, color: "text-blue-600", Icon: X, label: getOrdinal(position) },
   ];
 
   const config = configs.find(c => position <= c.threshold) || 
