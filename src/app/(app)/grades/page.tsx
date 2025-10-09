@@ -301,7 +301,3 @@ export default function GradesPage() {
     </div>
   );
 }
-
-    
-
-    
