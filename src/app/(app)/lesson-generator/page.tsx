@@ -15,7 +15,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import jsPDF from 'jspdf';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
-import type { Class } from '@/lib/types';
+import type { Class, Subject } from '@/lib/types';
 
 
 type GenerateLessonNoteInput = {
@@ -55,6 +55,9 @@ export default function LessonGeneratorPage() {
   const { firestore, user } = useFirebase();
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
+  
+  const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
+  const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!generatedNote) {
@@ -250,7 +253,20 @@ export default function LessonGeneratorPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Subject</Label>
-                  <Input id="subject" name="subject" value={formState.subject} onChange={handleInputChange} placeholder="e.g., Mathematics, English Language" />
+                  <Select onValueChange={(value) => handleSelectChange('subject', value)} value={formState.subject}>
+                    <SelectTrigger id="subject">
+                      <SelectValue placeholder="Select a subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingSubjects ? <SelectItem value="loading" disabled>Loading subjects...</SelectItem> :
+                        subjects?.map(sub => (
+                          <SelectItem key={sub.id} value={sub.name}>
+                            {sub.name}
+                          </SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="schemeOfWork">Scheme of Work / Topic</Label>
@@ -415,5 +431,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
