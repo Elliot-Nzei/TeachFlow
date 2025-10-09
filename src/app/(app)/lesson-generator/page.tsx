@@ -14,7 +14,6 @@ import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 type GenerateLessonNoteInput = {
   classLevel: string;
@@ -33,165 +32,6 @@ type SavedNote = {
 const STORAGE_KEY = 'lesson-generator-history';
 const MAX_HISTORY_ITEMS = 20;
 
-
-// --- New PDF Download Logic ---
-interface PdfFormState {
-  subject: string;
-  classLevel: string;
-}
-
-interface ToastProps {
-  variant?: 'destructive' | 'default';
-  title: string;
-  description: string;
-}
-
-interface UseDownloadPdfProps {
-  generatedNote: string | null;
-  formState: PdfFormState;
-  toast: (props: ToastProps) => void;
-  setLoading: (loading: boolean) => void;
-}
-
-const validateDownloadRequirements = (generatedNote: string | null): boolean => {
-  return Boolean(generatedNote && generatedNote.trim().length > 0);
-};
-
-const generateFileName = (subject: string, classLevel: string): string => {
-  const sanitize = (str: string): string =>
-    str.toLowerCase()
-       .trim()
-       .replace(/[^a-z0-9]+/g, '-')
-       .replace(/^-+|-+$/g, '');
-
-  const timestamp = new Date().toISOString().split('T')[0];
-  const subjectSlug = sanitize(subject);
-  const classSlug = sanitize(classLevel);
-
-  return `lesson-note-${subjectSlug}-${classSlug}-${timestamp}.pdf`;
-};
-
-const convertToCanvas = async (element: HTMLElement): Promise<HTMLCanvasElement> => {
-  try {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 15000,
-      removeContainer: true,
-    });
-
-    if (!canvas || canvas.width === 0 || canvas.height === 0) {
-      throw new Error('Generated canvas is invalid or empty');
-    }
-
-    return canvas;
-  } catch (error) {
-    throw new Error(
-      `Failed to convert content to image: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
-};
-
-const calculatePdfDimensions = (
-  canvas: HTMLCanvasElement,
-  pdfWidth: number,
-  pdfHeight: number
-): { width: number; height: number; pages: number } => {
-  const aspectRatio = canvas.width / canvas.height;
-  const width = pdfWidth;
-  const height = width / aspectRatio;
-  const pages = Math.ceil(height / pdfHeight);
-  return { width, height, pages };
-};
-
-const generatePdfFromCanvas = (
-  canvas: HTMLCanvasElement,
-  fileName: string
-): jsPDF => {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-    compress: true,
-  });
-
-  const pdfWidth = doc.internal.pageSize.getWidth();
-  const pdfHeight = doc.internal.pageSize.getHeight();
-  
-  const { width, height, pages } = calculatePdfDimensions(canvas, pdfWidth, pdfHeight);
-
-  const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-  if (pages === 1) {
-    doc.addImage(imgData, 'JPEG', 0, 0, width, height);
-  } else {
-    for (let page = 0; page < pages; page++) {
-      if (page > 0) {
-        doc.addPage();
-      }
-      
-      const yOffset = -page * pdfHeight;
-      doc.addImage(imgData, 'JPEG', 0, yOffset, width, height);
-    }
-  }
-
-  return doc;
-};
-
-const useDownloadPdf = ({
-  generatedNote,
-  formState,
-  toast,
-  setLoading,
-}: UseDownloadPdfProps) => {
-  const handleDownloadPdf = useCallback(async () => {
-    if (!validateDownloadRequirements(generatedNote)) {
-      toast({
-        variant: 'destructive',
-        title: 'Nothing to Download',
-        description: 'Please generate a lesson note first.',
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const noteElement = document.getElementById('note-content');
-      if (!noteElement) {
-        throw new Error('Note content element not found. Please ensure the element has id="note-content".');
-      }
-
-      const canvas = await convertToCanvas(noteElement);
-      const fileName = generateFileName(formState.subject, formState.classLevel);
-      const doc = generatePdfFromCanvas(canvas, fileName);
-      doc.save(fileName);
-
-      toast({
-        title: 'PDF Downloaded',
-        description: 'Your lesson note has been saved successfully.',
-      });
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Download Failed',
-        description: error instanceof Error 
-          ? error.message 
-          : 'An unexpected error occurred while generating the PDF. Please try again.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [generatedNote, formState.subject, formState.classLevel, toast, setLoading]);
-
-  return { handleDownloadPdf };
-};
-// --- End New PDF Download Logic ---
-
-
 export default function LessonGeneratorPage() {
   const [loading, setLoading] = useState(false);
   const [generatedNote, setGeneratedNote] = useState('');
@@ -205,12 +45,59 @@ export default function LessonGeneratorPage() {
   });
   const { toast } = useToast();
 
-  const { handleDownloadPdf } = useDownloadPdf({
-    generatedNote,
-    formState,
-    toast,
-    setLoading,
-  });
+  const handleDownloadPdf = useCallback(async () => {
+    if (!generatedNote) {
+      toast({
+        variant: 'destructive',
+        title: 'Nothing to Download',
+        description: 'Please generate a lesson note first.',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const noteElement = document.getElementById('note-content');
+      if (!noteElement) {
+        throw new Error('Note content element not found.');
+      }
+      
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const fileName = `lesson-note-${formState.subject}-${formState.classLevel}.pdf`;
+      
+      await doc.html(noteElement, {
+        callback: function (doc) {
+          doc.save(fileName);
+        },
+        x: 15,
+        y: 15,
+        width: 170,
+        windowWidth: 650,
+      });
+
+      toast({
+        title: 'PDF Downloaded',
+        description: 'Your lesson note has been saved successfully.',
+      });
+
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: 'An unexpected error occurred while generating the PDF. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [generatedNote, formState.subject, formState.classLevel, toast]);
+
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -719,224 +606,40 @@ export default function LessonGeneratorPage() {
       </div>
 
       <style jsx global>{`
-        /* Base styles for the note content - ALWAYS applied */
-        #note-content {
-          background: white !important;
-          color: #000000 !important;
-          padding: 40px !important;
-          max-width: 210mm !important; /* A4 width */
-          margin: 0 auto !important;
-          box-shadow: none !important;
-          border: none !important;
-        }
-
-        /* Force all text to be black */
-        #note-content,
-        #note-content *,
-        #note-content h1,
-        #note-content h2,
-        #note-content h3,
-        #note-content h4,
-        #note-content h5,
-        #note-content h6,
-        #note-content p,
-        #note-content span,
-        #note-content div,
-        #note-content li,
-        #note-content a,
-        #note-content strong,
-        #note-content em,
-        #note-content blockquote {
-          background: transparent !important;
-          background-color: transparent !important;
-          color: #000000 !important;
-          border-color: #000000 !important;
-        }
-
-        /* Fix prose styles */
-        #note-content.prose,
-        #note-content .prose {
-          color: #000000 !important;
-          max-width: none !important;
-        }
-
-        /* Headings - proper weights and sizes */
-        #note-content h1 {
-          font-size: 28px !important;
-          font-weight: 700 !important;
-          color: #000000 !important;
-          margin-top: 24px !important;
-          margin-bottom: 16px !important;
-        }
-
-        #note-content h2 {
-          font-size: 24px !important;
-          font-weight: 600 !important;
-          color: #000000 !important;
-          margin-top: 20px !important;
-          margin-bottom: 12px !important;
-        }
-
-        #note-content h3 {
-          font-size: 20px !important;
-          font-weight: 600 !important;
-          color: #000000 !important;
-          margin-top: 16px !important;
-          margin-bottom: 10px !important;
-        }
-
-        #note-content h4 {
-          font-size: 18px !important;
-          font-weight: 500 !important;
-          color: #000000 !important;
-        }
-
-        /* Paragraph spacing */
-        #note-content p {
-          font-size: 14px !important;
-          font-weight: 400 !important;
-          line-height: 1.6 !important;
-          margin-bottom: 12px !important;
-          color: #000000 !important;
-        }
-
-        /* Lists */
-        #note-content ul,
-        #note-content ol {
-          margin-left: 24px !important;
-          margin-bottom: 12px !important;
-          color: #000000 !important;
-        }
-
-        #note-content li {
-          font-size: 14px !important;
-          line-height: 1.6 !important;
-          margin-bottom: 8px !important;
-          color: #000000 !important;
-        }
-
-        /* Strong/Bold text */
-        #note-content strong,
-        #note-content b {
-          font-weight: 700 !important;
-          color: #000000 !important;
-        }
-
-        /* Emphasis/Italic */
-        #note-content em,
-        #note-content i {
-          font-style: italic !important;
-          color: #000000 !important;
-        }
-
-        /* Tables */
-        #note-content table {
-          border-collapse: collapse !important;
-          width: 100% !important;
-          margin: 16px 0 !important;
-          background: white !important;
-        }
-
-        #note-content th,
-        #note-content td {
-          border: 1px solid #000000 !important;
-          padding: 8px !important;
-          color: #000000 !important;
-          background: white !important;
-        }
-
-        #note-content th {
-          font-weight: 600 !important;
-          background: #f5f5f5 !important;
-        }
-
-        /* Blockquotes */
-        #note-content blockquote {
-          border-left: 4px solid #000000 !important;
-          padding-left: 16px !important;
-          margin: 16px 0 !important;
-          font-style: italic !important;
-          color: #000000 !important;
-        }
-
-        /* Code blocks */
-        #note-content code {
-          background: #f5f5f5 !important;
-          padding: 2px 6px !important;
-          border-radius: 3px !important;
-          font-family: monospace !important;
-          color: #000000 !important;
-          font-size: 13px !important;
-        }
-
-        #note-content pre {
-          background: #f5f5f5 !important;
-          padding: 12px !important;
-          border-radius: 4px !important;
-          overflow-x: auto !important;
-          margin: 16px 0 !important;
-        }
-
-        #note-content pre code {
-          background: transparent !important;
-          padding: 0 !important;
-        }
-
-        /* Links */
-        #note-content a {
-          color: #0066cc !important;
-          text-decoration: underline !important;
-        }
-
-        /* Dark mode override - force light mode for PDF content */
-        .dark #note-content,
-        .dark #note-content *,
-        .dark #note-content h1,
-        .dark #note-content h2,
-        .dark #note-content h3,
-        .dark #note-content h4,
-        .dark #note-content h5,
-        .dark #note-content h6,
-        .dark #note-content p,
-        .dark #note-content span,
-        .dark #note-content div,
-        .dark #note-content li,
-        .dark #note-content a,
-        .dark #note-content strong,
-        .dark #note-content em {
-          background: white !important;
-          background-color: white !important;
-          color: #000000 !important;
-        }
-
-        /* Remove any gradients or complex backgrounds */
-        #note-content *::before,
-        #note-content *::after {
-          background: transparent !important;
-          background-image: none !important;
-        }
-
-        /* Print-specific styles */
         @media print {
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           body * {
             visibility: hidden;
           }
-          
           #print-section,
           #print-section * {
             visibility: visible;
           }
-          
           #print-section {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
           }
-
           #note-content {
             box-shadow: none !important;
+            border: none !important;
           }
+        }
+        
+        /* Styles for PDF rendering via jspdf.html() */
+        #note-content {
+          background: white !important;
+          color: black !important;
+        }
+        #note-content h1, #note-content h2, #note-content h3, #note-content h4, #note-content p, #note-content li, #note-content span {
+          color: black !important;
+        }
+        #note-content blockquote {
+            border-left-color: #ccc !important;
         }
 
         @page {
@@ -945,5 +648,5 @@ export default function LessonGeneratorPage() {
         }
       `}</style>
     </>
-    );
+  );
 }
