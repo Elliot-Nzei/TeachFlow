@@ -3,8 +3,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, BookOpen, ClipboardList, ArrowRightLeft } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Users, BookOpen, ClipboardList } from 'lucide-react';
 import {
   ChartConfig,
   ChartContainer,
@@ -12,17 +11,13 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
-import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
-import type { DataTransfer } from '@/lib/types';
+import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
-
-  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
@@ -35,29 +30,6 @@ export default function DashboardPage() {
 
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: grades, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
-  
-  // Only query sent transfers (from user's subcollection)
-  const sentTransfersQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'transfers'), orderBy('timestamp', 'desc')) : null,
-    [firestore, user]
-  );
-  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
-  
-  // Use only sent transfers
-  const allTransfers = useMemo(() => {
-    if (!sentTransfers) return [];
-    
-    return sentTransfers.map(t => ({
-      ...t, 
-      id: t.id ?? Math.random().toString()
-    })).sort((a, b) => {
-      const timeA = a.timestamp?.seconds ?? 0;
-      const timeB = b.timestamp?.seconds ?? 0;
-      return timeB - timeA;
-    });
-  }, [sentTransfers]);
-
-  const isLoadingTransfers = isLoadingSent;
   
   const gradeCounts = useMemo(() => (grades || []).reduce((acc: Record<string, number>, grade: any) => {
     if (grade.grade) {
@@ -85,12 +57,11 @@ export default function DashboardPage() {
     { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Total Classes', value: classes?.length, isLoading: isLoadingClasses, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Total Subjects', value: subjects?.length, isLoading: isLoadingSubjects, icon: <BookOpen className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Data Transfers', value: allTransfers.length, isLoading: isLoadingTransfers, icon: <ArrowRightLeft className="h-4 w-4 text-muted-foreground" /> },
   ];
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -105,55 +76,8 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Data Transfers</CardTitle>
-               <CardDescription>A log of your sent data transfers.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead className="text-right">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingTransfers ? (
-                    Array.from({length: 3}).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell>
-                      </TableRow>
-                    ))
-                  ) : allTransfers.length > 0 ? (
-                    allTransfers.slice(0, 5).map((transfer) => (
-                      <TableRow key={transfer.id}>
-                        <TableCell>
-                          <div className="font-medium">{transfer.dataType}</div>
-                          <div className="text-sm text-muted-foreground">
-                            To: {transfer.toUser}
-                          </div>
-                        </TableCell>
-                        <TableCell>{transfer.dataTransferred ?? 'N/A'}</TableCell>
-                        <TableCell className="text-right">{transfer.timestamp ? formatDistanceToNow(new Date(transfer.timestamp?.seconds * 1000), { addSuffix: true }) : 'just now'}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                      <TableRow>
-                          <TableCell colSpan={3} className="h-24 text-center">
-                          No data transfers found.
-                          </TableCell>
-                      </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
-        <div>
           <Card>
             <CardHeader>
               <CardTitle>Grades Summary</CardTitle>
