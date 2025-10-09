@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,19 +42,6 @@ export default function DashboardPage() {
     [firestore, user]
   );
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
-
-  // ❌ REMOVED: Can't query global /transfers collection due to security rules
-  // const receivedTransfersQuery = useMemoFirebase(
-  //   () => (user && userProfile?.userCode) 
-  //       ? query(
-  //           collection(firestore, 'transfers'), 
-  //           where('toUser', '==', userProfile.userCode),
-  //           orderBy('timestamp', 'desc')
-  //         )
-  //       : null,
-  //   [firestore, user, userProfile?.userCode]
-  // );
-  // const { data: receivedTransfers } = useCollection<DataTransfer>(receivedTransfersQuery);
   
   // Use only sent transfers
   const allTransfers = useMemo(() => {
@@ -198,3 +186,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    

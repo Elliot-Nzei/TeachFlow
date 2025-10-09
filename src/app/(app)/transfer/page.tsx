@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRightLeft, Send, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, Send, Loader2, Check, X, AlertCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -15,13 +15,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { useCollection, useFirebase, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy } from 'firebase/firestore';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import type { Class, DataTransfer, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type DataType = 'Class' | 'Grades' | 'Report Card';
 
@@ -38,6 +49,12 @@ export default function TransferPage() {
   const [dataType, setDataType] = useState<DataType | ''>('');
   const [dataItem, setDataItem] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
+  const [processingTransferId, setProcessingTransferId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ 
+    open: boolean; 
+    transfer: TransferWithDirection | null; 
+    action: 'accept' | 'reject' | null;
+  }>({ open: false, transfer: null, action: null });
 
   // Fetch classes and students with proper memoization
   const classesQuery = useMemoFirebase(
@@ -54,7 +71,10 @@ export default function TransferPage() {
 
   // Fetch sent transfers
   const sentTransfersQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'transfers'), orderBy('timestamp', 'desc')) : null,
+    () => user ? query(
+      collection(firestore, 'users', user.uid, 'transfers'), 
+      orderBy('timestamp', 'desc')
+    ) : null,
     [firestore, user]
   );
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
@@ -81,7 +101,6 @@ export default function TransferPage() {
     
     const transferMap = new Map<string, TransferWithDirection>();
     [...sent, ...received].forEach(transfer => {
-      // Ensure each transfer has a unique ID for the map key
       const transferId = transfer.id || `${transfer.fromUser}-${transfer.toUser}-${transfer.dataId}-${transfer.timestamp?.seconds}`;
       if (!transferMap.has(transferId)) {
         transferMap.set(transferId, transfer);
@@ -128,6 +147,23 @@ export default function TransferPage() {
     return null;
   }, [recipientCode, dataType, dataItem, userProfile?.userCode, user]);
 
+  // Find user by code
+  const findUserByCode = async (userCode: string): Promise<string | null> => {
+    try {
+      const usersRef = collection(firestore, 'users');
+      const q = query(usersRef, where('userCode', '==', userCode));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        return snapshot.docs[0].id;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return null;
+    }
+  };
+
   // Handle transfer with batched write
   const handleTransfer = async () => {
     const error = validateTransfer();
@@ -144,6 +180,13 @@ export default function TransferPage() {
     
     try {
       if (!user || !userProfile) throw new Error("User not available");
+      
+      // Verify recipient exists
+      const recipientUid = await findUserByCode(recipientCode.trim().toUpperCase());
+      if (!recipientUid) {
+        throw new Error(`No user found with code: ${recipientCode.trim().toUpperCase()}`);
+      }
+
       const batch = writeBatch(firestore);
       const dataName = getItemName(dataItem, dataType as DataType);
       
@@ -151,7 +194,9 @@ export default function TransferPage() {
       const userTransferRef = doc(collection(firestore, 'users', user.uid, 'transfers'));
       batch.set(userTransferRef, {
         fromUser: userProfile.userCode,
+        fromUserId: user.uid,
         toUser: recipientCode.trim().toUpperCase(),
+        toUserId: recipientUid,
         dataType,
         dataId: dataItem,
         dataTransferred: dataName,
@@ -163,7 +208,9 @@ export default function TransferPage() {
       const globalTransferRef = doc(collection(firestore, 'transfers'));
       batch.set(globalTransferRef, {
         fromUser: userProfile.userCode,
+        fromUserId: user.uid,
         toUser: recipientCode.trim().toUpperCase(),
+        toUserId: recipientUid,
         dataType,
         dataId: dataItem,
         dataTransferred: dataName,
@@ -175,7 +222,7 @@ export default function TransferPage() {
 
       toast({
         title: 'Transfer Initiated',
-        description: `Request to transfer ${dataName} has been sent.`,
+        description: `Request to transfer "${dataName}" has been sent to ${recipientCode.trim().toUpperCase()}.`,
       });
 
       // Reset form
@@ -195,11 +242,220 @@ export default function TransferPage() {
     }
   };
 
+  // Copy class data with all students
+  const copyClassData = async (fromUserId: string, toUserId: string, classId: string) => {
+    const batch = writeBatch(firestore);
+    
+    // Get the class data
+    const classRef = doc(firestore, 'users', fromUserId, 'classes', classId);
+    const classSnap = await getDoc(classRef);
+    
+    if (!classSnap.exists()) {
+      throw new Error('Class not found');
+    }
+
+    const classData = classSnap.data();
+    
+    // Create new class in recipient's account
+    const newClassRef = doc(collection(firestore, 'users', toUserId, 'classes'));
+    batch.set(newClassRef, {
+      ...classData,
+      transferredFrom: fromUserId,
+      transferredAt: serverTimestamp(),
+    });
+
+    // Get all students in this class
+    const studentsRef = collection(firestore, 'users', fromUserId, 'students');
+    const studentsQuery = query(studentsRef, where('classId', '==', classId));
+    const studentsSnap = await getDocs(studentsQuery);
+
+    // Copy each student
+    studentsSnap.docs.forEach((studentDoc) => {
+      const studentData = studentDoc.data();
+      const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
+      batch.set(newStudentRef, {
+        ...studentData,
+        classId: newClassRef.id, // Update to new class ID
+        transferredFrom: fromUserId,
+        transferredAt: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+    return { classId: newClassRef.id, studentsCount: studentsSnap.size };
+  };
+
+  // Copy student data
+  const copyStudentData = async (fromUserId: string, toUserId: string, studentId: string) => {
+    const batch = writeBatch(firestore);
+    
+    // Get the student data
+    const studentRef = doc(firestore, 'users', fromUserId, 'students', studentId);
+    const studentSnap = await getDoc(studentRef);
+    
+    if (!studentSnap.exists()) {
+      throw new Error('Student not found');
+    }
+
+    const studentData = studentSnap.data();
+    
+    // Create new student in recipient's account
+    const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
+    batch.set(newStudentRef, {
+      ...studentData,
+      transferredFrom: fromUserId,
+      transferredAt: serverTimestamp(),
+    });
+
+    await batch.commit();
+    return { studentId: newStudentRef.id };
+  };
+
+  // Accept transfer
+  const handleAcceptTransfer = async (transfer: TransferWithDirection) => {
+    if (!user || !transfer.fromUserId) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Missing required information to accept transfer.',
+      });
+      return;
+    }
+
+    setProcessingTransferId(transfer.id);
+    setConfirmDialog({ open: false, transfer: null, action: null });
+
+    try {
+      let result;
+      
+      // Perform the actual data transfer based on type
+      if (transfer.dataType === 'Class') {
+        result = await copyClassData(transfer.fromUserId, user.uid, transfer.dataId);
+        toast({
+          title: 'Transfer Accepted',
+          description: `Class "${transfer.dataTransferred}" with ${result.studentsCount} student(s) has been added to your account.`,
+        });
+      } else {
+        result = await copyStudentData(transfer.fromUserId, user.uid, transfer.dataId);
+        toast({
+          title: 'Transfer Accepted',
+          description: `Student "${transfer.dataTransferred}" has been added to your account.`,
+        });
+      }
+
+      // Update transfer status in both collections
+      const batch = writeBatch(firestore);
+      
+      // Update in global transfers
+      const globalTransferRef = doc(firestore, 'transfers', transfer.id);
+      batch.update(globalTransferRef, {
+        status: 'accepted',
+        acceptedAt: serverTimestamp(),
+      });
+
+      // Update in sender's transfers if we can find it
+      if (transfer.fromUserId) {
+        const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
+        const senderQuery = query(
+          senderTransfersRef, 
+          where('dataId', '==', transfer.dataId),
+          where('toUser', '==', transfer.toUser)
+        );
+        const senderSnap = await getDocs(senderQuery);
+        
+        senderSnap.docs.forEach(doc => {
+          batch.update(doc.ref, {
+            status: 'accepted',
+            acceptedAt: serverTimestamp(),
+          });
+        });
+      }
+
+      await batch.commit();
+
+    } catch (error) {
+      console.error('Error accepting transfer:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Transfer Failed',
+        description: error instanceof Error ? error.message : 'Failed to accept transfer.',
+      });
+    } finally {
+      setProcessingTransferId(null);
+    }
+  };
+
+  // Reject transfer
+  const handleRejectTransfer = async (transfer: TransferWithDirection) => {
+    setProcessingTransferId(transfer.id);
+    setConfirmDialog({ open: false, transfer: null, action: null });
+
+    try {
+      const batch = writeBatch(firestore);
+      
+      // Update in global transfers
+      const globalTransferRef = doc(firestore, 'transfers', transfer.id);
+      batch.update(globalTransferRef, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+      });
+
+      // Update in sender's transfers if we can find it
+      if (transfer.fromUserId) {
+        const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
+        const senderQuery = query(
+          senderTransfersRef, 
+          where('dataId', '==', transfer.dataId),
+          where('toUser', '==', transfer.toUser)
+        );
+        const senderSnap = await getDocs(senderQuery);
+        
+        senderSnap.docs.forEach(doc => {
+          batch.update(doc.ref, {
+            status: 'rejected',
+            rejectedAt: serverTimestamp(),
+          });
+        });
+      }
+
+      await batch.commit();
+
+      toast({
+        title: 'Transfer Rejected',
+        description: `Transfer from ${transfer.fromUser} has been rejected.`,
+      });
+
+    } catch (error) {
+      console.error('Error rejecting transfer:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to reject transfer.',
+      });
+    } finally {
+      setProcessingTransferId(null);
+    }
+  };
+
   // Handle data type change
   const handleDataTypeChange = useCallback((value: DataType) => {
     setDataType(value);
-    setDataItem(''); // Reset item when type changes
+    setDataItem('');
   }, []);
+
+  // Get status badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">Pending</Badge>;
+      case 'accepted':
+        return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">Accepted</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400">Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -207,6 +463,29 @@ export default function TransferPage() {
         <h1 className="text-3xl font-bold font-headline">Data Transfer</h1>
         <p className="text-muted-foreground">Securely transfer data to another user with their unique code.</p>
       </div>
+
+      {userProfile?.userCode && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Your User Code</p>
+                <p className="text-2xl font-bold font-mono">{userProfile.userCode}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(userProfile.userCode);
+                  toast({ title: 'Copied!', description: 'User code copied to clipboard.' });
+                }}
+              >
+                Copy Code
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -296,14 +575,16 @@ export default function TransferPage() {
                 <TableHead>User Code</TableHead>
                 <TableHead>Data Type</TableHead>
                 <TableHead>Details</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoadingTransfers ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={7}>
                       <Skeleton className="h-10 w-full" />
                     </TableCell>
                   </TableRow>
@@ -314,6 +595,8 @@ export default function TransferPage() {
                   const date = transfer.timestamp?.seconds 
                     ? new Date(transfer.timestamp.seconds * 1000) 
                     : new Date();
+                  const isProcessing = processingTransferId === transfer.id;
+                  const isPending = transfer.status === 'pending';
                   
                   return (
                     <TableRow key={transfer.id}>
@@ -333,15 +616,42 @@ export default function TransferPage() {
                       </TableCell>
                       <TableCell>{transfer.dataType}</TableCell>
                       <TableCell>{transfer.dataTransferred}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell>{getStatusBadge(transfer.status)}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
                         {formatDistanceToNow(date, { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!isSent && isPending && (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <><Check className="mr-1 h-4 w-4" /> Accept</>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })}
+                              disabled={isProcessing}
+                            >
+                              <X className="mr-1 h-4 w-4" /> Reject
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
                     No transfer history found.
                   </TableCell>
                 </TableRow>
@@ -350,6 +660,53 @@ export default function TransferPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.action === 'accept' ? 'Accept Transfer?' : 'Reject Transfer?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.action === 'accept' ? (
+                <>
+                  You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from{' '}
+                  <strong>{confirmDialog.transfer?.fromUser}</strong>. This data will be added to your account.
+                  {confirmDialog.transfer?.dataType === 'Class' && (
+                    <div className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">This will transfer the class along with all its students.</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  Are you sure you want to reject the transfer of <strong>{confirmDialog.transfer?.dataTransferred}</strong> from{' '}
+                  <strong>{confirmDialog.transfer?.fromUser}</strong>? This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDialog.transfer) {
+                  if (confirmDialog.action === 'accept') {
+                    handleAcceptTransfer(confirmDialog.transfer);
+                  } else {
+                    handleRejectTransfer(confirmDialog.transfer);
+                  }
+                }
+              }}
+            >
+              {confirmDialog.action === 'accept' ? 'Accept' : 'Reject'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    
