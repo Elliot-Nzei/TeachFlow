@@ -497,47 +497,41 @@ export default function ReportCardGenerator() {
                 continue;
             }
             
-            // Temporarily make the element visible for capture
-            reportElement.style.display = 'block';
-            reportElement.style.visibility = 'visible';
+            // Clone the node, append it to the body, and then capture
+            const clone = reportElement.cloneNode(true) as HTMLElement;
+            clone.style.position = 'absolute';
+            clone.style.left = '-9999px';
+            clone.style.top = '0px';
+            clone.style.display = 'block';
+            clone.style.visibility = 'visible';
+            document.body.appendChild(clone);
 
+            let canvas;
             try {
-                const canvas = await html2canvas(reportElement, {
+                 canvas = await html2canvas(clone, {
                     scale: 2,
                     useCORS: true,
                     backgroundColor: '#ffffff',
                 });
-                
-                // Hide element again after capture
-                reportElement.style.display = 'none';
-                reportElement.style.visibility = 'hidden';
-                
-                if (!canvas || canvas.width === 0 || canvas.height === 0) {
-                    throw new Error('Invalid canvas generated');
-                }
-
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                if (!imgData || imgData === 'data:,') {
-                    throw new Error('Failed to generate image data');
-                }
-
-                if (i > 0) {
-                    doc.addPage();
-                }
-                
-                doc.addImage(imgData, 'JPEG', 0, 0, a4_width, a4_height, undefined, 'FAST');
-            } catch (canvasError) {
-                // Ensure element is hidden even if canvas fails
-                reportElement.style.display = 'none';
-                reportElement.style.visibility = 'hidden';
-                console.error(`Error processing canvas for ${report.studentName}:`, canvasError);
-                toast({
-                    variant: 'destructive',
-                    title: `PDF Generation Warning`,
-                    description: `Could not process report for ${report.studentName}. Continuing with others...`,
-                });
-                continue;
+            } finally {
+                // Always remove the clone
+                document.body.removeChild(clone);
             }
+            
+            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                throw new Error('Invalid canvas generated');
+            }
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            if (!imgData || imgData === 'data:,') {
+                throw new Error('Failed to generate image data');
+            }
+
+            if (i > 0) {
+                doc.addPage();
+            }
+            
+            doc.addImage(imgData, 'JPEG', 0, 0, a4_width, a4_height, undefined, 'FAST');
         }
         
         const fileName = selectedStudent
@@ -550,7 +544,7 @@ export default function ReportCardGenerator() {
         toast({
             variant: "destructive",
             title: "PDF Download Failed",
-            description: "An unexpected error occurred while creating the PDF.",
+            description: error instanceof Error ? error.message : 'An unexpected error occurred.',
         });
     } finally {
         setLoading(false);
@@ -589,7 +583,7 @@ export default function ReportCardGenerator() {
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                         <Command>
                             <CommandInput placeholder="Search class..." />
                             <CommandList>
@@ -628,7 +622,7 @@ export default function ReportCardGenerator() {
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0">
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                             <Command>
                                 <CommandInput placeholder="Search student..." />
                                 <CommandList>
@@ -828,5 +822,7 @@ export default function ReportCardGenerator() {
     </>
   );
 }
+
+    
 
     
