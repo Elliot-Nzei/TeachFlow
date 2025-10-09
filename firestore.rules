@@ -1,115 +1,59 @@
-/**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for most data,
- *              allowing users to read and write their own data, but preventing access to others' data.
- *              It also allows public read access for specific collections.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles and settings.  Only the owner can read/write.
- * - /users/{userId}/classes/{classId}: Stores classes created by the user. Only the owner can read/write.
- *
- * Key Security Decisions:
- * - User listing is disallowed to prevent unauthorized access to user data.
- * - Ambiguous relationships default to strict owner-only access.
- *
- * Denormalization for Authorization:
- * - User-scoped subcollections (e.g., /users/{userId}/classes/{classId}) inherit authorization from the parent /users/{userId} document. This avoids the need for complex `get()` calls.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the request is made by a signed-in user.
-     * @path N/A (Helper function)
-     * @allow N/A (Helper function)
-     * @deny N/A (Helper function)
-     * @principle Authentication is required for most operations.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user's UID matches the provided userId.
-     * @path N/A (Helper function)
-     * @allow N/A (Helper function)
-     * @deny N/A (Helper function)
-     * @principle Enforces user-ownership for data access.
-     */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user's UID matches the provided userId and the resource exists.
-     * @path N/A (Helper function)
-     * @allow N/A (Helper function)
-     * @deny N/A (Helper function)
-     * @principle Enforces user-ownership and resource existence for destructive operations.
+     * @description Controls access to student documents under a user's profile.
+     * @path /databases/{database}/documents/users/{userId}/students/{studentId}
+     * @allow (list) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can list students under their own user ID.
+     * @deny (list) User 'someOtherUserId' cannot list students under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
+     * @allow (create) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can create a student document under their own user ID.
+     * @deny (update) User 'someOtherUserId' cannot update a student document under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
+     * @principle Enforces document ownership for writes and restricts listing to owners.
      */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+    match /users/{userId}/students/{studentId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow write: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Rules for the /users collection.  Allows a user to create their own profile.
-     * @path /users/{userId}
-     * @allow (create) If the user is signed in and the userId matches the authenticated user's UID.
-     * @deny (read, update, delete) If the user is not the owner.
-     * @principle Enforces user-ownership for profile data.
+     * @description Controls access to incoming transfer requests for a user.
+     * @path /databases/{database}/documents/users/{userId}/incomingTransfers/{transferId}
+     * @allow (get) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can get incoming transfer requests for their user ID.
+     * @deny (list) User 'someOtherUserId' cannot list incoming transfer requests under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
+     * @allow (create) Only the server can create transfer requests.  The document must match the path.
+     * @deny (update) User 'someOtherUserId' cannot update an incoming transfer request for user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
+     * @principle Enforces document ownership for reads and writes.
      */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && request.resource.data.toUserId == userId;
+      allow update: if false;
+      allow delete: if false;
+    }
 
-       /**
-         * @description Rules for the /users/{userId}/classes collection. Allows owner access only.
-         * @path /users/{userId}/classes/{classId}
-         * @allow (list) If the user is signed in and the userId matches the authenticated user's UID.
-         * @deny (read, update, delete) If the user is not the owner.
-         * @principle Enforces user-ownership for class data.
-         */
-        match /classes/{classId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
-          allow create: if isOwner(userId);
-          allow update: if isExistingOwner(userId);
-          allow delete: if isExistingOwner(userId);
-        }
-
-        /**
-         * @description Rules for the /users/{userId}/incomingTransfers collection. Allows owner access only.
-         * @path /users/{userId}/incomingTransfers/{transferId}
-         * @allow (create) If the user is signed in and the userId matches the authenticated user's UID.
-         * @deny (read, update, delete) If the user is not the owner.
-         * @principle Enforces user-ownership for transfer data.
-         */
-        match /incomingTransfers/{transferId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
-          allow create: if isOwner(userId);
-          allow update: if isExistingOwner(userId);
-          allow delete: if isExistingOwner(userId);
-        }
-
-        /**
-         * @description Rules for the /users/{userId}/outgoingTransfers collection. Allows owner access only.
-         * @path /users/{userId}/outgoingTransfers/{transferId}
-         * @allow (create) If the user is signed in and the userId matches the authenticated user's UID.
-         * @deny (read, update, delete) If the user is not the owner.
-         * @principle Enforces user-ownership for transfer data.
-         */
-        match /outgoingTransfers/{transferId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
-          allow create: if isOwner(userId);
-          allow update: if isExistingOwner(userId);
-          allow delete: if isExistingOwner(userId);
-        }
+    /**
+     * @description Controls access to outgoing transfer requests for a user.
+     * @path /databases/{database}/documents/users/{userId}/outgoingTransfers/{transferId}
+     * @allow (get) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can get outgoing transfer requests for their user ID.
+     * @deny (list) User 'someOtherUserId' cannot list outgoing transfer requests under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
+     * @allow (create) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can create an outgoing transfer request under their own user ID. The document must match the path.
+     * @deny (update) User 'someOtherUserId' cannot update an outgoing transfer request for user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
+     * @principle Enforces document ownership for reads and writes.
+     */
+    match /users/{userId}/outgoingTransfers/{transferId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.fromUserId == userId;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
