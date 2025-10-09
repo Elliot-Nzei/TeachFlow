@@ -267,6 +267,10 @@
           "type": "string",
           "description": "The UID of the sender."
         },
+        "toUserCode": {
+          "type": "string",
+          "description": "The user code of the recipient."
+        },
         "toUserId": {
           "type": "string",
           "description": "The UID of the recipient."
@@ -302,6 +306,7 @@
         "fromUserCode",
         "fromUserId",
         "toUserId",
+        "toUserCode",
         "dataType",
         "dataId",
         "dataTransferred",
@@ -315,5 +320,15 @@
       "password",
       "anonymous"
     ]
+  },
+  "firestore": {
+    "/users/{userId}/incomingTransfers/{transferId}": {
+      "schema": { "$ref": "#/entities/Transfer" },
+      "description": "Stores incoming data transfer requests for a user."
+    },
+    "/users/{userId}/outgoingTransfers/{transferId}": {
+      "schema": { "$ref": "#/entities/Transfer" },
+      "description": "Stores a log of outgoing data transfers initiated by a user."
+    }
   }
 }

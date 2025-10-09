@@ -66,6 +66,7 @@ export type DataTransfer = {
   id: string;
   fromUserCode: string;
   fromUserId: string;
+  toUserCode: string;
   toUserId: string;
   dataType: 'Class' | 'Grades' | 'Report Card';
   dataId: string;

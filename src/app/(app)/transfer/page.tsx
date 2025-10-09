@@ -59,14 +59,35 @@ export default function TransferPage() {
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  // Fetch incoming transfers from the user's own subcollection
+  // Fetch incoming transfers
   const incomingTransfersQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'incomingTransfers'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
   );
-  const { data: incomingTransfers, isLoading: isLoadingTransfers } = useCollection<DataTransfer>(incomingTransfersQuery);
+  const { data: incomingTransfers, isLoading: isLoadingIncoming } = useCollection<DataTransfer>(incomingTransfersQuery);
+  
+  // Fetch outgoing transfers
+  const outgoingTransfersQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'users', user.uid, 'outgoingTransfers'), orderBy('createdAt', 'desc')) : null,
+    [firestore, user]
+  );
+  const { data: outgoingTransfers, isLoading: isLoadingOutgoing } = useCollection<DataTransfer>(outgoingTransfersQuery);
 
-  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingProfile;
+  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingProfile || isLoadingIncoming || isLoadingOutgoing;
+
+  const combinedTransfers = useMemo(() => {
+    const allTransfers = [
+      ...(incomingTransfers || []).map(t => ({ ...t, type: 'received' as const })),
+      ...(outgoingTransfers || []).map(t => ({ ...t, type: 'sent' as const })),
+    ];
+    allTransfers.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+    });
+    return allTransfers;
+  }, [incomingTransfers, outgoingTransfers]);
+
 
   const dataItemOptions = useMemo(() => {
     if (!dataType) return [];
@@ -78,14 +99,15 @@ export default function TransferPage() {
     return items?.find(item => item.id === itemId)?.name || 'Unknown';
   }, [classes, students]);
 
-  const findRecipientIdByUserCode = async (code: string): Promise<string | null> => {
+  const findRecipientIdByUserCode = async (code: string): Promise<{id: string, code: string} | null> => {
     const usersRef = collection(firestore, 'users');
-    const q = query(usersRef, where('userCode', '==', code), where('userCode', '!=', userProfile?.userCode));
+    const q = query(usersRef, where('userCode', '==', code));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
     }
-    return querySnapshot.docs[0].id;
+    const recipientDoc = querySnapshot.docs[0];
+    return { id: recipientDoc.id, code: recipientDoc.data().userCode };
   };
 
   const handleTransfer = async () => {
@@ -100,16 +122,19 @@ export default function TransferPage() {
 
     setIsTransferring(true);
     try {
-      const recipientId = await findRecipientIdByUserCode(recipientCode.trim().toUpperCase());
-      if (!recipientId) {
+      const recipient = await findRecipientIdByUserCode(recipientCode.trim().toUpperCase());
+      if (!recipient) {
         throw new Error(`No user found with code: ${recipientCode.trim().toUpperCase()}`);
       }
 
+      const recipientId = recipient.id;
       const dataName = getItemName(dataItem, dataType);
+      
       const transferRequest = {
         fromUserCode: userProfile.userCode,
         fromUserId: user.uid,
         toUserId: recipientId,
+        toUserCode: recipient.code,
         dataType,
         dataId: dataItem,
         dataTransferred: dataName,
@@ -117,9 +142,17 @@ export default function TransferPage() {
         createdAt: serverTimestamp(),
       };
 
-      // Write the transfer request to the recipient's incomingTransfers collection
-      const recipientTransfersRef = collection(firestore, 'users', recipientId, 'incomingTransfers');
-      await addDoc(recipientTransfersRef, transferRequest);
+      const batch = writeBatch(firestore);
+
+      // 1. Write to the recipient's incoming transfers
+      const recipientTransfersRef = doc(collection(firestore, 'users', recipientId, 'incomingTransfers'));
+      batch.set(recipientTransfersRef, transferRequest);
+      
+      // 2. Write to the sender's outgoing transfers
+      const senderTransfersRef = doc(collection(firestore, 'users', user.uid, 'outgoingTransfers'));
+      batch.set(senderTransfersRef, transferRequest);
+      
+      await batch.commit();
       
       toast({
         title: 'Transfer Initiated',
@@ -149,37 +182,32 @@ export default function TransferPage() {
     if (!classSnap.exists()) throw new Error('Source class not found');
     const classData = classSnap.data();
     
-    // Create the new class document with an empty students array initially
     const newClassRef = doc(collection(firestore, 'users', toUserId, 'classes'));
     batch.set(newClassRef, {
       ...classData,
-      students: [], // CRITICAL: Start with an empty student list
+      students: [], 
       transferredFrom: fromUserId,
       transferredAt: serverTimestamp(),
     });
 
-    // Find all students from the source class
     const studentsQuery = query(collection(firestore, 'users', fromUserId, 'students'), where('classId', '==', classId));
     const studentsSnap = await getDocs(studentsQuery);
     
     const newStudentIds: string[] = [];
-    // Loop through source students, create new student docs for the recipient, and collect their new IDs
     studentsSnap.docs.forEach((studentDoc) => {
       const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
       batch.set(newStudentRef, {
         ...studentDoc.data(),
-        classId: newClassRef.id, // Update student's classId to the new class
+        classId: newClassRef.id,
         className: classData.name,
         transferredFrom: fromUserId,
         transferredAt: serverTimestamp(),
       });
-      newStudentIds.push(newStudentRef.id); // Collect the new student ID
+      newStudentIds.push(newStudentRef.id);
     });
 
-    // After all students are processed, update the new class with the array of new student IDs
     batch.update(newClassRef, { students: newStudentIds });
 
-    // Commit all batched writes
     await batch.commit();
     return { studentsCount: studentsSnap.size };
   };
@@ -201,9 +229,27 @@ export default function TransferPage() {
         toast({ variant: 'destructive', title: 'Not Implemented', description: `Transfer for ${transfer.dataType} is not yet supported.` });
         throw new Error('Unsupported data type');
       }
+      
+      const batch = writeBatch(firestore);
+      
+      // Update incoming transfer for recipient (us)
+      const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
+      batch.update(incomingRef, { status: 'accepted', processedAt: serverTimestamp() });
+      
+      // Update outgoing transfer for sender
+      const outgoingQuery = query(
+        collection(firestore, 'users', transfer.fromUserId, 'outgoingTransfers'),
+        where('toUserId', '==', user.uid),
+        where('dataId', '==', transfer.dataId),
+        where('status', '==', 'pending')
+      );
+      const outgoingSnapshot = await getDocs(outgoingQuery);
+      if (!outgoingSnapshot.empty) {
+          const outgoingRef = outgoingSnapshot.docs[0].ref;
+          batch.update(outgoingRef, { status: 'accepted', processedAt: serverTimestamp() });
+      }
 
-      const transferRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
-      await updateDoc(transferRef, { status: 'accepted', processedAt: serverTimestamp() });
+      await batch.commit();
 
     } catch (error) {
       console.error('Error accepting transfer:', error);
@@ -218,13 +264,29 @@ export default function TransferPage() {
   };
 
   const handleRejectTransfer = async (transfer: DataTransfer) => {
-    if (!user) return;
+    if (!user || !transfer.fromUserId) return;
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
 
     try {
-      const transferRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
-      await updateDoc(transferRef, { status: 'rejected', processedAt: serverTimestamp() });
+      const batch = writeBatch(firestore);
+
+      const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
+      batch.update(incomingRef, { status: 'rejected', processedAt: serverTimestamp() });
+      
+      const outgoingQuery = query(
+        collection(firestore, 'users', transfer.fromUserId, 'outgoingTransfers'),
+        where('toUserId', '==', user.uid),
+        where('dataId', '==', transfer.dataId),
+        where('status', '==', 'pending')
+      );
+      const outgoingSnapshot = await getDocs(outgoingQuery);
+      if (!outgoingSnapshot.empty) {
+          const outgoingRef = outgoingSnapshot.docs[0].ref;
+          batch.update(outgoingRef, { status: 'rejected', processedAt: serverTimestamp() });
+      }
+
+      await batch.commit();
 
       toast({
         title: 'Transfer Rejected',
@@ -319,14 +381,15 @@ export default function TransferPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Incoming & Completed Transfers</CardTitle>
-          <CardDescription>A log of your recent incoming and processed data transfers.</CardDescription>
+          <CardTitle>Transfer History</CardTitle>
+          <CardDescription>A log of your recent sent, incoming and processed data transfers.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>From</TableHead>
+                <TableHead>Direction</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Details</TableHead>
                 <TableHead>Status</TableHead>
@@ -335,16 +398,18 @@ export default function TransferPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingTransfers ? (
+              {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={`skeleton-${i}`}><TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                  <TableRow key={`skeleton-${i}`}><TableCell colSpan={7}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                 ))
-              ) : incomingTransfers && incomingTransfers.length > 0 ? (
-                incomingTransfers.map((transfer) => {
+              ) : combinedTransfers.length > 0 ? (
+                combinedTransfers.map((transfer) => {
                   const isProcessing = processingTransferId === transfer.id;
+                  const isSent = transfer.type === 'sent';
                   return (
                     <TableRow key={transfer.id}>
-                      <TableCell className="font-mono">{transfer.fromUserCode}</TableCell>
+                      <TableCell><Badge variant={isSent ? 'secondary' : 'default'}>{isSent ? 'Sent' : 'Received'}</Badge></TableCell>
+                      <TableCell className="font-mono">{isSent ? transfer.toUserCode : transfer.fromUserCode}</TableCell>
                       <TableCell>{transfer.dataType}</TableCell>
                       <TableCell>{transfer.dataTransferred}</TableCell>
                       <TableCell>{getStatusBadge(transfer.status)}</TableCell>
@@ -352,7 +417,7 @@ export default function TransferPage() {
                         {transfer.createdAt ? formatDistanceToNow(new Date(transfer.createdAt.seconds * 1000), { addSuffix: true }) : '...'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {transfer.status === 'pending' && (
+                        {!isSent && transfer.status === 'pending' && (
                           <div className="flex justify-end gap-2">
                             <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })} disabled={isProcessing}>
                               {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Accept
@@ -367,7 +432,7 @@ export default function TransferPage() {
                   );
                 })
               ) : (
-                <TableRow><TableCell colSpan={6} className="text-center h-24 text-muted-foreground">No incoming transfers.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center h-24 text-muted-foreground">No transfer history.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
