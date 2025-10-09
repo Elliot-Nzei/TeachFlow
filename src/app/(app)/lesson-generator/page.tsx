@@ -68,10 +68,10 @@ export default function LessonGeneratorPage() {
       });
       return;
     }
-  
+
     setIsDownloadingPdf(true);
     const noteElement = document.getElementById('note-content-for-pdf');
-  
+
     if (!noteElement) {
         toast({
             variant: 'destructive',
@@ -110,7 +110,7 @@ export default function LessonGeneratorPage() {
     } finally {
         setIsDownloadingPdf(false);
     }
-  }, [generatedNote, formState.subject, toast]);
+  }, [generatedNote, formState.subject, formState.classLevel, toast]);
 
   useEffect(() => {
     try {
@@ -432,5 +432,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
