@@ -94,8 +94,8 @@ export default function LessonGeneratorPage() {
             const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
             doc.save(`lesson-note-${sanitizedSubject}.pdf`);
           },
-          x: 15,
-          y: 15,
+          margin: [15, 15, 15, 15],
+          autoPaging: 'text',
           width: 180, // A4 width (210) minus margins (15*2)
           windowWidth: 794 // A4 width in pixels at 96 DPI
         });
@@ -401,6 +401,7 @@ export default function LessonGeneratorPage() {
         #note-content-for-pdf * {
           color: black !important;
           background-color: transparent !important;
+          line-height: 1.6 !important;
         }
 
         @media print {
@@ -431,3 +432,5 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
+
+    
