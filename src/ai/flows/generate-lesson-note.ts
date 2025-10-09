@@ -63,7 +63,7 @@ export async function generateLessonNote(input: GenerateLessonNoteInput): Promis
 const prompt = ai.definePrompt({
   name: 'generateLessonNotePrompt',
   input: { schema: GenerateLessonNoteInputSchema },
-  output: { schema: GenerateLessonNoteOutputSchema },
+  output: { schema: z.object({ note: z.string() }) },
   prompt: `You are an experienced Nigerian school teacher with deep knowledge of the Nigerian Educational Research and Development Council (NERDC) curriculum.
 
 Your task is to generate a comprehensive, well-structured lesson note in Markdown format and return it in a JSON object.
@@ -169,7 +169,7 @@ const generateLessonNoteFlow = ai.defineFlow(
   {
     name: 'generateLessonNoteFlow',
     inputSchema: GenerateLessonNoteInputSchema,
-    outputSchema: GenerateLessonNoteOutputSchema,
+    outputSchema: z.object({ note: z.string() }),
   },
   async (input) => {
     const { output } = await prompt(input);
