@@ -33,6 +33,165 @@ type SavedNote = {
 const STORAGE_KEY = 'lesson-generator-history';
 const MAX_HISTORY_ITEMS = 20;
 
+
+// --- New PDF Download Logic ---
+interface PdfFormState {
+  subject: string;
+  classLevel: string;
+}
+
+interface ToastProps {
+  variant?: 'destructive' | 'default';
+  title: string;
+  description: string;
+}
+
+interface UseDownloadPdfProps {
+  generatedNote: string | null;
+  formState: PdfFormState;
+  toast: (props: ToastProps) => void;
+  setLoading: (loading: boolean) => void;
+}
+
+const validateDownloadRequirements = (generatedNote: string | null): boolean => {
+  return Boolean(generatedNote && generatedNote.trim().length > 0);
+};
+
+const generateFileName = (subject: string, classLevel: string): string => {
+  const sanitize = (str: string): string =>
+    str.toLowerCase()
+       .trim()
+       .replace(/[^a-z0-9]+/g, '-')
+       .replace(/^-+|-+$/g, '');
+
+  const timestamp = new Date().toISOString().split('T')[0];
+  const subjectSlug = sanitize(subject);
+  const classSlug = sanitize(classLevel);
+
+  return `lesson-note-${subjectSlug}-${classSlug}-${timestamp}.pdf`;
+};
+
+const convertToCanvas = async (element: HTMLElement): Promise<HTMLCanvasElement> => {
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 15000,
+      removeContainer: true,
+    });
+
+    if (!canvas || canvas.width === 0 || canvas.height === 0) {
+      throw new Error('Generated canvas is invalid or empty');
+    }
+
+    return canvas;
+  } catch (error) {
+    throw new Error(
+      `Failed to convert content to image: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+};
+
+const calculatePdfDimensions = (
+  canvas: HTMLCanvasElement,
+  pdfWidth: number,
+  pdfHeight: number
+): { width: number; height: number; pages: number } => {
+  const aspectRatio = canvas.width / canvas.height;
+  const width = pdfWidth;
+  const height = width / aspectRatio;
+  const pages = Math.ceil(height / pdfHeight);
+  return { width, height, pages };
+};
+
+const generatePdfFromCanvas = (
+  canvas: HTMLCanvasElement,
+  fileName: string
+): jsPDF => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
+
+  const pdfWidth = doc.internal.pageSize.getWidth();
+  const pdfHeight = doc.internal.pageSize.getHeight();
+  
+  const { width, height, pages } = calculatePdfDimensions(canvas, pdfWidth, pdfHeight);
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+  if (pages === 1) {
+    doc.addImage(imgData, 'JPEG', 0, 0, width, height);
+  } else {
+    for (let page = 0; page < pages; page++) {
+      if (page > 0) {
+        doc.addPage();
+      }
+      
+      const yOffset = -page * pdfHeight;
+      doc.addImage(imgData, 'JPEG', 0, yOffset, width, height);
+    }
+  }
+
+  return doc;
+};
+
+const useDownloadPdf = ({
+  generatedNote,
+  formState,
+  toast,
+  setLoading,
+}: UseDownloadPdfProps) => {
+  const handleDownloadPdf = useCallback(async () => {
+    if (!validateDownloadRequirements(generatedNote)) {
+      toast({
+        variant: 'destructive',
+        title: 'Nothing to Download',
+        description: 'Please generate a lesson note first.',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const noteElement = document.getElementById('note-content');
+      if (!noteElement) {
+        throw new Error('Note content element not found. Please ensure the element has id="note-content".');
+      }
+
+      const canvas = await convertToCanvas(noteElement);
+      const fileName = generateFileName(formState.subject, formState.classLevel);
+      const doc = generatePdfFromCanvas(canvas, fileName);
+      doc.save(fileName);
+
+      toast({
+        title: 'PDF Downloaded',
+        description: 'Your lesson note has been saved successfully.',
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: error instanceof Error 
+          ? error.message 
+          : 'An unexpected error occurred while generating the PDF. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [generatedNote, formState.subject, formState.classLevel, toast, setLoading]);
+
+  return { handleDownloadPdf };
+};
+// --- End New PDF Download Logic ---
+
+
 export default function LessonGeneratorPage() {
   const [loading, setLoading] = useState(false);
   const [generatedNote, setGeneratedNote] = useState('');
@@ -45,6 +204,13 @@ export default function LessonGeneratorPage() {
     weeks: 1,
   });
   const { toast } = useToast();
+
+  const { handleDownloadPdf } = useDownloadPdf({
+    generatedNote,
+    formState,
+    toast,
+    setLoading,
+  });
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -214,68 +380,6 @@ export default function LessonGeneratorPage() {
       });
     }
   }, [generatedNote, toast]);
-  
-  const handleDownloadPdf = useCallback(async () => {
-    if (!generatedNote) {
-      toast({
-        variant: 'destructive',
-        title: 'Nothing to Download',
-        description: 'Please generate a lesson note first.',
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const noteElement = document.getElementById('note-content');
-      if (!noteElement) {
-        throw new Error('Note content element not found');
-      }
-
-      const canvas = await html2canvas(noteElement, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff', // Force white background
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const pdfWidth = doc.internal.pageSize.getWidth();
-      const pdfHeight = doc.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      
-      const ratio = imgWidth / imgHeight;
-      const width = pdfWidth;
-      const height = width / ratio;
-
-      doc.addImage(imgData, 'JPEG', 0, 0, width, height);
-      
-      const fileName = `lesson-note-${formState.subject.toLowerCase().replace(/\s+/g, '-')}-${formState.classLevel.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`;
-      doc.save(fileName);
-      
-      toast({
-        title: 'PDF Downloaded',
-        description: 'Your lesson note has been saved as PDF.',
-      });
-
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Download Failed',
-        description: 'Failed to generate PDF. Please try copying the text instead.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [generatedNote, formState, toast]);
 
   const loadFromHistory = useCallback((note: SavedNote) => {
     setFormState(note.formState);
