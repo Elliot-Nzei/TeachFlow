@@ -1,6 +1,5 @@
-
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,10 +13,11 @@ import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { Class, Subject } from '@/lib/types';
-
 
 type SavedNote = {
   id: string;
@@ -52,6 +52,13 @@ export default function LessonGeneratorPage() {
   const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
+  /**
+   * Improved PDF generation:
+   * - Uses `marked` + `DOMPurify` to convert markdown to sanitized HTML
+   * - Renders HTML into an offscreen container sized to A4 content width (mm -> px conversion)
+   * - Uses html2canvas with a scale derived from devicePixelRatio for crisp output
+   * - Slices the canvas into page-height pieces when content is taller than one page
+   */
   const handleDownloadPdf = useCallback(async () => {
     if (!generatedNote) {
       toast({
@@ -65,106 +72,212 @@ export default function LessonGeneratorPage() {
     setIsDownloadingPdf(true);
     setGenerationProgress('Preparing PDF...');
 
-    const weeks = generatedNote.split('### Week').slice(1).map(week => '### Week' + week);
-    if (weeks.length === 0) {
-        toast({
-            variant: 'destructive',
-            title: 'No Weeks Found',
-            description: 'Could not split the note into weeks.',
-        });
-        setIsDownloadingPdf(false);
-        return;
+    // Split by week headings robustly. Accept variations like "### Week" or "Week 1:"
+    // We'll attempt to keep the heading with its week content.
+    const weekRegex = /(^|\n)(#{1,6}\s*Week\b.*?$)/gim;
+    const parts: string[] = [];
+    // If the note already uses visible separators (---), prefer that split
+    if (generatedNote.includes('---')) {
+      generatedNote.split(/\n-{3,}\n/).forEach(p => { if (p.trim()) parts.push(p.trim()); });
+    } else {
+      // Fallback: split by occurrences of "Week" headings; if none found, treat whole doc as single part
+      const matches = [...generatedNote.matchAll(weekRegex)];
+      if (matches.length === 0) {
+        parts.push(generatedNote);
+      } else {
+        // build parts by slicing around the match indexes
+        let lastIndex = 0;
+        for (let i = 0; i < matches.length; i++) {
+          const m = matches[i];
+          const start = m.index ?? 0;
+          if (start > lastIndex) {
+            // push the preamble before first heading if present
+            if (i === 0 && lastIndex === 0 && start > 0) {
+              const pre = generatedNote.slice(0, start).trim();
+              if (pre) parts.push(pre);
+            }
+          }
+          // find end for this heading (either next match start or end of string)
+          const nextStart = (i + 1 < matches.length) ? (matches[i + 1].index ?? generatedNote.length) : generatedNote.length;
+          const sliceStr = generatedNote.slice(start, nextStart).trim();
+          if (sliceStr) parts.push(sliceStr);
+          lastIndex = nextStart;
+        }
+      }
     }
-    
+
+    if (parts.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No content found',
+        description: 'Could not determine content to render into PDF.'
+      });
+      setIsDownloadingPdf(false);
+      setGenerationProgress('');
+      return;
+    }
+
+    // Create jsPDF for A4
     const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
     });
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-    const contentWidth = pdfWidth - margin * 2;
-    
+    const pdfWidthMm = pdf.internal.pageSize.getWidth();   // 210 for A4 in mm
+    const pdfHeightMm = pdf.internal.pageSize.getHeight(); // 297 for A4 in mm
+    const marginMm = 10; // 10 mm margin
+    const contentWidthMm = pdfWidthMm - marginMm * 2;
+    const contentHeightMm = pdfHeightMm - marginMm * 2;
+
+    // Convert mm to px. 1 mm ≈ 3.7795275591 px at 96 DPI
+    const pxPerMm = 3.7795275591;
+    const contentWidthPx = Math.round(contentWidthMm * pxPerMm);
+
+    // Create an offscreen container with predictable width (A4 content width)
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
-    tempContainer.style.width = '800px'; // A fixed width for consistent rendering
-    tempContainer.style.padding = '20px';
-    tempContainer.style.background = 'white';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = `${contentWidthPx}px`;
+    // Basic styling to make React/markdown render similar to your on-screen style:
+    tempContainer.style.padding = '12mm';
+    tempContainer.style.boxSizing = 'border-box';
+    tempContainer.style.background = '#ffffff';
+    tempContainer.style.color = '#000000';
+    tempContainer.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+    tempContainer.style.fontSize = '12pt';
+    tempContainer.style.lineHeight = '1.45';
+    // ensure images don't overflow
+    tempContainer.style.maxWidth = '100%';
+    tempContainer.style.wordBreak = 'break-word';
     document.body.appendChild(tempContainer);
 
     try {
-        for (let i = 0; i < weeks.length; i++) {
-            const weekContent = weeks[i];
-            setGenerationProgress(`Processing Week ${i + 1}/${weeks.length}...`);
-            
-            const weekContainer = document.createElement('div');
-            weekContainer.className = 'prose prose-slate dark:prose-invert max-w-none';
-            weekContainer.innerHTML = new (require('showdown')).Converter().makeHtml(weekContent);
-            tempContainer.innerHTML = ''; // Clear previous content
-            tempContainer.appendChild(weekContainer);
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        setGenerationProgress(`Rendering part ${i + 1} of ${parts.length}...`);
 
-            const canvas = await html2canvas(tempContainer, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                windowWidth: tempContainer.scrollWidth,
-                windowHeight: tempContainer.scrollHeight
-            });
+        // Convert markdown to HTML and sanitize
+        const html = marked(part);
+        const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
-             if (i > 0) {
-                pdf.addPage();
-            }
+        // Prepare wrapper (clear previous)
+        tempContainer.innerHTML = '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'pdf-render-content';
+        // you can add a header (school name, class, subject) per page if desired:
+        const header = document.createElement('div');
+        header.style.marginBottom = '6mm';
+        header.style.fontSize = '11pt';
+        header.style.fontWeight = '600';
+        header.innerHTML = `${formState.subject ? `${formState.subject} — ` : ''}${formState.classLevel ? formState.classLevel : ''}`;
+        wrapper.appendChild(header);
 
-            const imgData = canvas.toDataURL('image/jpeg', 1.0);
-            const imgHeight = canvas.height * contentWidth / canvas.width;
-            
-            if (imgHeight > pdfHeight - margin * 2) {
-                 // Handle content that's taller than one page (less likely with single weeks)
-                let position = 0;
-                let heightLeft = canvas.height;
-                while(heightLeft > 0) {
-                    const pageCanvas = document.createElement('canvas');
-                    pageCanvas.width = canvas.width;
-                    const pageHeight = Math.min(heightLeft, canvas.width * ((pdfHeight - margin*2) / contentWidth));
-                    pageCanvas.height = pageHeight;
-                    const ctx = pageCanvas.getContext('2d');
-                    if (ctx) {
-                        ctx.drawImage(canvas, 0, position, canvas.width, pageHeight, 0, 0, canvas.width, pageHeight);
-                        const pageImgData = pageCanvas.toDataURL('image/jpeg', 1.0);
-                        pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, pdfHeight - margin * 2, undefined, 'FAST');
-                    }
-                    heightLeft -= pageHeight;
-                    position += pageHeight;
-                    if (heightLeft > 0) pdf.addPage();
-                }
-            } else {
-                pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeight, undefined, 'FAST');
-            }
+        const contentDiv = document.createElement('div');
+        contentDiv.innerHTML = clean;
+        // ensure images scale to container
+        const imgs = contentDiv.querySelectorAll('img');
+        imgs.forEach(img => {
+          (img as HTMLImageElement).style.maxWidth = '100%';
+          (img as HTMLImageElement).style.height = 'auto';
+        });
+
+        wrapper.appendChild(contentDiv);
+        tempContainer.appendChild(wrapper);
+
+        // Allow layout & webfonts to load (short pause)
+        await new Promise(res => setTimeout(res, 50));
+
+        // Use devicePixelRatio or at least 2 for crispness
+        const scale = Math.max(2, window.devicePixelRatio || 1);
+        const canvas = await html2canvas(tempContainer, {
+          scale,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          // limit dimensions to avoid OOM on extremely large content
+          windowWidth: tempContainer.scrollWidth,
+          windowHeight: tempContainer.scrollHeight,
+        });
+
+        // If this is not the first PDF page, add a new one
+        if (i > 0) {
+          pdf.addPage();
         }
-        
-        const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        pdf.save(`lesson-note-${sanitizedSubject}.pdf`);
 
-         toast({
-          title: 'Success!',
-          description: 'Your lesson note has been downloaded.',
-        });
-    } catch(e) {
-        console.error("PDF generation failed: ", e);
-        toast({
-            variant: 'destructive',
-            title: 'PDF Download Failed',
-            description: 'There was an error generating the PDF for all weeks.'
-        });
+        // Calculate image dimensions in PDF units
+        const imgData = canvas.toDataURL('image/png', 1.0);
+
+        // Canvas size in px
+        const canvasPxWidth = canvas.width;
+        const canvasPxHeight = canvas.height;
+
+        // Convert canvas px -> mm for pdf insertion.
+        // px -> mm: px / pxPerMm
+        const canvasMmWidth = canvasPxWidth / pxPerMm;
+        const canvasMmHeight = canvasPxHeight / pxPerMm;
+
+        // Fit width to contentWidthMm; compute height proportionally
+        const renderWidthMm = contentWidthMm;
+        const renderHeightMm = (canvasMmHeight * renderWidthMm) / canvasMmWidth;
+
+        if (renderHeightMm <= contentHeightMm + 0.01) {
+          // Fits on a single pdf page (common case)
+          pdf.addImage(imgData, 'PNG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
+        } else {
+          // Slice the canvas vertically into page-height chunks to preserve quality
+          const sliceHeightPx = Math.floor(contentHeightMm * pxPerMm); // how many px equals one pdf page height (content area)
+          let y = 0;
+          let pageIndex = 0;
+          while (y < canvasPxHeight) {
+            const h = Math.min(sliceHeightPx, canvasPxHeight - y);
+            // create an intermediate canvas for the slice
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvasPxWidth;
+            sliceCanvas.height = h;
+            const ctx = sliceCanvas.getContext('2d');
+            if (!ctx) throw new Error('2D context unavailable');
+
+            ctx.drawImage(canvas, 0, y, canvasPxWidth, h, 0, 0, canvasPxWidth, h);
+            const sliceData = sliceCanvas.toDataURL('image/png', 1.0);
+            const sliceMmHeight = h / pxPerMm;
+
+            if (pageIndex > 0 || i > 0) {
+              pdf.addPage();
+            }
+            pdf.addImage(sliceData, 'PNG', marginMm, marginMm, renderWidthMm, sliceMmHeight, undefined, 'FAST');
+
+            y += h;
+            pageIndex++;
+          }
+        }
+      }
+
+      // sanitize filename (fallback to timestamp)
+      const subjectSlug = (formState.subject || 'lesson-note').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+      const fileName = `lesson-note-${subjectSlug}-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: 'PDF ready',
+        description: `Downloaded ${fileName}`,
+      });
+
+    } catch (err) {
+      console.error('PDF generation error', err);
+      toast({
+        variant: 'destructive',
+        title: 'PDF Generation Failed',
+        description: (err instanceof Error) ? err.message : String(err),
+      });
     } finally {
-        document.body.removeChild(tempContainer);
-        setIsDownloadingPdf(false);
-        setGenerationProgress('');
+      // cleanup
+      try { document.body.removeChild(tempContainer); } catch (e) { /* ignore */ }
+      setIsDownloadingPdf(false);
+      setGenerationProgress('');
     }
-}, [generatedNote, formState.subject, toast]);
+  }, [generatedNote, formState.subject, formState.classLevel, toast]);
 
   useEffect(() => {
     try {
@@ -240,7 +353,6 @@ export default function LessonGeneratorPage() {
       setGenerationProgress('');
     }
   };
-
 
   const saveNoteToHistory = (formInput: GenerateLessonNoteInput, note: string) => {
     const newNote: SavedNote = {
@@ -536,5 +648,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
