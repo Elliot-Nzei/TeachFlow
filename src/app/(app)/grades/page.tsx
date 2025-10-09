@@ -258,22 +258,22 @@ export default function GradesPage() {
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead className="min-w-[150px]">Student Name</TableHead>
-                                    <TableHead>CA1</TableHead>
-                                    <TableHead>CA2</TableHead>
-                                    <TableHead>Exam</TableHead>
-                                    <TableHead>Total</TableHead>
-                                    <TableHead className="text-right">Grade</TableHead>
+                                    <TableHead className="min-w-[120px]">Student</TableHead>
+                                    <TableHead className="w-[60px] text-center">CA1</TableHead>
+                                    <TableHead className="w-[60px] text-center">CA2</TableHead>
+                                    <TableHead className="w-[60px] text-center">Exam</TableHead>
+                                    <TableHead className="w-[70px] text-center">Total</TableHead>
+                                    <TableHead className="w-[70px] text-right">Grade</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {subjectGrades.map((grade) => (
                                     <TableRow key={grade.id}>
                                       <TableCell className="font-medium">{grade.studentName}</TableCell>
-                                      <TableCell>{grade.ca1}</TableCell>
-                                      <TableCell>{grade.ca2}</TableCell>
-                                      <TableCell>{grade.exam}</TableCell>
-                                      <TableCell>{grade.total}</TableCell>
+                                      <TableCell className="text-center">{grade.ca1}</TableCell>
+                                      <TableCell className="text-center">{grade.ca2}</TableCell>
+                                      <TableCell className="text-center">{grade.exam}</TableCell>
+                                      <TableCell className="text-center">{grade.total}</TableCell>
                                       <TableCell className="text-right font-bold">{grade.grade}</TableCell>
                                     </TableRow>
                                   ))}
