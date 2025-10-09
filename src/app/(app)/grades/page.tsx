@@ -254,7 +254,27 @@ export default function GradesPage() {
                           {subject}
                         </AccordionTrigger>
                         <AccordionContent>
-                          <div className="w-full overflow-x-auto">
+                           {/* Mobile Card View */}
+                           <div className="md:hidden space-y-4">
+                                {subjectGrades.map(grade => (
+                                    <Card key={grade.id} className="border-l-4 border-primary">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-base">{grade.studentName}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="grid grid-cols-3 gap-2 text-sm">
+                                                <div><span className="text-muted-foreground">CA1:</span> {grade.ca1}</div>
+                                                <div><span className="text-muted-foreground">CA2:</span> {grade.ca2}</div>
+                                                <div><span className="text-muted-foreground">Exam:</span> {grade.exam}</div>
+                                                <div className="col-span-2 font-semibold">Total: {grade.total}</div>
+                                                <div className="font-bold text-lg text-right">{grade.grade}</div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                           {/* Desktop Table View */}
+                          <div className="w-full overflow-x-auto hidden md:block">
                               <Table>
                                 <TableHeader>
                                   <TableRow>
