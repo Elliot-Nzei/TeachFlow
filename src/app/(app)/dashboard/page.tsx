@@ -14,7 +14,7 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, query, where, getDocs, orderBy } from 'firebase/firestore';
-import type { Grade, DataTransfer } from '@/lib/types';
+import type { DataTransfer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection(subjectsQuery);
 
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
-  const { data: grades, isLoading: isLoadingGrades } = useCollection<Grade>(gradesQuery);
+  const { data: grades, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
   
   const sentTransfersQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'transfers'), orderBy('timestamp', 'desc')) : null,
@@ -43,14 +43,13 @@ export default function DashboardPage() {
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
 
   const receivedTransfersQuery = useMemoFirebase(
-    () => {
-      if (!user || !userProfile?.userCode) return null;
-      return query(
-        collection(firestore, 'transfers'), 
-        where('toUser', '==', userProfile.userCode),
-        orderBy('timestamp', 'desc')
-      );
-    },
+    () => (user && userProfile?.userCode) 
+        ? query(
+            collection(firestore, 'transfers'), 
+            where('toUser', '==', userProfile.userCode),
+            orderBy('timestamp', 'desc')
+          )
+        : null,
     [firestore, user, userProfile?.userCode]
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
@@ -76,8 +75,10 @@ export default function DashboardPage() {
 
   const isLoadingTransfers = isLoadingSent || isLoadingReceived || isLoadingProfile;
   
-  const gradeCounts = useMemo(() => (grades || []).reduce((acc, grade) => {
-    acc[grade.grade] = (acc[grade.grade] || 0) + 1;
+  const gradeCounts = useMemo(() => (grades || []).reduce((acc: Record<string, number>, grade: any) => {
+    if (grade.grade) {
+      acc[grade.grade] = (acc[grade.grade] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>), [grades]);
   

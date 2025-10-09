@@ -61,14 +61,13 @@ export default function TransferPage() {
 
   // Fetch received transfers
   const receivedTransfersQuery = useMemoFirebase(
-    () => {
-      if (!user || !userProfile?.userCode) return null;
-      return query(
-        collection(firestore, 'transfers'), 
-        where('toUser', '==', userProfile.userCode),
-        orderBy('timestamp', 'desc')
-      );
-    },
+    () => (user && userProfile?.userCode)
+        ? query(
+            collection(firestore, 'transfers'), 
+            where('toUser', '==', userProfile.userCode),
+            orderBy('timestamp', 'desc')
+          )
+        : null,
     [firestore, user, userProfile?.userCode]
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
