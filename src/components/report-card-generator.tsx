@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users, Trophy, Medal, Award, Star, X, AlertCircle } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Separator } from './ui/separator';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -33,14 +32,11 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   className: string;
   term: string;
   session: string;
-  grades: { subject: string; ca1?: number; ca2?: number; exam?: number; total: number, grade: string, remark?: string }[];
-  age?: number;
-  gender?: 'Male' | 'Female';
+  grades: { subject: string; ca1?: number; ca2?: number; exam?: number; total: number, grade: string, remark: string }[];
   attendance?: { totalDays: number; presentDays: number; absentDays: number };
-  traits?: { name: string; domain: string; rating: number }[];
+  traits?: { name: string; rating: number }[];
   formTeacherComment: string;
   principalComment: string;
-  nextTermBegins?: string;
   schoolName?: string;
   schoolMotto?: string;
   schoolAddress?: string;
@@ -94,6 +90,10 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
         return ratings[rating] || "N/A";
     };
 
+    const affectiveTraits = (report.traits || []).filter(t => ["Punctuality", "Neatness", "Honesty", "Cooperation", "Attentiveness"].includes(t.name));
+    const psychomotorSkills = (report.traits || []).filter(t => !affectiveTraits.map(at => at.name).includes(t.name));
+
+
     return (
         <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-lg">
             <div className="text-center border-b-4 border-green-700 pb-2 mb-2">
@@ -116,7 +116,6 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                 <div className="flex"><span className="font-semibold w-16">Class:</span><span className="flex-1">{report.className}</span></div>
                 <div className="flex"><span className="font-semibold w-24">Term:</span><span className="flex-1">{report.term}</span></div>
                 <div className="flex"><span className="font-semibold w-20">Session:</span><span className="flex-1">{report.session}</span></div>
-                 <div className="flex"><span className="font-semibold w-16">Age:</span><span className="flex-1">{report.age ? `${report.age} years` : 'N/A'}</span></div>
             </div>
             
             {report.attendance && (
@@ -192,7 +191,7 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                     <table className="w-full text-[8px] border-collapse">
                         <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-0.5 text-left">Trait</th><th className="border border-green-600 p-0.5">Rate</th><th className="border border-green-600 p-0.5">Remark</th></tr></thead>
                         <tbody>
-                        {(report.traits || []).filter(t=>t.domain === 'Affective').map((trait, index) => (
+                        {affectiveTraits.map((trait, index) => (
                             <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-0.5">{trait.name}</td><td className="border border-gray-300 p-0.5 text-center font-bold">{trait.rating}</td><td className="border border-gray-300 p-0.5 text-center">{getRatingText(trait.rating)}</td></tr>
                         ))}
                         </tbody>
@@ -203,7 +202,7 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                     <table className="w-full text-[8px] border-collapse">
                     <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-0.5 text-left">Skill</th><th className="border border-green-600 p-0.5">Rate</th><th className="border border-green-600 p-0.5">Remark</th></tr></thead>
                     <tbody>
-                        {(report.traits || []).filter(t=>t.domain === 'Psychomotor').map((skill, index) => (
+                        {psychomotorSkills.map((skill, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-0.5">{skill.name}</td><td className="border border-gray-300 p-0.5 text-center font-bold">{skill.rating}</td><td className="border border-gray-300 p-0.5 text-center">{getRatingText(skill.rating)}</td></tr>
                         ))}
                     </tbody>
@@ -215,7 +214,7 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                 <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.formTeacherComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
                 <div><h3 className="font-bold text-green-700 text-[9px] mb-0.5">PRINCIPAL'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.principalComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
             </div>
-            <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: {report.nextTermBegins}</p></div>
+            <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: {settings?.nextTermBegins || 'TBA'}</p></div>
         </div>
     )
 };
@@ -380,7 +379,7 @@ export default function ReportCardGenerator() {
                   },
                   traits: studentTraits.flatMap(t => {
                       const traitEntries = Object.entries(t.traits);
-                      return traitEntries.map(([name, rating]) => ({ name, rating }));
+                      return traitEntries.map(([name, rating]) => ({ name, rating: rating as number }));
                   }),
                   term,
                   session,
@@ -409,17 +408,11 @@ export default function ReportCardGenerator() {
                   term: input.term,
                   session: input.session,
                   grades: detailedGrades,
-                  age: student.age,
-                  gender: student.gender,
                   schoolName: settings!.schoolName,
                   schoolMotto: settings!.schoolMotto,
                   schoolAddress: settings!.schoolAddress,
-                  nextTermBegins: settings!.nextTermBegins,
                   attendance: { totalDays, presentDays, absentDays },
-                  traits: studentTraits.flatMap(t => {
-                      const traitEntries = Object.entries(t.traits);
-                      return traitEntries.map(([name, rating]) => ({ name, rating, domain: 'Affective' }));
-                  }),
+                  traits: input.traits,
                   formTeacherComment: result.formTeacherComment,
                   principalComment: result.principalComment,
                   position: position > 0 ? position : 0,
@@ -474,21 +467,22 @@ export default function ReportCardGenerator() {
 
   const handleDownloadPdf = async () => {
     if (generatedReports.length === 0) {
-      toast({ 
-        variant: 'destructive',
-        title: "No reports to download.",
-        description: "Please generate reports first." 
-      });
-      return;
+        toast({
+            variant: "destructive",
+            title: "No reports to download.",
+            description: "Please generate reports first."
+        });
+        return;
     }
-    
+
     setLoading(true);
     setLoadingProgress(0);
+    setCurrentStudent('Preparing PDF...');
 
     const doc = new jsPDF('p', 'mm', 'a4');
     const a4_width = 210;
     const a4_height = 297;
-    
+
     try {
         for (let i = 0; i < generatedReports.length; i++) {
             const report = generatedReports[i];
@@ -497,56 +491,50 @@ export default function ReportCardGenerator() {
 
             const reportElement = document.getElementById(`report-card-${report.studentId}`);
             if (!reportElement) {
-              console.error(`Report element not found for ${report.studentId}`);
-              continue;
+                console.error(`Report element not found for ${report.studentId}`);
+                continue;
             }
 
             try {
-              const canvas = await html2canvas(reportElement, { 
-                scale: 2,
-                useCORS: true,
-                allowTaint: false,
-                logging: false,
-                backgroundColor: '#ffffff',
-                windowWidth: reportElement.scrollWidth,
-                windowHeight: reportElement.scrollHeight,
-                onclone: (clonedDoc) => {
-                  const clonedElement = clonedDoc.getElementById(`report-card-${report.studentId}`);
-                  if (clonedElement) {
-                    clonedElement.style.display = 'block';
-                    clonedElement.style.visibility = 'visible';
-                  }
+                const canvas = await html2canvas(reportElement, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    onclone: (clonedDoc) => {
+                      const clonedElement = clonedDoc.getElementById(`report-card-${report.studentId}`);
+                      if(clonedElement) {
+                        clonedElement.style.display = 'block';
+                        clonedElement.style.visibility = 'visible';
+                      }
+                    }
+                });
+                
+                if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                    throw new Error('Invalid canvas generated');
                 }
-              });
-              
-              if (!canvas || canvas.width === 0 || canvas.height === 0) {
-                throw new Error('Invalid canvas generated');
-              }
 
-              const imgData = canvas.toDataURL('image/jpeg', 0.95);
-              
-              if (!imgData || imgData === 'data:,') {
-                throw new Error('Failed to generate image data');
-              }
-              
-              if (i > 0) {
-                  doc.addPage();
-              }
-              
-              doc.addImage(imgData, 'JPEG', 0, 0, a4_width, a4_height, undefined, 'FAST');
-              
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                if (!imgData || imgData === 'data:,') {
+                    throw new Error('Failed to generate image data');
+                }
+
+                if (i > 0) {
+                    doc.addPage();
+                }
+                
+                doc.addImage(imgData, 'JPEG', 0, 0, a4_width, a4_height, undefined, 'FAST');
             } catch (canvasError) {
-              console.error(`Error processing canvas for ${report.studentName}:`, canvasError);
-              toast({
-                variant: 'destructive',
-                title: `PDF Generation Warning`,
-                description: `Could not process report for ${report.studentName}. Continuing with others...`,
-              });
-              continue;
+                console.error(`Error processing canvas for ${report.studentName}:`, canvasError);
+                toast({
+                    variant: 'destructive',
+                    title: `PDF Generation Warning`,
+                    description: `Could not process report for ${report.studentName}. Continuing with others...`,
+                });
+                continue;
             }
         }
         
-        const fileName = selectedStudent 
+        const fileName = selectedStudent
             ? `report-card-${selectedStudent.name.replace(' ', '-')}.pdf`
             : `report-cards-${selectedClass?.name.replace(' ', '-')}.pdf`;
         doc.save(fileName);
@@ -563,7 +551,7 @@ export default function ReportCardGenerator() {
         setCurrentStudent('');
         setLoadingProgress(0);
     }
-  };
+};
 
 
   const isLoadingData = isLoadingClasses || isLoadingStudents || isLoadingGrades || isLoadingTraits || isLoadingAttendance;
