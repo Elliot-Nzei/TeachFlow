@@ -158,18 +158,17 @@ export default function GradesPage() {
                     <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
                 </SheetContent>
             </Sheet>
-            {selectedClass && <h2 className="font-bold text-lg">{selectedClass.name}</h2>}
+            {selectedClass && <h2 className="font-bold text-lg truncate">{selectedClass.name}</h2>}
         </div>
         {selectedClass ? (
           <Card>
             <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-4">
-                <div>
-                    <CardTitle className="font-headline hidden md:block">{selectedClass.name}</CardTitle>
-                    <CardDescription>Manage grades for this class.</CardDescription>
-                </div>
+              <div>
+                  <CardTitle className="font-headline hidden md:block">{selectedClass.name}</CardTitle>
+                  <CardTitle className="font-headline md:hidden truncate">{selectedClass.name}</CardTitle>
+                  <CardDescription>Manage grades for this class.</CardDescription>
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex flex-wrap gap-2 w-full md:w-auto">
                 <Button variant="outline" onClick={() => setShowGrades(!showGrades)} className="flex-1 md:flex-initial">
                     <View className="mr-2 h-4 w-4" />
                     {showGrades ? 'Hide Grades' : 'View Grades'}
@@ -302,5 +301,7 @@ export default function GradesPage() {
     </div>
   );
 }
+
+    
 
     
