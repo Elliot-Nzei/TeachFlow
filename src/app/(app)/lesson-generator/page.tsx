@@ -60,7 +60,7 @@ export default function LessonGeneratorPage() {
   const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
-  const handleDownloadPdf = useCallback(async () => {
+  const handleDownloadPdf = useCallback(() => {
     if (!generatedNote) {
       toast({
         variant: 'destructive',
@@ -70,68 +70,86 @@ export default function LessonGeneratorPage() {
       return;
     }
 
-    setIsDownloadingPdf(true);
-    
     const noteElement = document.getElementById('note-content-for-pdf');
 
     if (!noteElement) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not find content to generate PDF from.',
-        });
-        setIsDownloadingPdf(false);
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not find content to generate PDF from.',
+      });
+      return;
     }
     
-    try {
-        const canvas = await html2canvas(noteElement, {
+    setIsDownloadingPdf(true);
+
+    // Give the browser a moment to render the content in the hidden div
+    setTimeout(() => {
+        html2canvas(noteElement, {
           scale: 2,
           useCORS: true,
-          windowWidth: noteElement.scrollWidth,
-          windowHeight: noteElement.scrollHeight,
-        });
+          backgroundColor: '#ffffff', // Explicitly set background
+        }).then(canvas => {
+          try {
+            const imgData = canvas.toDataURL('image/jpeg', 1.0); // Use JPEG for better compatibility
+            if (!imgData || imgData === 'data:,') {
+              throw new Error('Canvas returned empty image data.');
+            }
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: 'a4',
-        });
-        
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = imgWidth / imgHeight;
-        
-        let imgHeightInPdf = pdfWidth / ratio;
-        let heightLeft = imgHeightInPdf;
-        let position = 0;
-        
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
-        heightLeft -= pdfHeight;
-        
-        while (heightLeft > 0) {
-            position = heightLeft - imgHeightInPdf;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
+            const pdf = new jsPDF({
+              orientation: 'p',
+              unit: 'mm',
+              format: 'a4',
+            });
+            
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = imgWidth / imgHeight;
+            let imgHeightInPdf = pdfWidth / ratio;
+            let heightLeft = imgHeightInPdf;
+            let position = 0;
+            
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf);
             heightLeft -= pdfHeight;
-        }
+            
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeightInPdf;
+              pdf.addPage();
+              pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf);
+              heightLeft -= pdfHeight;
+            }
 
-        const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        pdf.save(`lesson-note-${sanitizedSubject}.pdf`);
+            const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            pdf.save(`lesson-note-${sanitizedSubject}.pdf`);
+            
+            toast({
+              title: 'Success!',
+              description: 'Your lesson note has been downloaded.',
+            });
 
-    } catch (error) {
-        console.error("PDF Download Error:", error);
-        toast({
-            variant: 'destructive',
-            title: 'PDF Download Failed',
-            description: 'There was an error generating the PDF.',
+          } catch (error) {
+              console.error("PDF Generation Error:", error);
+              toast({
+                  variant: 'destructive',
+                  title: 'PDF Download Failed',
+                  description: error instanceof Error ? error.message : 'There was an error generating the PDF.',
+              });
+          } finally {
+              setIsDownloadingPdf(false);
+          }
+        }).catch(error => {
+            console.error("html2canvas error:", error);
+            toast({
+                variant: 'destructive',
+                title: 'PDF Capture Failed',
+                description: 'Could not capture the lesson note content.',
+            });
+            setIsDownloadingPdf(false);
         });
-    } finally {
-        setIsDownloadingPdf(false);
-    }
+    }, 100); // 100ms delay to ensure rendering
+
   }, [generatedNote, formState.subject, toast]);
 
   useEffect(() => {
@@ -425,6 +443,8 @@ export default function LessonGeneratorPage() {
           background: white !important;
           color: black !important;
           padding: 15mm; /* A4-like margins */
+          box-sizing: border-box;
+          width: 210mm;
         }
         #note-content-for-pdf * {
           color: black !important;
