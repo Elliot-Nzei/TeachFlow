@@ -18,7 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { Class, DataTransfer, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -160,6 +160,7 @@ export default function TransferPage() {
     const studentsQuery = query(collection(firestore, 'users', fromUserId, 'students'), where('classId', '==', classId));
     const studentsSnap = await getDocs(studentsQuery);
     
+    const newStudentIds: string[] = [];
     studentsSnap.docs.forEach((studentDoc) => {
       const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
       batch.set(newStudentRef, {
@@ -169,9 +170,10 @@ export default function TransferPage() {
         transferredFrom: fromUserId,
         transferredAt: serverTimestamp(),
       });
-      // Add the NEW student ID to the NEW class's student list
-      batch.update(newClassRef, { students: arrayUnion(newStudentRef.id) });
+      newStudentIds.push(newStudentRef.id);
     });
+
+    batch.update(newClassRef, { students: newStudentIds });
 
     await batch.commit();
     return { studentsCount: studentsSnap.size };
