@@ -12,9 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 import { generateLessonNote } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import type { Class } from '@/lib/types';
+
 
 type GenerateLessonNoteInput = {
   classLevel: string;
@@ -48,7 +50,64 @@ export default function LessonGeneratorPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
+  const { firestore, user } = useFirebase();
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!generatedNote) {
+      toast({
+        variant: 'destructive',
+        title: 'Nothing to Download',
+        description: 'Please generate a lesson note first.',
+      });
+      return;
+    }
+
+    setIsDownloadingPdf(true);
+    const noteElement = document.getElementById('note-content-for-pdf');
+
+    if (!noteElement) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not find content to print.',
+        });
+        setIsDownloadingPdf(false);
+        return;
+    }
+    
+    try {
+        const doc = new jsPDF({
+          orientation: 'p',
+          unit: 'mm',
+          format: 'a4',
+        });
+        
+        await doc.html(noteElement, {
+          callback: function (doc) {
+            const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            doc.save(`lesson-note-${sanitizedSubject}.pdf`);
+          },
+          x: 10,
+          y: 10,
+          width: 190, // A4 width minus margins
+          windowWidth: 794 // A4 width in pixels at 96 DPI
+        });
+
+    } catch (error) {
+        console.error("PDF Download Error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'PDF Download Failed',
+            description: 'There was an error generating the PDF.',
+        });
+    } finally {
+        setIsDownloadingPdf(false);
+    }
+  }, [generatedNote, formState.subject, toast]);
 
   useEffect(() => {
     try {
@@ -67,17 +126,10 @@ export default function LessonGeneratorPage() {
     setFormState(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: keyof GenerateLessonNoteInput, value: string) => {
+  const handleSelectChange = (name: keyof GenerateLessonNoteInput, value: string | number) => {
     setFormState(prev => ({ ...prev, [name]: value }));
   };
   
-  const handleWeeksChange = (value: string) => {
-    const numWeeks = parseInt(value, 10);
-    if (!isNaN(numWeeks) && numWeeks >= 1 && numWeeks <= 12) {
-      setFormState(prev => ({ ...prev, weeks: numWeeks }));
-    }
-  };
-
   const isFormValid = () => {
     return formState.classLevel && formState.subject && formState.schemeOfWork && formState.weeks > 0;
   };
@@ -155,73 +207,6 @@ export default function LessonGeneratorPage() {
     window.print();
   };
 
-  const handleDownloadPdf = async () => {
-    if (!generatedNote) {
-      toast({
-        variant: 'destructive',
-        title: 'Nothing to Download',
-        description: 'Please generate a lesson note first.',
-      });
-      return;
-    }
-
-    setIsDownloadingPdf(true);
-    const noteElement = document.getElementById('note-content-for-pdf');
-
-    if (!noteElement) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not find content to print.',
-        });
-        setIsDownloadingPdf(false);
-        return;
-    }
-    
-    try {
-        const canvas = await html2canvas(noteElement, {
-            scale: 2,
-            useCORS: true,
-        });
-
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = doc.internal.pageSize.getHeight();
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const canvasAspectRatio = canvasWidth / canvasHeight;
-        
-        let renderHeight = pdfHeight;
-        let renderWidth = pdfHeight * canvasAspectRatio;
-
-        if (renderWidth > pdfWidth) {
-          renderWidth = pdfWidth;
-          renderHeight = pdfWidth / canvasAspectRatio;
-        }
-
-        const pageCount = Math.ceil(canvasHeight * (renderHeight/pdfHeight) / canvas.height);
-        
-        for (let i = 0; i < pageCount; i++) {
-          if (i > 0) doc.addPage();
-          const yPos = -i * renderHeight;
-          doc.addImage(canvas, 'PNG', 0, yPos, renderWidth, renderHeight);
-        }
-        
-        const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        doc.save(`lesson-note-${sanitizedSubject}.pdf`);
-
-    } catch (error) {
-        console.error("PDF Download Error:", error);
-        toast({
-            variant: 'destructive',
-            title: 'PDF Download Failed',
-            description: 'There was an error generating the PDF.',
-        });
-    } finally {
-        setIsDownloadingPdf(false);
-    }
-  };
-  
   return (
     <>
       <div className="flex items-center justify-between print:hidden">
@@ -248,7 +233,20 @@ export default function LessonGeneratorPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="classLevel">Class Level</Label>
-                  <Input id="classLevel" name="classLevel" value={formState.classLevel} onChange={handleInputChange} placeholder="e.g., Primary 4, JSS 2" />
+                  <Select onValueChange={(value) => handleSelectChange('classLevel', value)} value={formState.classLevel}>
+                    <SelectTrigger id="classLevel">
+                      <SelectValue placeholder="Select a class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingClasses ? <SelectItem value="loading" disabled>Loading classes...</SelectItem> :
+                        classes?.map(cls => (
+                          <SelectItem key={cls.id} value={cls.name}>
+                            {cls.name}
+                          </SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Subject</Label>
@@ -260,7 +258,7 @@ export default function LessonGeneratorPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="weeks">Number of Weeks/Lessons</Label>
-                   <Select onValueChange={handleWeeksChange} value={String(formState.weeks)}>
+                   <Select onValueChange={(value) => handleSelectChange('weeks', parseInt(value, 10))} value={String(formState.weeks)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -378,17 +376,12 @@ export default function LessonGeneratorPage() {
                 </div>
             </div>
         )}
-        <div id="note-content-wrapper" className="hidden">
-            <div id="note-content-for-pdf" className="prose bg-white text-black p-8">
-                <ReactMarkdown>{generatedNote || ''}</ReactMarkdown>
-            </div>
+      <div id="note-content-wrapper" className="hidden">
+        <div id="note-content-for-pdf" className="prose bg-white text-black p-8">
+            <ReactMarkdown>{generatedNote || ''}</ReactMarkdown>
         </div>
-
+      </div>
       <style jsx global>{`
-        #note-content-for-pdf {
-          color: black !important;
-          background-color: white !important;
-        }
         #note-content-for-pdf * {
           color: black !important;
           background-color: transparent !important;
@@ -422,3 +415,5 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
+
+    
