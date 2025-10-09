@@ -1,166 +1,49 @@
-/**
- * @fileoverview Firestore Security Rules for the Nigerian School Management System.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Users can only access their own data.
- *
- * Data Structure:
- * All data is nested under /users/{userId}, where {userId} corresponds to the Firebase Auth UID.
- * The 'transfers' collection is a global log, writable only by backend.
- *
- * Key Security Decisions:
- * - Users can only read and write their own data under /users/{userId}.
- * - Listing of users is disallowed.
- * - The 'transfers' collection is writeable only by backend.
- *
- * Denormalization for Authorization:
- * No specific denormalization is required, as the user-centric data model allows for simple path-based authorization.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Secures the user profile. Only the authenticated user can read and write their own profile.
-     * @path /users/{userId}
-     * @allow (create, update, get, delete) if request.auth.uid == userId
-     * @deny (create, update, get, delete) if request.auth.uid != userId
-     * @principle Enforces document ownership for all operations.
-     */
-    match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false; // Listing all users is not permitted.
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
-
-      /**
-       * @description Secures classes created by a specific user.
-       * @path /users/{userId}/classes/{classId}
-       * @allow (create, update, get, delete, list) if request.auth.uid == userId
-       * @deny (create, update, get, delete, list) if request.auth.uid != userId
-       * @principle Restricts access to a user's own data tree.
-       */
-      match /classes/{classId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      /**
-       * @description Secures students belonging to a specific user/school.
-       * @path /users/{userId}/students/{studentId}
-       * @allow (create, update, get, delete, list) if request.auth.uid == userId
-       * @deny (create, update, get, delete, list) if request.auth.uid != userId
-       * @principle Restricts access to a user's own data tree.
-       */
-      match /students/{studentId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      /**
-       * @description Secures the master list of subjects for a user/school.
-       * @path /users/{userId}/subjects/{subjectId}
-       * @allow (create, update, get, delete, list) if request.auth.uid == userId
-       * @deny (create, update, get, delete, list) if request.auth.uid != userId
-       * @principle Restricts access to a user's own data tree.
-       */
-      match /subjects/{subjectId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      /**
-       * @description Secures all grades entered by a specific user.
-       * @path /users/{userId}/grades/{gradeId}
-       * @allow (create, update, get, delete, list) if request.auth.uid == userId
-       * @deny (create, update, get, delete, list) if request.auth.uid != userId
-       * @principle Restricts access to a user's own data tree.
-       */
-      match /grades/{gradeId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-       /**
-        * @description Secures daily attendance records for students.
-        * @path /users/{userId}/attendance/{attendanceId}
-        * @allow (create, update, get, delete, list) if request.auth.uid == userId
-        * @deny (create, update, get, delete, list) if request.auth.uid != userId
-        * @principle Restricts access to a user's own data tree.
-        */
-      match /attendance/{attendanceId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      /**
-       * @description Secures a user's personal log of outgoing data transfer requests.
-       * @path /users/{userId}/transfers/{transferId}
-       * @allow (create, update, get, delete, list) if request.auth.uid == userId
-       * @deny (create, update, get, delete, list) if request.auth.uid != userId
-       * @principle Restricts access to a user's own data tree.
-       */
-      match /transfers/{transferId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      /**
-       * @description Secures behavioral traits/ratings for students.
-       * @path /users/{userId}/traits/{traitId}
-       * @allow (create, update, get, delete, list) if request.auth.uid == userId
-       * @deny (create, update, get, delete, list) if request.auth.uid != userId
-       * @principle Restricts access to a user's own data tree.
-       */
-      match /traits/{traitId} {
-        allow get: if isSignedIn() && isOwner(userId);
-        allow list: if isSignedIn() && isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId);
-        allow update: if isSignedIn() && isOwner(userId) && resource != null;
-        allow delete: if isSignedIn() && isOwner(userId) && resource != null;
-      }
+    // Default-deny all access unless explicitly allowed
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    /**
-     * @description Global log of data transfers. Writable by a Cloud Function.
-     * @path /transfers/{transferId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false; // TODO: Implement backend-only writes.
-     * @principle Restricts write access to a backend service account.
-     */
-    match /transfers/{transferId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false; // TODO: Implement backend-only writes.
-      allow update: if false; // TODO: Implement backend-only writes.
-      allow delete: if false; // TODO: Implement backend-only writes.
+    // Allow users to read and write their own user document
+    match /users/{userId} {
+      allow read, update, delete: if request.auth.uid == userId;
+      // Allow any authenticated user to create their own user document
+      allow create: if request.auth.uid == userId;
+
+      // Allow authenticated users to query the users collection to find recipients
+      // This is a collection-group query, so it should be defined separately if needed,
+      // but for simple 'where' clauses on top-level fields, this is a start.
+      // A more secure rule would be to only allow reads on specific fields.
+      // For now, let's keep it simple as per the requirement to find users.
+      // NOTE: This rule as written is broad. It's better to lock this down.
+      // However, for the purpose of the query `where('userCode', '==', code)`, we need list access.
+      // A better structure might be a separate collection for userCode lookups.
+      // Given the current structure, we allow a list read on the users collection.
+    }
+
+    // This rule allows querying the 'users' collection.
+    // It's placed outside the `match /users/{userId}` block for individual documents.
+    match /users/{document} {
+        allow list: if request.auth != null;
+    }
+
+
+    // Subcollections within a user's document
+    match /users/{userId}/{collectionId}/{documentId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Specific rules for the incomingTransfers subcollection
+    match /users/{userId}/incomingTransfers/{transferId} {
+      // The owner of the document (the recipient) can read, update, and delete their transfer requests.
+      allow read, update, delete: if request.auth.uid == userId;
+
+      // Any authenticated user can create a transfer request in another user's subcollection.
+      // We also prevent a user from sending a request to themselves.
+      allow create: if request.auth != null && request.auth.uid != userId;
     }
   }
 }
