@@ -138,8 +138,8 @@ export default function GradesPage() {
   }, {} as Record<string, Grade[]>);
 
   return (
-    <div className="flex">
-        <div className="hidden md:block">
+    <div className="flex flex-1 gap-8">
+        <div className="hidden md:block md:w-1/4 lg:w-1/5">
             <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
         </div>
       <div className="flex-1 min-w-0">
@@ -150,7 +150,7 @@ export default function GradesPage() {
                     <PanelLeft className="mr-2 h-4 w-4" /> Select Class
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
+                <SheetContent side="left" className="w-[80vw] max-w-xs p-0">
                   <SheetHeader>
                     <SheetTitle className="sr-only">Select Class</SheetTitle>
                     <SheetDescription className="sr-only">Choose a class from the list to manage grades.</SheetDescription>
@@ -158,13 +158,14 @@ export default function GradesPage() {
                     <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
                 </SheetContent>
             </Sheet>
+            {selectedClass && <h2 className="font-bold text-lg">{selectedClass.name}</h2>}
         </div>
         {selectedClass ? (
           <Card>
             <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-4">
                 <div>
-                    <CardTitle className="font-headline">{selectedClass.name}</CardTitle>
+                    <CardTitle className="font-headline hidden md:block">{selectedClass.name}</CardTitle>
                     <CardDescription>Manage grades for this class.</CardDescription>
                 </div>
               </div>
@@ -206,7 +207,7 @@ export default function GradesPage() {
                                       <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="min-w-[150px] sticky left-0 bg-background">Student Name</TableHead>
+                                                <TableHead className="min-w-[150px] sticky left-0 bg-background z-10">Student Name</TableHead>
                                                 <TableHead className="min-w-[100px]">CA1 (20)</TableHead>
                                                 <TableHead className="min-w-[100px]">CA2 (20)</TableHead>
                                                 <TableHead className="min-w-[100px]">Exam (60)</TableHead>
@@ -301,3 +302,5 @@ export default function GradesPage() {
     </div>
   );
 }
+
+    
