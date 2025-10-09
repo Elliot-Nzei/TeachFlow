@@ -52,13 +52,6 @@ export default function LessonGeneratorPage() {
   const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
-  /**
-   * Improved PDF generation:
-   * - Uses `marked` + `DOMPurify` to convert markdown to sanitized HTML
-   * - Renders HTML into an offscreen container sized to A4 content width (mm -> px conversion)
-   * - Uses html2canvas with a scale derived from devicePixelRatio for crisp output
-   * - Slices the canvas into page-height pieces when content is taller than one page
-   */
   const handleDownloadPdf = useCallback(async () => {
     if (!generatedNote) {
       toast({
@@ -72,38 +65,12 @@ export default function LessonGeneratorPage() {
     setIsDownloadingPdf(true);
     setGenerationProgress('Preparing PDF...');
 
-    // Split by week headings robustly. Accept variations like "### Week" or "Week 1:"
-    // We'll attempt to keep the heading with its week content.
-    const weekRegex = /(^|\n)(#{1,6}\s*Week\b.*?$)/gim;
+    // Split by week separators
     const parts: string[] = [];
-    // If the note already uses visible separators (---), prefer that split
     if (generatedNote.includes('---')) {
       generatedNote.split(/\n-{3,}\n/).forEach(p => { if (p.trim()) parts.push(p.trim()); });
     } else {
-      // Fallback: split by occurrences of "Week" headings; if none found, treat whole doc as single part
-      const matches = [...generatedNote.matchAll(weekRegex)];
-      if (matches.length === 0) {
-        parts.push(generatedNote);
-      } else {
-        // build parts by slicing around the match indexes
-        let lastIndex = 0;
-        for (let i = 0; i < matches.length; i++) {
-          const m = matches[i];
-          const start = m.index ?? 0;
-          if (start > lastIndex) {
-            // push the preamble before first heading if present
-            if (i === 0 && lastIndex === 0 && start > 0) {
-              const pre = generatedNote.slice(0, start).trim();
-              if (pre) parts.push(pre);
-            }
-          }
-          // find end for this heading (either next match start or end of string)
-          const nextStart = (i + 1 < matches.length) ? (matches[i + 1].index ?? generatedNote.length) : generatedNote.length;
-          const sliceStr = generatedNote.slice(start, nextStart).trim();
-          if (sliceStr) parts.push(sliceStr);
-          lastIndex = nextStart;
-        }
-      }
+      parts.push(generatedNote);
     }
 
     if (parts.length === 0) {
@@ -124,33 +91,31 @@ export default function LessonGeneratorPage() {
       format: 'a4',
     });
 
-    const pdfWidthMm = pdf.internal.pageSize.getWidth();   // 210 for A4 in mm
-    const pdfHeightMm = pdf.internal.pageSize.getHeight(); // 297 for A4 in mm
-    const marginMm = 10; // 10 mm margin
+    const pdfWidthMm = pdf.internal.pageSize.getWidth();
+    const pdfHeightMm = pdf.internal.pageSize.getHeight();
+    const marginMm = 15;
     const contentWidthMm = pdfWidthMm - marginMm * 2;
     const contentHeightMm = pdfHeightMm - marginMm * 2;
 
-    // Convert mm to px. 1 mm ≈ 3.7795275591 px at 96 DPI
+    // Use a fixed scale for consistent rendering
+    const scale = 2;
     const pxPerMm = 3.7795275591;
-    const contentWidthPx = Math.round(contentWidthMm * pxPerMm);
+    const contentWidthPx = Math.round(contentWidthMm * pxPerMm * scale);
 
-    // Create an offscreen container with predictable width (A4 content width)
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.top = '0';
-    tempContainer.style.width = `${contentWidthPx}px`;
-    // Basic styling to make React/markdown render similar to your on-screen style:
-    tempContainer.style.padding = '12mm';
+    tempContainer.style.width = `${contentWidthPx / scale}px`;
+    tempContainer.style.padding = '20px';
     tempContainer.style.boxSizing = 'border-box';
     tempContainer.style.background = '#ffffff';
     tempContainer.style.color = '#000000';
-    tempContainer.style.fontFamily = 'Arial';
-    tempContainer.style.fontSize = '12pt';
-    tempContainer.style.lineHeight = '1.15';
-    // ensure images don't overflow
-    tempContainer.style.maxWidth = '100%';
+    tempContainer.style.fontFamily = 'Arial, sans-serif';
+    tempContainer.style.fontSize = '12px';
+    tempContainer.style.lineHeight = '1.6';
     tempContainer.style.wordBreak = 'break-word';
+    tempContainer.style.overflowWrap = 'break-word';
     document.body.appendChild(tempContainer);
 
     try {
@@ -158,29 +123,71 @@ export default function LessonGeneratorPage() {
         const part = parts[i];
         setGenerationProgress(`Rendering part ${i + 1} of ${parts.length}...`);
 
-        // Convert markdown to HTML and sanitize
         const html = marked.parse(part);
-        
         let cleanHtml = html;
         if (typeof window !== 'undefined') {
             cleanHtml = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
         }
 
-        // Prepare wrapper (clear previous)
         tempContainer.innerHTML = '';
         const wrapper = document.createElement('div');
-        wrapper.className = 'pdf-render-content';
-        // you can add a header (school name, class, subject) per page if desired:
+        wrapper.style.fontFamily = 'Arial, sans-serif';
+        wrapper.style.fontSize = '12px';
+        wrapper.style.lineHeight = '1.6';
+        wrapper.style.color = '#000000';
+
         const header = document.createElement('div');
-        header.style.marginBottom = '6mm';
-        header.style.fontSize = '11pt';
-        header.style.fontWeight = '600';
-        header.innerHTML = `${formState.subject ? `${formState.subject} — ` : ''}${formState.classLevel ? formState.classLevel : ''}`;
+        header.style.marginBottom = '15px';
+        header.style.fontSize = '14px';
+        header.style.fontWeight = 'bold';
+        header.style.borderBottom = '2px solid #333';
+        header.style.paddingBottom = '8px';
+        header.innerHTML = `${formState.subject ? `${formState.subject}` : ''}${formState.classLevel ? ` - ${formState.classLevel}` : ''}`;
         wrapper.appendChild(header);
 
         const contentDiv = document.createElement('div');
         contentDiv.innerHTML = cleanHtml;
-        // ensure images scale to container
+        
+        // Style all elements properly
+        const allElements = contentDiv.querySelectorAll('*');
+        allElements.forEach(el => {
+          const element = el as HTMLElement;
+          element.style.fontFamily = 'Arial, sans-serif';
+          element.style.fontSize = '12px';
+          element.style.lineHeight = '1.6';
+          element.style.color = '#000000';
+          element.style.wordBreak = 'break-word';
+          element.style.overflowWrap = 'break-word';
+        });
+
+        // Style headings
+        const headings = contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        headings.forEach(h => {
+          const heading = h as HTMLElement;
+          heading.style.fontWeight = 'bold';
+          heading.style.marginTop = '12px';
+          heading.style.marginBottom = '8px';
+          if (h.tagName === 'H1') heading.style.fontSize = '18px';
+          else if (h.tagName === 'H2') heading.style.fontSize = '16px';
+          else if (h.tagName === 'H3') heading.style.fontSize = '14px';
+          else heading.style.fontSize = '12px';
+        });
+
+        // Style paragraphs and lists
+        const paragraphs = contentDiv.querySelectorAll('p, li');
+        paragraphs.forEach(p => {
+          const para = p as HTMLElement;
+          para.style.marginBottom = '8px';
+          para.style.fontSize = '12px';
+        });
+
+        const lists = contentDiv.querySelectorAll('ul, ol');
+        lists.forEach(list => {
+          const l = list as HTMLElement;
+          l.style.marginLeft = '20px';
+          l.style.marginBottom = '8px';
+        });
+
         const imgs = contentDiv.querySelectorAll('img');
         imgs.forEach(img => {
           (img as HTMLImageElement).style.maxWidth = '100%';
@@ -190,53 +197,39 @@ export default function LessonGeneratorPage() {
         wrapper.appendChild(contentDiv);
         tempContainer.appendChild(wrapper);
 
-        // Allow layout & webfonts to load (short pause)
-        await new Promise(res => setTimeout(res, 50));
+        await new Promise(res => setTimeout(res, 100));
 
-        // Use devicePixelRatio or at least 2 for crispness
-        const scale = Math.max(2, window.devicePixelRatio || 1);
         const canvas = await html2canvas(tempContainer, {
-          scale,
+          scale: scale,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
-          // limit dimensions to avoid OOM on extremely large content
           windowWidth: tempContainer.scrollWidth,
           windowHeight: tempContainer.scrollHeight,
         });
 
-        // If this is not the first PDF page, add a new one
         if (i > 0) {
           pdf.addPage();
         }
 
-        // Calculate image dimensions in PDF units
         const imgData = canvas.toDataURL('image/png', 1.0);
-
-        // Canvas size in px
         const canvasPxWidth = canvas.width;
         const canvasPxHeight = canvas.height;
 
-        // Convert canvas px -> mm for pdf insertion.
-        // px -> mm: px / pxPerMm
-        const canvasMmWidth = canvasPxWidth / pxPerMm;
-        const canvasMmHeight = canvasPxHeight / pxPerMm;
+        const canvasMmWidth = canvasPxWidth / (pxPerMm * scale);
+        const canvasMmHeight = canvasPxHeight / (pxPerMm * scale);
 
-        // Fit width to contentWidthMm; compute height proportionally
         const renderWidthMm = contentWidthMm;
         const renderHeightMm = (canvasMmHeight * renderWidthMm) / canvasMmWidth;
 
         if (renderHeightMm <= contentHeightMm + 0.01) {
-          // Fits on a single pdf page (common case)
           pdf.addImage(imgData, 'PNG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
         } else {
-          // Slice the canvas vertically into page-height chunks to preserve quality
-          const sliceHeightPx = Math.floor(contentHeightMm * pxPerMm); // how many px equals one pdf page height (content area)
+          const sliceHeightPx = Math.floor(contentHeightMm * pxPerMm * scale);
           let y = 0;
           let pageIndex = 0;
           while (y < canvasPxHeight) {
             const h = Math.min(sliceHeightPx, canvasPxHeight - y);
-            // create an intermediate canvas for the slice
             const sliceCanvas = document.createElement('canvas');
             sliceCanvas.width = canvasPxWidth;
             sliceCanvas.height = h;
@@ -245,7 +238,7 @@ export default function LessonGeneratorPage() {
 
             ctx.drawImage(canvas, 0, y, canvasPxWidth, h, 0, 0, canvasPxWidth, h);
             const sliceData = sliceCanvas.toDataURL('image/png', 1.0);
-            const sliceMmHeight = h / pxPerMm;
+            const sliceMmHeight = h / (pxPerMm * scale);
 
             if (pageIndex > 0) {
               pdf.addPage();
@@ -258,7 +251,6 @@ export default function LessonGeneratorPage() {
         }
       }
 
-      // sanitize filename (fallback to timestamp)
       const subjectSlug = (formState.subject || 'lesson-note').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
       const fileName = `lesson-note-${subjectSlug}-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
       pdf.save(fileName);
@@ -276,7 +268,6 @@ export default function LessonGeneratorPage() {
         description: (err instanceof Error) ? err.message : String(err),
       });
     } finally {
-      // cleanup
       try { document.body.removeChild(tempContainer); } catch (e) { /* ignore */ }
       setIsDownloadingPdf(false);
       setGenerationProgress('');
@@ -330,8 +321,8 @@ export default function LessonGeneratorPage() {
         
         const result = await generateLessonNote({
           ...formState,
-          weeks: 1, // Generate one week at a time
-          previousContent: fullNote, // Provide context of what has been generated
+          weeks: 1,
+          previousContent: fullNote,
           currentWeek: i,
         });
 
@@ -365,7 +356,7 @@ export default function LessonGeneratorPage() {
       formState: formInput,
       note: note,
     };
-    const updatedHistory = [newNote, ...savedNotes].slice(0, 20); // Keep last 20 notes
+    const updatedHistory = [newNote, ...savedNotes].slice(0, 20);
     setSavedNotes(updatedHistory);
     localStorage.setItem('lessonNotesHistory', JSON.stringify(updatedHistory));
   };
@@ -652,5 +643,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
