@@ -52,7 +52,7 @@ export default function LessonGeneratorPage() {
   const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
-  const handleDownloadPdf = useCallback(() => {
+  const handleDownloadPdf = useCallback(async () => {
     if (!generatedNote) {
       toast({
         variant: 'destructive',
@@ -62,87 +62,109 @@ export default function LessonGeneratorPage() {
       return;
     }
 
-    const noteElement = document.getElementById('note-content');
-    if (!noteElement) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not find content to generate PDF from.',
-      });
-      return;
-    }
-
     setIsDownloadingPdf(true);
-    
-    document.body.classList.add('printing');
+    setGenerationProgress('Preparing PDF...');
 
-    html2canvas(noteElement, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-    }).then(canvas => {
-      document.body.classList.remove('printing');
-      
-      try {
-        if (!canvas || canvas.width === 0 || canvas.height === 0) {
-          throw new Error('Canvas returned empty or invalid image data.');
-        }
-
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        const pdf = new jsPDF({
-          orientation: 'p',
-          unit: 'mm',
-          format: 'a4',
+    const weeks = generatedNote.split('### Week').slice(1).map(week => '### Week' + week);
+    if (weeks.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'No Weeks Found',
+            description: 'Could not split the note into weeks.',
         });
-        
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = imgWidth / imgHeight;
-        let imgHeightInPdf = pdfWidth / ratio;
-        let heightLeft = imgHeightInPdf;
-        let position = 0;
-        
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf, undefined, 'FAST');
-        heightLeft -= pdfHeight;
-        
-        while (heightLeft > 0) {
-          position -= pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf, undefined, 'FAST');
-          heightLeft -= pdfHeight;
-        }
+        setIsDownloadingPdf(false);
+        return;
+    }
+    
+    const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+    });
 
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const contentWidth = pdfWidth - margin * 2;
+    
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.width = '800px'; // A fixed width for consistent rendering
+    tempContainer.style.padding = '20px';
+    tempContainer.style.background = 'white';
+    document.body.appendChild(tempContainer);
+
+    try {
+        for (let i = 0; i < weeks.length; i++) {
+            const weekContent = weeks[i];
+            setGenerationProgress(`Processing Week ${i + 1}/${weeks.length}...`);
+            
+            const weekContainer = document.createElement('div');
+            weekContainer.className = 'prose prose-slate dark:prose-invert max-w-none';
+            weekContainer.innerHTML = new (require('showdown')).Converter().makeHtml(weekContent);
+            tempContainer.innerHTML = ''; // Clear previous content
+            tempContainer.appendChild(weekContainer);
+
+            const canvas = await html2canvas(tempContainer, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                windowWidth: tempContainer.scrollWidth,
+                windowHeight: tempContainer.scrollHeight
+            });
+
+             if (i > 0) {
+                pdf.addPage();
+            }
+
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            const imgHeight = canvas.height * contentWidth / canvas.width;
+            
+            if (imgHeight > pdfHeight - margin * 2) {
+                 // Handle content that's taller than one page (less likely with single weeks)
+                let position = 0;
+                let heightLeft = canvas.height;
+                while(heightLeft > 0) {
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    const pageHeight = Math.min(heightLeft, canvas.width * ((pdfHeight - margin*2) / contentWidth));
+                    pageCanvas.height = pageHeight;
+                    const ctx = pageCanvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(canvas, 0, position, canvas.width, pageHeight, 0, 0, canvas.width, pageHeight);
+                        const pageImgData = pageCanvas.toDataURL('image/jpeg', 1.0);
+                        pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, pdfHeight - margin * 2, undefined, 'FAST');
+                    }
+                    heightLeft -= pageHeight;
+                    position += pageHeight;
+                    if (heightLeft > 0) pdf.addPage();
+                }
+            } else {
+                pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeight, undefined, 'FAST');
+            }
+        }
+        
         const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
         pdf.save(`lesson-note-${sanitizedSubject}.pdf`);
-        
-        toast({
+
+         toast({
           title: 'Success!',
           description: 'Your lesson note has been downloaded.',
         });
-
-      } catch (error) {
-          console.error("PDF Generation Error:", error);
-          toast({
-              variant: 'destructive',
-              title: 'PDF Download Failed',
-              description: error instanceof Error ? error.message : 'There was an error generating the PDF.',
-          });
-      } finally {
-          setIsDownloadingPdf(false);
-      }
-    }).catch(error => {
-        document.body.classList.remove('printing');
-        console.error("html2canvas error:", error);
+    } catch(e) {
+        console.error("PDF generation failed: ", e);
         toast({
             variant: 'destructive',
-            title: 'PDF Capture Failed',
-            description: 'Could not capture the lesson note content.',
+            title: 'PDF Download Failed',
+            description: 'There was an error generating the PDF for all weeks.'
         });
+    } finally {
+        document.body.removeChild(tempContainer);
         setIsDownloadingPdf(false);
-    });
-  }, [generatedNote, formState.subject, toast]);
+        setGenerationProgress('');
+    }
+}, [generatedNote, formState.subject, toast]);
 
   useEffect(() => {
     try {
@@ -196,7 +218,7 @@ export default function LessonGeneratorPage() {
           currentWeek: i,
         });
 
-        fullNote += result.note + '\n\n';
+        fullNote += result.note + '\n\n---\n\n';
         setGeneratedNote(fullNote);
       }
       
@@ -371,16 +393,21 @@ export default function LessonGeneratorPage() {
         </div>
         
         <div className="lg:col-span-8">
-            {isLoading && (
+            {(isLoading || isDownloadingPdf) && (
               <Card className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Generating Your Lesson Note</h2>
+                <h2 className="text-xl font-semibold mb-2">{isDownloadingPdf ? 'Generating PDF' : 'Generating Your Lesson Note'}</h2>
                 <p className="text-muted-foreground">{generationProgress || 'Initializing...'}</p>
-                <p className="text-sm text-muted-foreground mt-2 max-w-md">The AI is creating a comprehensive lesson plan based on your requirements, ensuring it meets NERDC standards.</p>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md">
+                    {isDownloadingPdf 
+                        ? 'Please wait while the PDF is being prepared.'
+                        : 'The AI is creating a comprehensive lesson plan based on your requirements, ensuring it meets NERDC standards.'
+                    }
+                </p>
               </Card>
             )}
 
-            {!isLoading && !generatedNote && (
+            {!isLoading && !isDownloadingPdf && !generatedNote && (
                  <Card className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 border-dashed">
                     <Notebook className="h-16 w-16 text-muted-foreground/30 mb-4" />
                     <h2 className="text-xl font-semibold mb-2">Your Lesson Note Will Appear Here</h2>
@@ -388,7 +415,7 @@ export default function LessonGeneratorPage() {
                 </Card>
             )}
 
-            {generatedNote && !isLoading && (
+            {generatedNote && !isLoading && !isDownloadingPdf && (
             <div id="print-section">
               <Card>
                 <CardHeader className="flex flex-row justify-between items-center print:hidden">
@@ -509,3 +536,5 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
+
+    
