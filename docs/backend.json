@@ -387,6 +387,21 @@
         }
       }
     ],
+    "rules": [
+        {
+            "path": "/users/{userId}/incomingTransfers/{transferId}",
+            "rules": {
+                "read": "request.auth.uid == userId",
+                "write": "request.auth.uid == userId"
+            }
+        },
+        {
+            "path": "/users/{userId}/incomingTransfers/{transferId}",
+            "rules": {
+                "create": "request.auth != null"
+            }
+        }
+    ],
     "reasoning": "This data structure is user-centric and highly secure. All primary data (classes, students, subjects, grades, etc.) is nested under the `/users/{userId}` collection, simplifying security rules so a user can only access their own data. For the data transfer feature, a request is written to a subcollection (`incomingTransfers`) under the RECIPIENT's user document. This is the most critical security consideration. The owner of the document (the recipient) must have read access to this subcollection to see their requests. Other authenticated users must have write-only access to this subcollection so they can send a request. This model is highly scalable and secure as it avoids all global queries and ensures users only ever interact with data within their own document tree."
   }
 }
