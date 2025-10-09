@@ -71,9 +71,8 @@ const PositionBadge = ({ position }: { position: number }) => {
   ];
 
   const config = configs.find(c => position <= c.threshold) || 
-    { color: "text-gray-600", Icon: null, label: getOrdinal(position) };
+    { color: "text-gray-600", Icon: X, label: getOrdinal(position) };
   
-  // Handle case for position 0 or less, which shouldn't happen with 1-based indexing
   if (position <= 0) {
     config.label = "N/A";
   }
@@ -324,7 +323,7 @@ export default function ReportCardGenerator() {
             );
             
             if (studentGrades.length === 0) {
-                continue; // Skip students with no valid grades for the current term/session
+                continue;
             }
             
             const studentTraits = (allTraits || []).filter(t =>
@@ -410,7 +409,7 @@ export default function ReportCardGenerator() {
                 title: `Generation Failed for ${student.name}`,
                 description: 'Could not generate report for this student. Please check their data.',
             });
-            continue; // Continue with the next student
+            continue;
         }
     }
     
@@ -456,7 +455,7 @@ export default function ReportCardGenerator() {
 
             const reportElement = document.getElementById(`report-card-${report.studentId}`);
             if (reportElement) {
-                const canvas = await html2canvas(reportElement, { scale: 3 });
+                const canvas = await html2canvas(reportElement, { scale: 3, useCORS: true });
                 const imgData = canvas.toDataURL('image/png');
                 
                 if (i > 0) {
@@ -671,6 +670,7 @@ export default function ReportCardGenerator() {
        <style jsx global>{`
         .a4-page {
             color: black;
+            background: white;
         }
         @media screen {
           .a4-page {
@@ -724,4 +724,3 @@ export default function ReportCardGenerator() {
     </>
   );
 }
-
