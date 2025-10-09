@@ -13,6 +13,7 @@ import { generateLessonNote } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { Class, Subject } from '@/lib/types';
@@ -71,7 +72,6 @@ export default function LessonGeneratorPage() {
 
     setIsDownloadingPdf(true);
     
-    // Target the element that contains the rendered markdown
     const noteElement = document.getElementById('note-content-for-pdf');
 
     if (!noteElement) {
@@ -85,22 +85,42 @@ export default function LessonGeneratorPage() {
     }
     
     try {
-        const doc = new jsPDF({
-          orientation: 'p',
-          unit: 'mm',
-          format: 'a4',
+        const canvas = await html2canvas(noteElement, {
+          scale: 2,
+          useCORS: true,
+          windowWidth: noteElement.scrollWidth,
+          windowHeight: noteElement.scrollHeight,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
         });
         
-        await doc.html(noteElement, {
-          callback: function (doc) {
-            const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-            doc.save(`lesson-note-${sanitizedSubject}.pdf`);
-          },
-          margin: [15, 15, 15, 15],
-          autoPaging: 'text',
-          width: 180, // A4 width (210mm) - 30mm margins
-          windowWidth: 794 // A4 width in pixels at 96 DPI
-        });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = imgWidth / imgHeight;
+        
+        let imgHeightInPdf = pdfWidth / ratio;
+        let heightLeft = imgHeightInPdf;
+        let position = 0;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
+        heightLeft -= pdfHeight;
+        
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeightInPdf;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
+            heightLeft -= pdfHeight;
+        }
+
+        const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        pdf.save(`lesson-note-${sanitizedSubject}.pdf`);
 
     } catch (error) {
         console.error("PDF Download Error:", error);
@@ -112,7 +132,7 @@ export default function LessonGeneratorPage() {
     } finally {
         setIsDownloadingPdf(false);
     }
-  }, [generatedNote, formState.subject, formState.classLevel, toast]);
+  }, [generatedNote, formState.subject, toast]);
 
   useEffect(() => {
     try {
@@ -401,6 +421,11 @@ export default function LessonGeneratorPage() {
         </div>
       </div>
       <style jsx global>{`
+        #note-content-for-pdf {
+          background: white !important;
+          color: black !important;
+          padding: 15mm; /* A4-like margins */
+        }
         #note-content-for-pdf * {
           color: black !important;
           background-color: transparent !important;
@@ -429,7 +454,7 @@ export default function LessonGeneratorPage() {
         }
         @page {
             size: A4;
-            margin: 15mm;
+            margin: 0;
         }
     `}</style>
     </>
