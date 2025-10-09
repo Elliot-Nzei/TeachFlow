@@ -68,15 +68,15 @@ export default function LessonGeneratorPage() {
       });
       return;
     }
-
+  
     setIsDownloadingPdf(true);
     const noteElement = document.getElementById('note-content-for-pdf');
-
+  
     if (!noteElement) {
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: 'Could not find content to print.',
+            description: 'Could not find content to generate PDF from.',
         });
         setIsDownloadingPdf(false);
         return;
@@ -94,9 +94,9 @@ export default function LessonGeneratorPage() {
             const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
             doc.save(`lesson-note-${sanitizedSubject}.pdf`);
           },
-          x: 10,
-          y: 10,
-          width: 190, // A4 width minus margins
+          x: 15,
+          y: 15,
+          width: 180, // A4 width (210) minus margins (15*2)
           windowWidth: 794 // A4 width in pixels at 96 DPI
         });
 
@@ -393,7 +393,7 @@ export default function LessonGeneratorPage() {
             </div>
         )}
       <div id="note-content-wrapper" className="hidden">
-        <div id="note-content-for-pdf" className="prose bg-white text-black p-8">
+        <div id="note-content-for-pdf" className="prose bg-white p-8">
             <ReactMarkdown>{generatedNote || ''}</ReactMarkdown>
         </div>
       </div>
