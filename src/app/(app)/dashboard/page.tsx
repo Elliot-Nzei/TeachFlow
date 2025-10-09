@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useCollection, useFirebase, useUser, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, query, orderBy } from 'firebase/firestore';
 import type { DataTransfer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -35,44 +35,41 @@ export default function DashboardPage() {
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: grades, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
   
+  // Only query sent transfers (from user's subcollection)
   const sentTransfersQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'transfers'), orderBy('timestamp', 'desc')) : null,
     [firestore, user]
   );
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
 
-  const receivedTransfersQuery = useMemoFirebase(
-    () => (user && userProfile?.userCode) 
-        ? query(
-            collection(firestore, 'transfers'), 
-            where('toUser', '==', userProfile.userCode),
-            orderBy('timestamp', 'desc')
-          )
-        : null,
-    [firestore, user, userProfile?.userCode]
-  );
-  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
+  // ❌ REMOVED: Can't query global /transfers collection due to security rules
+  // const receivedTransfersQuery = useMemoFirebase(
+  //   () => (user && userProfile?.userCode) 
+  //       ? query(
+  //           collection(firestore, 'transfers'), 
+  //           where('toUser', '==', userProfile.userCode),
+  //           orderBy('timestamp', 'desc')
+  //         )
+  //       : null,
+  //   [firestore, user, userProfile?.userCode]
+  // );
+  // const { data: receivedTransfers } = useCollection<DataTransfer>(receivedTransfersQuery);
   
+  // Use only sent transfers
   const allTransfers = useMemo(() => {
-    if (!sentTransfers && !receivedTransfers) return [];
+    if (!sentTransfers) return [];
     
-    const combined = [
-      ...(sentTransfers || []).map(t => ({...t, id: t.id ?? Math.random().toString()})),
-      ...(receivedTransfers || []).map(t => ({...t, id: t.id ?? Math.random().toString()}))
-    ];
-    
-    const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
-    
-    uniqueTransfers.sort((a, b) => {
-        const timeA = a.timestamp?.seconds ?? 0;
-        const timeB = b.timestamp?.seconds ?? 0;
-        return timeB - timeA;
+    return sentTransfers.map(t => ({
+      ...t, 
+      id: t.id ?? Math.random().toString()
+    })).sort((a, b) => {
+      const timeA = a.timestamp?.seconds ?? 0;
+      const timeB = b.timestamp?.seconds ?? 0;
+      return timeB - timeA;
     });
-    
-    return uniqueTransfers;
-  }, [sentTransfers, receivedTransfers]);
+  }, [sentTransfers]);
 
-  const isLoadingTransfers = isLoadingSent || isLoadingReceived || isLoadingProfile;
+  const isLoadingTransfers = isLoadingSent || isLoadingProfile;
   
   const gradeCounts = useMemo(() => (grades || []).reduce((acc: Record<string, number>, grade: any) => {
     if (grade.grade) {
@@ -125,7 +122,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Data Transfers</CardTitle>
-               <CardDescription>A log of your recent data transfers.</CardDescription>
+               <CardDescription>A log of your sent data transfers.</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -149,7 +146,7 @@ export default function DashboardPage() {
                         <TableCell>
                           <div className="font-medium">{transfer.dataType}</div>
                           <div className="text-sm text-muted-foreground">
-                            {transfer.fromUser === userProfile?.userCode ? `To: ${transfer.toUser}` : `From: ${transfer.fromUser}`}
+                            To: {transfer.toUser}
                           </div>
                         </TableCell>
                         <TableCell>{transfer.dataTransferred ?? 'N/A'}</TableCell>
