@@ -159,8 +159,12 @@ export default function LessonGeneratorPage() {
         setGenerationProgress(`Rendering part ${i + 1} of ${parts.length}...`);
 
         // Convert markdown to HTML and sanitize
-        const html = marked(part);
-        const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+        const html = marked.parse(part);
+        
+        let cleanHtml = html;
+        if (typeof window !== 'undefined') {
+            cleanHtml = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+        }
 
         // Prepare wrapper (clear previous)
         tempContainer.innerHTML = '';
@@ -175,7 +179,7 @@ export default function LessonGeneratorPage() {
         wrapper.appendChild(header);
 
         const contentDiv = document.createElement('div');
-        contentDiv.innerHTML = clean;
+        contentDiv.innerHTML = cleanHtml;
         // ensure images scale to container
         const imgs = contentDiv.querySelectorAll('img');
         imgs.forEach(img => {
