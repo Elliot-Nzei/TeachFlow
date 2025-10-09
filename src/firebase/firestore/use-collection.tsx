@@ -70,7 +70,7 @@ export function useCollection<T = any>(
       setData(null);
       setIsLoading(!isUserLoading); // If user is loading, we are loading. If query is null, we are not.
       setError(null);
-      return;
+      return; // <-- CRITICAL FIX: Explicitly return to prevent listener setup.
     }
 
     // A simple dev-time check to ensure memoization is used.
