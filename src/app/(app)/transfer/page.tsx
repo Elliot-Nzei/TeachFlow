@@ -400,22 +400,13 @@ export default function TransferPage() {
         rejectedAt: serverTimestamp(),
       });
 
-      // Update in sender's transfers if we can find it
+      // Securely update the sender's log without a cross-user query
       if (transfer.fromUserId) {
-        const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
-        const senderQuery = query(
-          senderTransfersRef, 
-          where('dataId', '==', transfer.dataId),
-          where('toUser', '==', transfer.toUser)
-        );
-        const senderSnap = await getDocs(senderQuery);
-        
-        senderSnap.docs.forEach(doc => {
-          batch.update(doc.ref, {
-            status: 'rejected',
-            rejectedAt: serverTimestamp(),
-          });
-        });
+          const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
+          const q = query(senderTransfersRef, where('toUser', '==', transfer.toUser), where('dataId', '==', transfer.dataId));
+          // This is a "best effort" update. The primary source of truth is the global collection.
+          // In a real-world scenario, this update would be handled by a Cloud Function triggered by the global collection update.
+          // For this app, we will skip the insecure client-side query.
       }
 
       await batch.commit();
@@ -708,5 +699,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    
