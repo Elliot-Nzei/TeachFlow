@@ -10,10 +10,9 @@ import {
 } from '@/ai/flows/generate-report-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users, Trophy, Medal, Award, Star, X, AlertCircle } from 'lucide-react';
+import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -61,7 +60,7 @@ const PositionBadge = ({ position }: { position: number }) => {
   };
 
   const configs = [
-    { threshold: 1, color: "text-yellow-500", Icon: Trophy, label: "1st" },
+    { threshold: 1, color: "text-yellow-500", Icon: Award, label: "1st" },
     { threshold: 2, color: "text-slate-400", Icon: Medal, label: "2nd" },
     { threshold: 3, color: "text-amber-700", Icon: Award, label: "3rd" },
     { threshold: 10, color: "text-blue-600", Icon: X, label: getOrdinal(position) },
@@ -214,7 +213,7 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                 <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.formTeacherComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
                 <div><h3 className="font-bold text-green-700 text-[9px] mb-0.5">PRINCIPAL'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.principalComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
             </div>
-            <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: {settings?.nextTermBegins || 'TBA'}</p></div>
+            <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: TBA</p></div>
         </div>
     )
 };
