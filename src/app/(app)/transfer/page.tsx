@@ -36,10 +36,6 @@ import {
 
 type DataType = 'Class' | 'Grades' | 'Report Card';
 
-interface TransferWithDirection extends DataTransfer {
-  isSent: boolean;
-}
-
 export default function TransferPage() {
   const { firestore, user } = useFirebase();
   const { settings: userProfile, isLoading: isLoadingProfile } = useContext(SettingsContext);
@@ -52,7 +48,7 @@ export default function TransferPage() {
   const [processingTransferId, setProcessingTransferId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ 
     open: boolean; 
-    transfer: TransferWithDirection | null; 
+    transfer: DataTransfer | null; 
     action: 'accept' | 'reject' | null;
   }>({ open: false, transfer: null, action: null });
 
@@ -69,17 +65,7 @@ export default function TransferPage() {
   );
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
-  // Fetch sent transfers
-  const sentTransfersQuery = useMemoFirebase(
-    () => user ? query(
-      collection(firestore, 'users', user.uid, 'transfers'), 
-      orderBy('timestamp', 'desc')
-    ) : null,
-    [firestore, user]
-  );
-  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
-
-  // Fetch received transfers
+  // Fetch received transfers securely
   const receivedTransfersQuery = useMemoFirebase(
     () => (user && userProfile?.userCode)
         ? query(
@@ -92,31 +78,9 @@ export default function TransferPage() {
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
 
-  // Combine and sort transfers efficiently
-  const allTransfers = useMemo(() => {
-    if (!userProfile?.userCode) return [];
-
-    const sent: TransferWithDirection[] = (sentTransfers || []).map(t => ({ ...t, isSent: true }));
-    const received: TransferWithDirection[] = (receivedTransfers || []).map(t => ({ ...t, isSent: false }));
-    
-    const transferMap = new Map<string, TransferWithDirection>();
-    [...sent, ...received].forEach(transfer => {
-      const transferId = transfer.id || `${transfer.fromUser}-${transfer.toUser}-${transfer.dataId}-${transfer.timestamp?.seconds}`;
-      if (!transferMap.has(transferId)) {
-        transferMap.set(transferId, transfer);
-      }
-    });
-    
-    return Array.from(transferMap.values()).sort((a, b) => {
-      const timeA = a.timestamp?.seconds ?? 0;
-      const timeB = b.timestamp?.seconds ?? 0;
-      return timeB - timeA;
-    });
-  }, [sentTransfers, receivedTransfers, userProfile?.userCode]);
-
   // Combined loading state
   const isLoading = isLoadingClasses || isLoadingStudents || isLoadingProfile;
-  const isLoadingTransfers = isLoadingSent || isLoadingReceived;
+  const isLoadingTransfers = isLoadingReceived;
 
   // Get data items based on selected type
   const dataItemOptions = useMemo(() => {
@@ -190,7 +154,7 @@ export default function TransferPage() {
       const batch = writeBatch(firestore);
       const dataName = getItemName(dataItem, dataType as DataType);
       
-      // Add to user's transfers collection
+      // Add to user's transfers collection (for their own records)
       const userTransferRef = doc(collection(firestore, 'users', user.uid, 'transfers'));
       batch.set(userTransferRef, {
         fromUser: userProfile.userCode,
@@ -312,7 +276,7 @@ export default function TransferPage() {
   };
 
   // Accept transfer
-  const handleAcceptTransfer = async (transfer: TransferWithDirection) => {
+  const handleAcceptTransfer = async (transfer: DataTransfer) => {
     if (!user || !transfer.fromUserId) {
       toast({
         variant: 'destructive',
@@ -386,7 +350,7 @@ export default function TransferPage() {
   };
 
   // Reject transfer
-  const handleRejectTransfer = async (transfer: TransferWithDirection) => {
+  const handleRejectTransfer = async (transfer: DataTransfer) => {
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
 
@@ -399,16 +363,25 @@ export default function TransferPage() {
         status: 'rejected',
         rejectedAt: serverTimestamp(),
       });
-
-      // Securely update the sender's log without a cross-user query
+      
+      // Update in sender's transfers if we can find it
       if (transfer.fromUserId) {
           const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
-          const q = query(senderTransfersRef, where('toUser', '==', transfer.toUser), where('dataId', '==', transfer.dataId));
-          // This is a "best effort" update. The primary source of truth is the global collection.
-          // In a real-world scenario, this update would be handled by a Cloud Function triggered by the global collection update.
-          // For this app, we will skip the insecure client-side query.
+          const senderQuery = query(
+            senderTransfersRef, 
+            where('dataId', '==', transfer.dataId),
+            where('toUser', '==', transfer.toUser)
+          );
+          const senderSnap = await getDocs(senderQuery);
+          
+          senderSnap.docs.forEach(doc => {
+            batch.update(doc.ref, {
+              status: 'rejected',
+              rejectedAt: serverTimestamp(),
+            });
+          });
       }
-
+      
       await batch.commit();
 
       toast({
@@ -555,15 +528,14 @@ export default function TransferPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Transfer History</CardTitle>
-          <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
+          <CardTitle>Incoming Transfers</CardTitle>
+          <CardDescription>A log of your recent incoming data transfer requests.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Direction</TableHead>
-                <TableHead>User Code</TableHead>
+                <TableHead>From User</TableHead>
                 <TableHead>Data Type</TableHead>
                 <TableHead>Details</TableHead>
                 <TableHead>Status</TableHead>
@@ -575,14 +547,13 @@ export default function TransferPage() {
               {isLoadingTransfers ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={6}>
                       <Skeleton className="h-10 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
-              ) : allTransfers.length > 0 ? (
-                allTransfers.map((transfer) => {
-                  const isSent = transfer.fromUser === userProfile?.userCode;
+              ) : receivedTransfers && receivedTransfers.length > 0 ? (
+                receivedTransfers.map((transfer) => {
                   const date = transfer.timestamp?.seconds 
                     ? new Date(transfer.timestamp.seconds * 1000) 
                     : new Date();
@@ -591,20 +562,7 @@ export default function TransferPage() {
                   
                   return (
                     <TableRow key={transfer.id}>
-                      <TableCell>
-                        {isSent ? (
-                          <span className="flex items-center text-red-500">
-                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Sent
-                          </span>
-                        ) : (
-                          <span className="flex items-center text-green-500">
-                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Received
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono">
-                        {isSent ? transfer.toUser : transfer.fromUser}
-                      </TableCell>
+                      <TableCell className="font-mono">{transfer.fromUser}</TableCell>
                       <TableCell>{transfer.dataType}</TableCell>
                       <TableCell>{transfer.dataTransferred}</TableCell>
                       <TableCell>{getStatusBadge(transfer.status)}</TableCell>
@@ -612,7 +570,7 @@ export default function TransferPage() {
                         {formatDistanceToNow(date, { addSuffix: true })}
                       </TableCell>
                       <TableCell className="text-right">
-                        {!isSent && isPending && (
+                        {isPending && (
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"
@@ -642,8 +600,8 @@ export default function TransferPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
-                    No transfer history found.
+                  <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                    No incoming transfers found.
                   </TableCell>
                 </TableRow>
               )}
@@ -699,3 +657,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
