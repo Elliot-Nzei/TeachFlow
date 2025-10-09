@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook } from 'lucide-react';
+import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLessonNote } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
@@ -239,6 +239,19 @@ export default function LessonGeneratorPage() {
     });
   };
 
+  const handleDeleteAllHistory = () => {
+    setSavedNotes([]);
+    localStorage.removeItem('lessonNotesHistory');
+    toast({
+      title: 'History Cleared',
+      description: 'All saved lesson notes have been deleted.',
+    });
+  };
+
+  const handleCloseHistory = () => {
+    setIsHistoryOpen(false);
+  };
+
   const handleCopy = () => {
     if (generatedNote) {
       navigator.clipboard.writeText(generatedNote);
@@ -399,8 +412,19 @@ export default function LessonGeneratorPage() {
             <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsHistoryOpen(false)}>
                 <div className="fixed top-0 right-0 h-full w-full max-w-md bg-card shadow-lg z-50 flex flex-col" onClick={e => e.stopPropagation()}>
                     <div className="p-4 border-b">
-                        <h2 className="text-lg font-semibold">Generation History</h2>
-                        <p className="text-sm text-muted-foreground">Your last 20 generated notes.</p>
+                        <div className="flex justify-between items-center mb-2">
+                            <h2 className="text-lg font-semibold">Generation History</h2>
+                            <Button variant="ghost" size="icon" onClick={handleCloseHistory}>
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm text-muted-foreground">Your last 20 generated notes.</p>
+                            <Button variant="destructive" size="sm" onClick={handleDeleteAllHistory} disabled={savedNotes.length === 0}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete All
+                            </Button>
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {savedNotes.length > 0 ? (
@@ -410,7 +434,7 @@ export default function LessonGeneratorPage() {
                                     <AccordionTrigger className="px-4 hover:bg-muted/50" onClick={() => loadFromHistory(note)}>
                                         <div className="flex-1 text-left">
                                             <p className="font-semibold">{note.formState.subject}</p>
-                                            <p className="text-xs text-muted-foreground">{note.formState.classLevel} - {new Date(note.timestamp).toLocaleString()}</p>
+                                            <p className="text-xs text-muted-foreground">{new Date(note.timestamp).toLocaleString()}</p>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4 bg-muted/20 text-xs">
