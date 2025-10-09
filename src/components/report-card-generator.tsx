@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users, Trophy, Medal, Award, Star, X } from 'lucide-react';
+import { FileDown, Loader2, Printer, Search, User, Users, Trophy, Medal, Award, Star, X, AlertCircle } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from './ui/separator';
 import { Logo } from './logo';
@@ -25,6 +25,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
@@ -71,7 +72,7 @@ const PositionBadge = ({ position }: { position: number }) => {
   ];
 
   const config = configs.find(c => position <= c.threshold) || 
-    { color: "text-gray-600", Icon: X, label: getOrdinal(position) };
+    { color: "text-gray-600", Icon: null, label: getOrdinal(position) };
   
   if (position <= 0) {
     config.label = "N/A";
@@ -283,6 +284,28 @@ export default function ReportCardGenerator() {
     return 'Fail';
   };
 
+  const validateSettings = useCallback(() => {
+    if (!settings) {
+      toast({
+        variant: 'destructive',
+        title: 'Settings Not Found',
+        description: 'Please configure your school settings before generating reports.',
+      });
+      return false;
+    }
+
+    if (!settings.currentTerm || !settings.currentSession) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Configuration',
+        description: 'Please set the current term and session in your settings.',
+      });
+      return false;
+    }
+
+    return true;
+  }, [settings, toast]);
+
   const handleGenerateReports = async () => {
     if (!selectedClass && !selectedStudent) {
       toast({
@@ -293,142 +316,156 @@ export default function ReportCardGenerator() {
       return;
     }
 
+    if (!validateSettings() || !allGrades) {
+      return;
+    }
+
     setLoading(true);
     setLoadingProgress(0);
     setCurrentStudent('');
     setGeneratedReports([]);
 
     const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
-    if (!settings || !allGrades) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load settings or grades.'});
-        setLoading(false);
-        return;
-    }
-    const term = settings.currentTerm;
-    const session = settings.currentSession;
+    const term = settings!.currentTerm;
+    const session = settings!.currentSession;
     
     const newReports: ReportWithStudentAndGradeInfo[] = [];
     
-    for (let i = 0; i < targets.length; i++) {
-        const student = targets[i];
-        setCurrentStudent(student.name);
-        setLoadingProgress(((i + 1) / targets.length) * 100);
+    try {
+      for (let i = 0; i < targets.length; i++) {
+          const student = targets[i];
+          setCurrentStudent(student.name);
+          setLoadingProgress(((i + 1) / targets.length) * 100);
 
-        try {
-            const studentGrades = allGrades.filter(g => 
-                g.studentId === student.id && 
-                g.session === session && 
-                g.term === term &&
-                typeof g.total === 'number'
-            );
-            
-            if (studentGrades.length === 0) {
-                continue;
-            }
-            
-            const studentTraits = (allTraits || []).filter(t =>
-              t.studentId === student.id &&
-              t.session === session &&
-              t.term === term
-            );
+          try {
+              const studentGrades = allGrades.filter(g => 
+                  g.studentId === student.id && 
+                  g.session === session && 
+                  g.term === term &&
+                  typeof g.total === 'number'
+              );
+              
+              if (studentGrades.length === 0) {
+                  console.warn(`No grades found for ${student.name}`);
+                  continue;
+              }
+              
+              const studentTraits = (allTraits || []).filter(t =>
+                t.studentId === student.id &&
+                t.session === session &&
+                t.term === term
+              );
 
-            const studentAttendance = (allAttendance || []).filter(a =>
-              a.studentId === student.id &&
-              a.session === session &&
-              a.term === term
-            );
-            
-            const uniqueDates = new Set((allAttendance || []).filter(a => a.session === session && a.term === term).map(a => a.date));
-            const totalDays = uniqueDates.size;
-            const presentDays = studentAttendance.filter(a => a.status === 'Present').length;
-            const absentDays = studentAttendance.filter(a => a.status === 'Absent').length;
-            const lateDays = studentAttendance.filter(a => a.status === 'Late').length;
-            
-            const input: GenerateReportCardInput = {
-                studentName: student.name,
-                className: student.className,
-                grades: studentGrades.map(g => ({ subject: g.subject, score: g.total, grade: g.grade })),
-                attendance: {
-                    totalDays,
-                    presentDays,
-                    absentDays,
-                    lateDays
-                },
-                traits: studentTraits.flatMap(t => {
-                    const traitEntries = Object.entries(t.traits);
-                    return traitEntries.map(([name, rating]) => ({ name, rating }));
-                }),
-                term,
-                session,
-                positionInClass: classAverages.findIndex(avg => avg.studentId === student.id) + 1,
-                totalStudentsInClass: studentsInClass.length,
-            };
+              const studentAttendance = (allAttendance || []).filter(a =>
+                a.studentId === student.id &&
+                a.session === session &&
+                a.term === term
+              );
+              
+              const uniqueDates = new Set((allAttendance || []).filter(a => a.session === session && a.term === term).map(a => a.date));
+              const totalDays = uniqueDates.size;
+              const presentDays = studentAttendance.filter(a => a.status === 'Present').length;
+              const absentDays = studentAttendance.filter(a => a.status === 'Absent').length;
+              const lateDays = studentAttendance.filter(a => a.status === 'Late').length;
+              
+              const input: GenerateReportCardInput = {
+                  studentName: student.name,
+                  className: student.className,
+                  grades: studentGrades.map(g => ({ subject: g.subject, score: g.total, grade: g.grade })),
+                  attendance: {
+                      totalDays,
+                      presentDays,
+                      absentDays,
+                      lateDays
+                  },
+                  traits: studentTraits.flatMap(t => {
+                      const traitEntries = Object.entries(t.traits);
+                      return traitEntries.map(([name, rating]) => ({ name, rating }));
+                  }),
+                  term,
+                  session,
+                  positionInClass: classAverages.findIndex(avg => avg.studentId === student.id) + 1,
+                  totalStudentsInClass: studentsInClass.length,
+              };
 
-            const result = await generateReportCard(input);
-            const detailedGrades = studentGrades.map(g => ({ 
-              subject: g.subject, 
-              ca1: g.ca1, 
-              ca2: g.ca2, 
-              exam: g.exam, 
-              total: g.total, 
-              grade: g.grade, 
-              remark: getRemarkFromScore(g.total) 
-            }));
-            
-            const position = classAverages.findIndex(avg => avg.studentId === student.id) + 1;
+              const result = await generateReportCard(input);
+              const detailedGrades = studentGrades.map(g => ({ 
+                subject: g.subject, 
+                ca1: g.ca1, 
+                ca2: g.ca2, 
+                exam: g.exam, 
+                total: g.total, 
+                grade: g.grade, 
+                remark: getRemarkFromScore(g.total) 
+              }));
+              
+              const position = classAverages.findIndex(avg => avg.studentId === student.id) + 1;
 
-            newReports.push({
-                ...result,
-                studentName: student.name,
-                studentId: student.studentId,
-                className: student.className,
-                term: input.term,
-                session: input.session,
-                grades: detailedGrades,
-                age: student.age,
-                gender: student.gender,
-                schoolName: settings.schoolName,
-                schoolMotto: settings.schoolMotto,
-                schoolAddress: settings.schoolAddress,
-                nextTermBegins: settings.nextTermBegins,
-                attendance: { totalDays, presentDays, absentDays },
-                traits: studentTraits.flatMap(t => {
-                    const traitEntries = Object.entries(t.traits);
-                    return traitEntries.map(([name, rating]) => ({ name, rating, domain: 'Affective' })); // Domain is hardcoded, needs schema update
-                }),
-                formTeacherComment: result.formTeacherComment,
-                principalComment: result.principalComment,
-                position: position > 0 ? position : 0,
-                totalStudents: studentsInClass.length,
-            });
+              newReports.push({
+                  ...result,
+                  studentName: student.name,
+                  studentId: student.studentId,
+                  className: student.className,
+                  term: input.term,
+                  session: input.session,
+                  grades: detailedGrades,
+                  age: student.age,
+                  gender: student.gender,
+                  schoolName: settings!.schoolName,
+                  schoolMotto: settings!.schoolMotto,
+                  schoolAddress: settings!.schoolAddress,
+                  nextTermBegins: settings!.nextTermBegins,
+                  attendance: { totalDays, presentDays, absentDays },
+                  traits: studentTraits.flatMap(t => {
+                      const traitEntries = Object.entries(t.traits);
+                      return traitEntries.map(([name, rating]) => ({ name, rating, domain: 'Affective' }));
+                  }),
+                  formTeacherComment: result.formTeacherComment,
+                  principalComment: result.principalComment,
+                  position: position > 0 ? position : 0,
+                  totalStudents: studentsInClass.length,
+              });
 
-        } catch (error) {
-            console.error(`Error generating report for ${student.name}:`, error);
-            toast({
-                variant: 'destructive',
-                title: `Generation Failed for ${student.name}`,
-                description: 'Could not generate report for this student. Please check their data.',
-            });
-            continue;
-        }
-    }
-    
-    setGeneratedReports(newReports);
-
-    if (newReports.length === 0) {
-        const description = selectedStudent
-            ? `No valid grades have been recorded for ${selectedStudent.name} for the current term/session.`
-            : `No students in ${selectedClass?.name} have valid recorded grades for the current term/session.`;
-        toast({
-            variant: "destructive",
-            title: "No Grades Found",
-            description: description,
-        });
-    }
+          } catch (error) {
+              console.error(`Error generating report for ${student.name}:`, error);
+              toast({
+                  variant: 'destructive',
+                  title: `Generation Failed for ${student.name}`,
+                  description: 'Could not generate report for this student. Continuing with others...',
+              });
+              continue;
+          }
+      }
       
-    setLoading(false);
-    setCurrentStudent('');
-    setLoadingProgress(0);
+      setGeneratedReports(newReports);
+
+      if (newReports.length === 0) {
+          const description = selectedStudent
+              ? `No valid grades found for ${selectedStudent.name} for ${term}, ${session}.`
+              : `No students in ${selectedClass?.name} have valid grades for ${term}, ${session}.`;
+          toast({
+              variant: "destructive",
+              title: "No Grades Found",
+              description: description,
+          });
+      } else {
+        toast({
+          title: "Success!",
+          description: `Generated ${newReports.length} report card(s) successfully.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error generating report cards:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Generation Failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+      setCurrentStudent('');
+      setLoadingProgress(0);
+    }
   };
   
   const handlePrint = () => {
@@ -437,9 +474,14 @@ export default function ReportCardGenerator() {
 
   const handleDownloadPdf = async () => {
     if (generatedReports.length === 0) {
-      toast({ title: "No reports to download." });
+      toast({ 
+        variant: 'destructive',
+        title: "No reports to download.",
+        description: "Please generate reports first." 
+      });
       return;
     }
+    
     setLoading(true);
     setLoadingProgress(0);
 
@@ -454,169 +496,197 @@ export default function ReportCardGenerator() {
             setLoadingProgress(((i + 1) / generatedReports.length) * 100);
 
             const reportElement = document.getElementById(`report-card-${report.studentId}`);
-            if (reportElement) {
-                const canvas = await html2canvas(reportElement, { scale: 3, useCORS: true });
-                const imgData = canvas.toDataURL('image/png');
-                
-                if (i > 0) {
-                    doc.addPage();
+            if (!reportElement) {
+              console.error(`Report element not found for ${report.studentId}`);
+              continue;
+            }
+
+            try {
+              const canvas = await html2canvas(reportElement, { 
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                logging: false,
+                backgroundColor: '#ffffff',
+                windowWidth: reportElement.scrollWidth,
+                windowHeight: reportElement.scrollHeight,
+                onclone: (clonedDoc) => {
+                  const clonedElement = clonedDoc.getElementById(`report-card-${report.studentId}`);
+                  if (clonedElement) {
+                    clonedElement.style.display = 'block';
+                    clonedElement.style.visibility = 'visible';
+                  }
                 }
-                
-                doc.addImage(imgData, 'PNG', 0, 0, a4_width, a4_height, undefined, 'FAST');
+              });
+              
+              if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                throw new Error('Invalid canvas generated');
+              }
+
+              const imgData = canvas.toDataURL('image/jpeg', 0.95);
+              
+              if (!imgData || imgData === 'data:,') {
+                throw new Error('Failed to generate image data');
+              }
+              
+              if (i > 0) {
+                  doc.addPage();
+              }
+              
+              doc.addImage(imgData, 'JPEG', 0, 0, a4_width, a4_height, undefined, 'FAST');
+              
+            } catch (canvasError) {
+              console.error(`Error processing canvas for ${report.studentName}:`, canvasError);
+              toast({
+                variant: 'destructive',
+                title: `PDF Generation Warning`,
+                description: `Could not process report for ${report.studentName}. Continuing with others...`,
+              });
+              continue;
             }
         }
-
-        const studentName = selectedStudent?.name || selectedClass?.name || 'Reports';
-        doc.save(`${studentName}-Report-Cards.pdf`);
-        toast({ title: "Success", description: "PDF has been downloaded." });
+        
+        const fileName = selectedStudent 
+            ? `report-card-${selectedStudent.name.replace(' ', '-')}.pdf`
+            : `report-cards-${selectedClass?.name.replace(' ', '-')}.pdf`;
+        doc.save(fileName);
 
     } catch (error) {
-        console.error("Error generating PDF:", error);
-        toast({ variant: 'destructive', title: 'PDF Generation Failed', description: 'An error occurred while generating the PDF.' });
+        console.error("PDF generation failed:", error);
+        toast({
+            variant: "destructive",
+            title: "PDF Download Failed",
+            description: "An unexpected error occurred while creating the PDF.",
+        });
     } finally {
         setLoading(false);
         setCurrentStudent('');
         setLoadingProgress(0);
     }
   };
+
+
+  const isLoadingData = isLoadingClasses || isLoadingStudents || isLoadingGrades || isLoadingTraits || isLoadingAttendance;
   
-  const isLoading = isLoadingClasses || isLoadingStudents || isLoadingGrades || isLoadingTraits || isLoadingAttendance;
+  if (isLoadingData) {
+      return (
+          <div className="space-y-6">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-64 w-full" />
+          </div>
+      )
+  }
 
   return (
     <>
-      <div className="grid gap-8 md:grid-cols-12 print:hidden">
-        <Card className="md:col-span-4">
-          <CardHeader>
-            <CardTitle>Select Target</CardTitle>
-            <CardDescription>Choose to generate reports for an entire class or a single student.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoading ? <div className="space-y-6"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div> : (
-              <>
-                <div className="space-y-2">
-                  <label className="flex items-center text-sm font-medium">
-                    <Users className="mr-2 h-4 w-4" /> Generate for a Whole Class
-                  </label>
-                  <Select
-                    onValueChange={(classId) => {
-                      setSelectedClass(classes?.find(c => c.id === classId) || null);
-                      setSelectedStudent(null);
-                    }}
-                    value={selectedClass?.id || ''}
-                    disabled={!!selectedStudent}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a class..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes?.map(cls => (
-                        <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator>OR</Separator>
-
-                <div className="space-y-2">
-                     <label className="flex items-center text-sm font-medium">
-                        <User className="mr-2 h-4 w-4" /> Generate for a Single Student
-                    </label>
-                    <Command className="rounded-lg border shadow-sm">
-                        <CommandInput placeholder="Type student name or ID..." disabled={!!selectedClass} />
-                        <CommandList>
-                            <CommandEmpty>No student found.</CommandEmpty>
-                            <CommandGroup>
-                            {(allStudents || []).map((student) => (
-                                <CommandItem
-                                    key={student.id}
-                                    value={`${student.name} ${student.studentId}`}
-                                    onSelect={() => {
-                                        setSelectedStudent(student);
-                                        setSelectedClass(classes?.find(c => c.id === student.classId) || null);
-                                    }}
-                                >
-                                    {student.name}
-                                    <span className="ml-2 text-xs text-muted-foreground">{student.studentId}</span>
-                                </CommandItem>
-                            ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </div>
-                 {(selectedClass || selectedStudent) && (
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:hidden">
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Generation Target</CardTitle>
+              <CardDescription>Choose a class or an individual student to generate report cards for.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Command className="rounded-lg border shadow-md">
+                    <CommandInput placeholder="Search for class or student..." />
+                    <CommandList>
+                        <CommandEmpty>No results found.</CommandEmpty>
+                        <CommandGroup heading="Classes">
+                        {classes?.map((cls) => (
+                            <CommandItem key={cls.id} onSelect={() => { setSelectedClass(cls); setSelectedStudent(null); }}>
+                            <Users className="mr-2 h-4 w-4" />
+                            <span>{cls.name}</span>
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                        <CommandGroup heading="Students">
+                        {allStudents?.map((student) => (
+                            <CommandItem key={student.id} onSelect={() => { setSelectedStudent(student); setSelectedClass(null); }}>
+                            <User className="mr-2 h-4 w-4" />
+                            <span>{student.name}</span>
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+              </div>
+                {(selectedClass || selectedStudent) && (
+                <div className="mt-4 p-3 bg-secondary border rounded-lg">
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-blue-900">
-                          {selectedStudent ? 'Selected Student' : 'Selected Class'}
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">
+                        {selectedStudent ? 'Selected Student' : 'Selected Class'}
                         </p>
-                        <p className="text-sm text-blue-700">
-                          {selectedStudent ? selectedStudent.name : selectedClass?.name}
+                        <p className="text-sm text-muted-foreground">
+                        {selectedStudent ? selectedStudent.name : selectedClass?.name}
                         </p>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={handleClearSelection}>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClearSelection}>
                         <X className="h-4 w-4" />
-                      </Button>
+                    </Button>
                     </div>
-                  </div>
+                </div>
                 )}
-              </>
-            )}
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent)} className="w-full">
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Generate Reports'}
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <div className="md:col-span-8">
-            <Card>
-                <CardHeader className="flex flex-row justify-between items-start">
-                    <div>
-                        <CardTitle>Generated Reports</CardTitle>
-                        <CardDescription>
-                            {generatedReports.length > 0
-                            ? `Showing ${generatedReports.length} report(s). Ready to print or download.`
-                            : 'Select a class or student to generate reports.'}
-                        </CardDescription>
-                    </div>
-                    {generatedReports.length > 0 && !loading && (
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={handleDownloadPdf} disabled={loading}>
-                                <FileDown className="mr-2 h-4 w-4" /> Download All
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent)}>
+                {loading ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                    </>
+                ) : 'Generate Reports'}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+        <div className="lg:col-span-2">
+            <Card className="min-h-[400px]">
+                <CardHeader>
+                    <CardTitle>Generated Reports</CardTitle>
+                    <CardDescription>
+                        {generatedReports.length > 0 ? `Showing ${generatedReports.length} report(s).` : 'Reports will be displayed here after generation.'}
+                    </CardDescription>
+                     {generatedReports.length > 0 && (
+                        <div className="flex gap-2 pt-2">
+                            <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={loading}>
+                                {loading && currentStudent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                Download PDF
                             </Button>
-                            <Button onClick={handlePrint} disabled={loading}>
-                                <Printer className="mr-2 h-4 w-4" /> Print All
+                            <Button size="sm" onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print All
                             </Button>
                         </div>
                     )}
                 </CardHeader>
-                <CardContent className="min-h-[400px]">
+                <CardContent className="space-y-4">
                     {loading && (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                        <p className="font-semibold mb-2">{currentStudent || 'Generating Reports...'}</p>
-                        <Progress value={loadingProgress} className="w-3/4" />
-                        <p className="text-xs mt-2">{Math.round(loadingProgress)}% Complete</p>
-                    </div>
+                        <div className="flex flex-col items-center justify-center pt-10">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                            <p className="font-semibold mb-2">{currentStudent || 'Generating Reports...'}</p>
+                            <Progress value={loadingProgress} className="w-3/4" />
+                            <p className="text-xs mt-2">{Math.round(loadingProgress)}% Complete</p>
+                        </div>
                     )}
+
                     {!loading && generatedReports.length === 0 && (
-                     <div className="flex flex-col items-center justify-center h-full text-center">
-                        <Award className="h-16 w-16 mb-4 text-gray-300" />
-                        <p className="text-lg font-medium text-muted-foreground">
-                        No Reports Generated Yet
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                        Your generated report cards will be displayed here.
-                        </p>
-                    </div>
+                       <div className="flex flex-col items-center justify-center text-center pt-10">
+                            <Award className="h-16 w-16 mb-4 text-muted-foreground/30" />
+                            <p className="text-lg font-medium text-muted-foreground">
+                            No Reports Generated Yet
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+                            Select a class or student and click "Generate Reports" to see the results.
+                            </p>
+                        </div>
                     )}
+
                     {!loading && generatedReports.length > 0 && (
                         <div className="space-y-4">
-                            {generatedReports.map((report) => (
-                            <Card key={report.studentId} className="border-l-4 border-l-green-500">
+                           {generatedReports.map((report) => (
+                                <Card key={report.studentId} className="border-l-4 border-l-primary">
                                 <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -626,101 +696,92 @@ export default function ReportCardGenerator() {
                                     </CardDescription>
                                     </div>
                                     <Badge variant="outline">
-                                    Position: {report.position}/{report.totalStudents}
+                                    Position: {report.position > 0 ? `${report.position}/${report.totalStudents}` : 'N/A'}
                                     </Badge>
                                 </div>
                                 </CardHeader>
                                 <CardContent>
                                 <div className="grid grid-cols-3 gap-4 text-sm">
                                     <div>
-                                    <p className="text-gray-600">Average Score</p>
+                                    <p className="text-muted-foreground">Average Score</p>
                                     <p className="text-xl font-bold text-blue-700">
                                         {report.averageScore.toFixed(1)}
                                     </p>
                                     </div>
                                     <div>
-                                    <p className="text-gray-600">Overall Grade</p>
+                                    <p className="text-muted-foreground">Overall Grade</p>
                                     <p className="text-xl font-bold text-green-700">
                                         {report.overallGrade}
                                     </p>
                                     </div>
                                     <div>
-                                        <p className="text-gray-600">Attendance</p>
-                                        <p className="text-xl font-bold text-purple-700">
-                                            {report.attendance && report.attendance.totalDays > 0
-                                            ? `${((report.attendance.presentDays / report.attendance.totalDays) * 100).toFixed(0)}%`
-                                            : 'N/A'}
-                                        </p>
+                                    <p className="text-muted-foreground">Attendance</p>
+                                    <p className="text-xl font-bold text-purple-700">
+                                        {report.attendance && report.attendance.totalDays > 0
+                                        ? `${((report.attendance.presentDays / report.attendance.totalDays) * 100).toFixed(0)}%`
+                                        : 'N/A'}
+                                    </p>
                                     </div>
                                 </div>
                                 </CardContent>
                             </Card>
-                            ))}
+                           ))}
                         </div>
                     )}
                 </CardContent>
             </Card>
         </div>
       </div>
-       <div id="print-container" className="hidden print:block">
-            {generatedReports.map((report) => (
-                <ReportCard key={report.studentId} report={report} />
-            ))}
-        </div>
+      <div className="hidden print:block space-y-4">
+        {generatedReports.map((report, index) => (
+          <Fragment key={report.studentId}>
+            <ReportCard report={report} />
+            {index < generatedReports.length - 1 && <div className="page-break" />}
+          </Fragment>
+        ))}
+      </div>
        <style jsx global>{`
-        .a4-page {
-            color: black;
-            background: white;
-        }
-        @media screen {
-          .a4-page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 15mm;
-            margin: 0 auto;
-            box-sizing: border-box;
-          }
-        }
         @media print {
-            body * {
-                visibility: hidden;
+            body {
+                background-color: #fff;
             }
-            #print-container, #print-container * {
-                visibility: visible;
+            .print\\:hidden {
+                display: none;
             }
-            #print-container {
+            .print\\:block {
+                display: block;
+            }
+            .a4-page, .a4-page * {
+                visibility: visible !important;
+                color: black !important;
+            }
+            .a4-page {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
+                background: white !important;
             }
-            .a4-page {
-                width: 210mm;
-                height: 297mm;
-                padding: 15mm;
-                margin: 0;
-                box-shadow: none;
+            .page-break {
                 page-break-after: always;
-                box-sizing: border-box;
-                background-color: white !important;
-                color: black !important;
-            }
-             .a4-page * {
-                color: black !important;
-            }
-            .print\\:hidden {
-                display: none !important;
-            }
-            * {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
             }
         }
         @page {
             size: A4;
-            margin: 0;
+            margin: 1cm;
         }
-      `}</style>
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 10mm;
+            margin: 1rem auto;
+            border: 1px #D3D3D3 solid;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            color: black;
+            visibility: hidden;
+            display: none;
+        }
+    `}</style>
     </>
   );
 }
