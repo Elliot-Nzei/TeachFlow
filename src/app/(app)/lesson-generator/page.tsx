@@ -719,43 +719,231 @@ export default function LessonGeneratorPage() {
       </div>
 
       <style jsx global>{`
+        /* Base styles for the note content - ALWAYS applied */
+        #note-content {
+          background: white !important;
+          color: #000000 !important;
+          padding: 40px !important;
+          max-width: 210mm !important; /* A4 width */
+          margin: 0 auto !important;
+          box-shadow: none !important;
+          border: none !important;
+        }
+
+        /* Force all text to be black */
+        #note-content,
+        #note-content *,
+        #note-content h1,
+        #note-content h2,
+        #note-content h3,
+        #note-content h4,
+        #note-content h5,
+        #note-content h6,
+        #note-content p,
+        #note-content span,
+        #note-content div,
+        #note-content li,
+        #note-content a,
+        #note-content strong,
+        #note-content em,
+        #note-content blockquote {
+          background: transparent !important;
+          background-color: transparent !important;
+          color: #000000 !important;
+          border-color: #000000 !important;
+        }
+
+        /* Fix prose styles */
+        #note-content.prose,
+        #note-content .prose {
+          color: #000000 !important;
+          max-width: none !important;
+        }
+
+        /* Headings - proper weights and sizes */
+        #note-content h1 {
+          font-size: 28px !important;
+          font-weight: 700 !important;
+          color: #000000 !important;
+          margin-top: 24px !important;
+          margin-bottom: 16px !important;
+        }
+
+        #note-content h2 {
+          font-size: 24px !important;
+          font-weight: 600 !important;
+          color: #000000 !important;
+          margin-top: 20px !important;
+          margin-bottom: 12px !important;
+        }
+
+        #note-content h3 {
+          font-size: 20px !important;
+          font-weight: 600 !important;
+          color: #000000 !important;
+          margin-top: 16px !important;
+          margin-bottom: 10px !important;
+        }
+
+        #note-content h4 {
+          font-size: 18px !important;
+          font-weight: 500 !important;
+          color: #000000 !important;
+        }
+
+        /* Paragraph spacing */
+        #note-content p {
+          font-size: 14px !important;
+          font-weight: 400 !important;
+          line-height: 1.6 !important;
+          margin-bottom: 12px !important;
+          color: #000000 !important;
+        }
+
+        /* Lists */
+        #note-content ul,
+        #note-content ol {
+          margin-left: 24px !important;
+          margin-bottom: 12px !important;
+          color: #000000 !important;
+        }
+
+        #note-content li {
+          font-size: 14px !important;
+          line-height: 1.6 !important;
+          margin-bottom: 8px !important;
+          color: #000000 !important;
+        }
+
+        /* Strong/Bold text */
+        #note-content strong,
+        #note-content b {
+          font-weight: 700 !important;
+          color: #000000 !important;
+        }
+
+        /* Emphasis/Italic */
+        #note-content em,
+        #note-content i {
+          font-style: italic !important;
+          color: #000000 !important;
+        }
+
+        /* Tables */
+        #note-content table {
+          border-collapse: collapse !important;
+          width: 100% !important;
+          margin: 16px 0 !important;
+          background: white !important;
+        }
+
+        #note-content th,
+        #note-content td {
+          border: 1px solid #000000 !important;
+          padding: 8px !important;
+          color: #000000 !important;
+          background: white !important;
+        }
+
+        #note-content th {
+          font-weight: 600 !important;
+          background: #f5f5f5 !important;
+        }
+
+        /* Blockquotes */
+        #note-content blockquote {
+          border-left: 4px solid #000000 !important;
+          padding-left: 16px !important;
+          margin: 16px 0 !important;
+          font-style: italic !important;
+          color: #000000 !important;
+        }
+
+        /* Code blocks */
+        #note-content code {
+          background: #f5f5f5 !important;
+          padding: 2px 6px !important;
+          border-radius: 3px !important;
+          font-family: monospace !important;
+          color: #000000 !important;
+          font-size: 13px !important;
+        }
+
+        #note-content pre {
+          background: #f5f5f5 !important;
+          padding: 12px !important;
+          border-radius: 4px !important;
+          overflow-x: auto !important;
+          margin: 16px 0 !important;
+        }
+
+        #note-content pre code {
+          background: transparent !important;
+          padding: 0 !important;
+        }
+
+        /* Links */
+        #note-content a {
+          color: #0066cc !important;
+          text-decoration: underline !important;
+        }
+
+        /* Dark mode override - force light mode for PDF content */
+        .dark #note-content,
+        .dark #note-content *,
+        .dark #note-content h1,
+        .dark #note-content h2,
+        .dark #note-content h3,
+        .dark #note-content h4,
+        .dark #note-content h5,
+        .dark #note-content h6,
+        .dark #note-content p,
+        .dark #note-content span,
+        .dark #note-content div,
+        .dark #note-content li,
+        .dark #note-content a,
+        .dark #note-content strong,
+        .dark #note-content em {
+          background: white !important;
+          background-color: white !important;
+          color: #000000 !important;
+        }
+
+        /* Remove any gradients or complex backgrounds */
+        #note-content *::before,
+        #note-content *::after {
+          background: transparent !important;
+          background-image: none !important;
+        }
+
+        /* Print-specific styles */
         @media print {
           body * {
             visibility: hidden;
           }
-          #print-section, #print-section * {
+          
+          #print-section,
+          #print-section * {
             visibility: visible;
           }
+          
           #print-section {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
-            padding: 2rem;
-            background: white !important;
           }
+
           #note-content {
-            background: white !important;
-          }
-          .prose {
-            color: black !important;
-            max-width: none !important;
-          }
-          .prose * {
-            color: black !important;
-          }
-          .dark .prose {
-            color: black !important;
-          }
-          .dark .prose * {
-            color: black !important;
+            box-shadow: none !important;
           }
         }
+
         @page {
           size: A4;
-          margin: 1.5cm;
+          margin: 15mm;
         }
       `}</style>
     </>
-  );
+    );
 }
