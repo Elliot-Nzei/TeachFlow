@@ -21,9 +21,6 @@ export default function DashboardPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
 
-  const [allTransfers, setAllTransfers] = useState<DataTransfer[]>([]);
-  const [isLoadingTransfers, setIsLoadingTransfers] = useState(true);
-
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
@@ -39,48 +36,36 @@ export default function DashboardPage() {
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: grades, isLoading: isLoadingGrades } = useCollection<Grade>(gradesQuery);
   
-  useEffect(() => {
-    // Guard: Do not proceed if profile is loading or essential data is missing.
-    if (isLoadingProfile || !userProfile || !userProfile.userCode || !firestore) {
-      // If we stop loading but have no data, it means we can stop the spinner.
-      if (!isLoadingProfile) {
-        setIsLoadingTransfers(false);
-      }
-      return;
-    }
+  const sentTransfersQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'users', user.uid, 'transfers')) : null,
+    [firestore, user]
+  );
+  const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
 
-    const fetchTransfers = async () => {
-      setIsLoadingTransfers(true);
-      try {
-        const transfersCollection = collection(firestore, 'transfers');
-        
-        // These queries are now guaranteed to have a valid userCode.
-        const sentQuery = query(transfersCollection, where('fromUser', '==', userProfile.userCode));
-        const receivedQuery = query(transfersCollection, where('toUser', '==', userProfile.userCode));
+  const receivedTransfersQuery = useMemoFirebase(
+    () => userProfile?.userCode 
+      ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode))
+      : null,
+    [firestore, userProfile?.userCode]
+  );
+  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
+  
+  const allTransfers = useMemo(() => {
+    if (!sentTransfers && !receivedTransfers) return [];
+    
+    const combined = [
+      ...(sentTransfers || []),
+      ...(receivedTransfers || [])
+    ];
+    
+    const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
+    
+    uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    return uniqueTransfers;
+  }, [sentTransfers, receivedTransfers]);
 
-        const [sentSnapshot, receivedSnapshot] = await Promise.all([
-          getDocs(sentQuery),
-          getDocs(receivedQuery)
-        ]);
-
-        const sentTransfers = sentSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
-        const receivedTransfers = receivedSnapshot.docs.map(d => ({ ...d.data(), id: d.id }) as DataTransfer);
-
-        const combined = [...sentTransfers, ...receivedTransfers];
-        const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
-        
-        uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        
-        setAllTransfers(uniqueTransfers);
-      } catch (error) {
-        console.error("Error fetching transfers:", error);
-      } finally {
-        setIsLoadingTransfers(false);
-      }
-    };
-
-    fetchTransfers();
-  }, [userProfile, firestore, isLoadingProfile]);
+  const isLoadingTransfers = isLoadingSent || isLoadingReceived || isLoadingProfile;
   
   const gradeCounts = useMemo(() => (grades || []).reduce((acc, grade) => {
     acc[grade.grade] = (acc[grade.grade] || 0) + 1;
@@ -159,7 +144,7 @@ export default function DashboardPage() {
                           </div>
                         </TableCell>
                         <TableCell>{transfer.dataTransferred ?? 'N/A'}</TableCell>
-                        <TableCell className="text-right">{formatDistanceToNow(new Date(transfer.timestamp), { addSuffix: true })}</TableCell>
+                        <TableCell className="text-right">{transfer.timestamp ? formatDistanceToNow(new Date(transfer.timestamp?.seconds * 1000), { addSuffix: true }) : 'just now'}</TableCell>
                       </TableRow>
                     ))
                   ) : (
