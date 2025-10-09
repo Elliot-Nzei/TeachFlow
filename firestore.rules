@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // --- HELPER FUNCTIONS ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -11,48 +11,58 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // --- RULES ---
-
-    // USER PROFILE
-    // Allow users to query for other users by code, but only manage their own document.
+    // --- USER PROFILE ---
     match /users/{userId} {
+      // Allow users to get their own profile, and allow any signed-in user to query the collection
+      // (e.g., to find another user by their userCode for transfers).
+      allow get: if isOwner(userId);
       allow list: if isSignedIn();
-      allow get, update, delete: if isOwner(userId);
-      allow create: if isOwner(userId);
+      allow create, update, delete: if isOwner(userId);
 
-      // SUBCOLLECTIONS
-      // Generic rule to allow owners full access to their own subcollections.
-      // This applies to classes, students, grades, etc.
+      // --- SUBCOLLECTION RULES ---
 
+      // Rule for classes
       match /classes/{classId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Rule for students
       match /students/{studentId} {
         allow read, write: if isOwner(userId);
       }
-      match /grades/{gradeId} {
-        allow read, write: if isOwner(userId);
-      }
+
+      // Rule for subjects
       match /subjects/{subjectId} {
         allow read, write: if isOwner(userId);
       }
-       match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId);
-      }
-       match /traits/{traitId} {
+
+      // Rule for grades
+      match /grades/{gradeId} {
         allow read, write: if isOwner(userId);
       }
 
-      // TRANSFERS
-      // Users can read their own outgoing transfers.
+      // Rule for attendance
+      match /attendance/{attendanceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rule for traits
+      match /traits/{traitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rule for outgoing transfers
       match /outgoingTransfers/{transferId} {
         allow read, write: if isOwner(userId);
       }
-
-      // Users can read/update their incoming transfers.
-      // Other users can ONLY create new transfers for them.
+      
+      // Rule for incoming transfers
       match /incomingTransfers/{transferId} {
-        allow get, list, update, delete: if isOwner(userId);
+        // The recipient can read, update, and delete their incoming requests.
+        allow read, update, delete: if isOwner(userId);
+
+        // A different user (the sender) can create a transfer request in the recipient's inbox.
+        // This is secure because we validate the IDs in the document.
         allow create: if isSignedIn()
                       && request.resource.data.toUserId == userId
                       && request.resource.data.fromUserId == request.auth.uid;
