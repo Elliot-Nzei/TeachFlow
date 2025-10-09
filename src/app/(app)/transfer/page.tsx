@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useMemo, useEffect, useContext, useCallback } from 'react';
+import { useState, useMemo, useContext, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRightLeft, Send, Loader2, Check, X, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Check, X, AlertCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc } from 'firebase/firestore';
 import type { Class, DataTransfer, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,144 +52,80 @@ export default function TransferPage() {
     action: 'accept' | 'reject' | null;
   }>({ open: false, transfer: null, action: null });
 
-  // Fetch classes and students with proper memoization
-  const classesQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null,
-    [firestore, user]
-  );
+  // Fetch classes and students
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'students')) : null,
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+  
+  // Fetch incoming transfers from the user's own subcollection
+  const incomingTransfersQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'users', user.uid, 'incomingTransfers'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
   );
-  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+  const { data: incomingTransfers, isLoading: isLoadingTransfers } = useCollection<DataTransfer>(incomingTransfersQuery);
 
-  // Fetch received transfers securely
-  const receivedTransfersQuery = useMemoFirebase(
-    () => (user && userProfile?.userCode)
-        ? query(
-            collection(firestore, 'transfers'), 
-            where('toUser', '==', userProfile.userCode),
-            orderBy('timestamp', 'desc')
-          )
-        : null,
-    [firestore, user, userProfile?.userCode]
-  );
-  const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
-
-  // Combined loading state
   const isLoading = isLoadingClasses || isLoadingStudents || isLoadingProfile;
-  const isLoadingTransfers = isLoadingReceived;
 
-  // Get data items based on selected type
   const dataItemOptions = useMemo(() => {
     if (!dataType) return [];
     return dataType === 'Class' ? (classes || []) : (students || []);
   }, [dataType, classes, students]);
 
-  // Get selected item name
   const getItemName = useCallback((itemId: string, type: DataType): string => {
     const items = type === 'Class' ? classes : students;
     return items?.find(item => item.id === itemId)?.name || 'Unknown';
   }, [classes, students]);
 
-  // Validate transfer input
-  const validateTransfer = useCallback((): string | null => {
-    if (!recipientCode || !dataType || !dataItem) {
-      return 'Please fill in all fields to start a transfer.';
-    }
-    if (!userProfile?.userCode || !user) {
-      return 'User profile not loaded. Please try again.';
-    }
-    if (recipientCode === userProfile.userCode) {
-      return 'You cannot transfer data to yourself.';
-    }
-    if (recipientCode.trim().length < 5) {
-      return 'Please enter a valid recipient code.';
-    }
-    return null;
-  }, [recipientCode, dataType, dataItem, userProfile?.userCode, user]);
-
-  // Find user by code
-  const findUserByCode = async (userCode: string): Promise<string | null> => {
-    try {
-      const usersRef = collection(firestore, 'users');
-      const q = query(usersRef, where('userCode', '==', userCode));
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        return snapshot.docs[0].id;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error finding user:', error);
+  const findRecipientIdByUserCode = async (code: string): Promise<string | null> => {
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where('userCode', '==', code), where('userCode', '!=', userProfile?.userCode));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
       return null;
     }
+    return querySnapshot.docs[0].id;
   };
 
-  // Handle transfer with batched write
   const handleTransfer = async () => {
-    const error = validateTransfer();
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid Transfer',
-        description: error,
-      });
+    if (!recipientCode || !dataType || !dataItem || !user || !userProfile) {
+      toast({ variant: 'destructive', title: 'Invalid Transfer', description: 'Please fill all fields.' });
       return;
+    }
+    if (recipientCode === userProfile.userCode) {
+        toast({ variant: 'destructive', title: 'Invalid Recipient', description: 'You cannot transfer data to yourself.' });
+        return;
     }
 
     setIsTransferring(true);
-    
     try {
-      if (!user || !userProfile) throw new Error("User not available");
-      
-      // Verify recipient exists
-      const recipientUid = await findUserByCode(recipientCode.trim().toUpperCase());
-      if (!recipientUid) {
+      const recipientId = await findRecipientIdByUserCode(recipientCode.trim().toUpperCase());
+      if (!recipientId) {
         throw new Error(`No user found with code: ${recipientCode.trim().toUpperCase()}`);
       }
 
-      const batch = writeBatch(firestore);
-      const dataName = getItemName(dataItem, dataType as DataType);
+      const dataName = getItemName(dataItem, dataType);
+      const transferRequest = {
+        fromUserCode: userProfile.userCode,
+        fromUserId: user.uid,
+        toUserId: recipientId,
+        dataType,
+        dataId: dataItem,
+        dataTransferred: dataName,
+        status: 'pending' as const,
+        createdAt: serverTimestamp(),
+      };
+
+      // Write the transfer request to the recipient's incomingTransfers collection
+      const recipientTransfersRef = collection(firestore, 'users', recipientId, 'incomingTransfers');
+      await addDoc(recipientTransfersRef, transferRequest);
       
-      // Add to user's transfers collection (for their own records)
-      const userTransferRef = doc(collection(firestore, 'users', user.uid, 'transfers'));
-      batch.set(userTransferRef, {
-        fromUser: userProfile.userCode,
-        fromUserId: user.uid,
-        toUser: recipientCode.trim().toUpperCase(),
-        toUserId: recipientUid,
-        dataType,
-        dataId: dataItem,
-        dataTransferred: dataName,
-        status: 'pending',
-        timestamp: serverTimestamp(),
-      });
-
-      // Add to global transfers collection for recipient to see
-      const globalTransferRef = doc(collection(firestore, 'transfers'));
-      batch.set(globalTransferRef, {
-        fromUser: userProfile.userCode,
-        fromUserId: user.uid,
-        toUser: recipientCode.trim().toUpperCase(),
-        toUserId: recipientUid,
-        dataType,
-        dataId: dataItem,
-        dataTransferred: dataName,
-        status: 'pending',
-        timestamp: serverTimestamp(),
-      });
-
-      await batch.commit();
-
       toast({
         title: 'Transfer Initiated',
-        description: `Request to transfer "${dataName}" has been sent to ${recipientCode.trim().toUpperCase()}.`,
+        description: `Request to transfer "${dataName}" sent to ${recipientCode.trim().toUpperCase()}.`,
       });
 
-      // Reset form
       setRecipientCode('');
       setDataType('');
       setDataItem('');
@@ -206,136 +142,61 @@ export default function TransferPage() {
     }
   };
 
-  // Copy class data with all students
   const copyClassData = async (fromUserId: string, toUserId: string, classId: string) => {
     const batch = writeBatch(firestore);
-    
-    // Get the class data
     const classRef = doc(firestore, 'users', fromUserId, 'classes', classId);
     const classSnap = await getDoc(classRef);
-    
-    if (!classSnap.exists()) {
-      throw new Error('Class not found');
-    }
-
+    if (!classSnap.exists()) throw new Error('Source class not found');
     const classData = classSnap.data();
     
-    // Create new class in recipient's account
     const newClassRef = doc(collection(firestore, 'users', toUserId, 'classes'));
     batch.set(newClassRef, {
       ...classData,
+      students: [], // Start with an empty student list
       transferredFrom: fromUserId,
       transferredAt: serverTimestamp(),
     });
 
-    // Get all students in this class
-    const studentsRef = collection(firestore, 'users', fromUserId, 'students');
-    const studentsQuery = query(studentsRef, where('classId', '==', classId));
+    const studentsQuery = query(collection(firestore, 'users', fromUserId, 'students'), where('classId', '==', classId));
     const studentsSnap = await getDocs(studentsQuery);
-
-    // Copy each student
+    
     studentsSnap.docs.forEach((studentDoc) => {
-      const studentData = studentDoc.data();
       const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
       batch.set(newStudentRef, {
-        ...studentData,
-        classId: newClassRef.id, // Update to new class ID
+        ...studentDoc.data(),
+        classId: newClassRef.id,
+        className: classData.name,
         transferredFrom: fromUserId,
         transferredAt: serverTimestamp(),
       });
+      // Add the NEW student ID to the NEW class's student list
+      batch.update(newClassRef, { students: arrayUnion(newStudentRef.id) });
     });
 
     await batch.commit();
-    return { classId: newClassRef.id, studentsCount: studentsSnap.size };
+    return { studentsCount: studentsSnap.size };
   };
 
-  // Copy student data
-  const copyStudentData = async (fromUserId: string, toUserId: string, studentId: string) => {
-    const batch = writeBatch(firestore);
-    
-    // Get the student data
-    const studentRef = doc(firestore, 'users', fromUserId, 'students', studentId);
-    const studentSnap = await getDoc(studentRef);
-    
-    if (!studentSnap.exists()) {
-      throw new Error('Student not found');
-    }
-
-    const studentData = studentSnap.data();
-    
-    // Create new student in recipient's account
-    const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
-    batch.set(newStudentRef, {
-      ...studentData,
-      transferredFrom: fromUserId,
-      transferredAt: serverTimestamp(),
-    });
-
-    await batch.commit();
-    return { studentId: newStudentRef.id };
-  };
-
-  // Accept transfer
   const handleAcceptTransfer = async (transfer: DataTransfer) => {
-    if (!user || !transfer.fromUserId) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Missing required information to accept transfer.',
-      });
-      return;
-    }
+    if (!user || !transfer.fromUserId) return;
 
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
 
     try {
-      let result;
-      
-      // Perform the actual data transfer based on type
       if (transfer.dataType === 'Class') {
-        result = await copyClassData(transfer.fromUserId, user.uid, transfer.dataId);
+        const { studentsCount } = await copyClassData(transfer.fromUserId, user.uid, transfer.dataId);
         toast({
           title: 'Transfer Accepted',
-          description: `Class "${transfer.dataTransferred}" with ${result.studentsCount} student(s) has been added to your account.`,
+          description: `Class "${transfer.dataTransferred}" with ${studentsCount} student(s) added to your account.`,
         });
       } else {
-        result = await copyStudentData(transfer.fromUserId, user.uid, transfer.dataId);
-        toast({
-          title: 'Transfer Accepted',
-          description: `Student "${transfer.dataTransferred}" has been added to your account.`,
-        });
+        toast({ variant: 'destructive', title: 'Not Implemented', description: `Transfer for ${transfer.dataType} is not yet supported.` });
+        throw new Error('Unsupported data type');
       }
 
-      // Update transfer status in both collections
-      const batch = writeBatch(firestore);
-      
-      // Update in global transfers
-      const globalTransferRef = doc(firestore, 'transfers', transfer.id);
-      batch.update(globalTransferRef, {
-        status: 'accepted',
-        acceptedAt: serverTimestamp(),
-      });
-
-      // Update in sender's transfers if we can find it
-      if (transfer.fromUserId) {
-        const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
-        const senderQuery = query(
-          senderTransfersRef, 
-          where('dataId', '==', transfer.dataId),
-          where('toUser', '==', transfer.toUser)
-        );
-        const senderSnap = await getDocs(senderQuery);
-        
-        senderSnap.docs.forEach(doc => {
-          batch.update(doc.ref, {
-            status: 'accepted',
-            acceptedAt: serverTimestamp(),
-          });
-        });
-      }
-
-      await batch.commit();
+      const transferRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
+      await updateDoc(transferRef, { status: 'accepted', processedAt: serverTimestamp() });
 
     } catch (error) {
       console.error('Error accepting transfer:', error);
@@ -349,75 +210,33 @@ export default function TransferPage() {
     }
   };
 
-  // Reject transfer
   const handleRejectTransfer = async (transfer: DataTransfer) => {
+    if (!user) return;
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
 
     try {
-      const batch = writeBatch(firestore);
-      
-      // Update in global transfers
-      const globalTransferRef = doc(firestore, 'transfers', transfer.id);
-      batch.update(globalTransferRef, {
-        status: 'rejected',
-        rejectedAt: serverTimestamp(),
-      });
-      
-      // Update in sender's transfers if we can find it
-      if (transfer.fromUserId) {
-          const senderTransfersRef = collection(firestore, 'users', transfer.fromUserId, 'transfers');
-          const senderQuery = query(
-            senderTransfersRef, 
-            where('dataId', '==', transfer.dataId),
-            where('toUser', '==', transfer.toUser)
-          );
-          const senderSnap = await getDocs(senderQuery);
-          
-          senderSnap.docs.forEach(doc => {
-            batch.update(doc.ref, {
-              status: 'rejected',
-              rejectedAt: serverTimestamp(),
-            });
-          });
-      }
-      
-      await batch.commit();
+      const transferRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
+      await updateDoc(transferRef, { status: 'rejected', processedAt: serverTimestamp() });
 
       toast({
         title: 'Transfer Rejected',
-        description: `Transfer from ${transfer.fromUser} has been rejected.`,
+        description: `Transfer from ${transfer.fromUserCode} has been rejected.`,
       });
-
     } catch (error) {
       console.error('Error rejecting transfer:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to reject transfer.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to reject transfer.' });
     } finally {
       setProcessingTransferId(null);
     }
   };
 
-  // Handle data type change
-  const handleDataTypeChange = useCallback((value: DataType) => {
-    setDataType(value);
-    setDataItem('');
-  }, []);
-
-  // Get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">Pending</Badge>;
-      case 'accepted':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">Accepted</Badge>;
-      case 'rejected':
-        return <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400">Rejected</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+      case 'pending': return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">Pending</Badge>;
+      case 'accepted': return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">Accepted</Badge>;
+      case 'rejected': return <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400">Rejected</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -440,7 +259,7 @@ export default function TransferPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(userProfile.userCode);
+                  navigator.clipboard.writeText(userProfile.userCode!);
                   toast({ title: 'Copied!', description: 'User code copied to clipboard.' });
                 }}
               >
@@ -460,136 +279,78 @@ export default function TransferPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="recipient-code">Recipient's User Code</Label>
-              <Input 
-                id="recipient-code" 
-                placeholder="NSMS-XXXXX" 
-                value={recipientCode} 
-                onChange={e => setRecipientCode(e.target.value.toUpperCase())}
-                disabled={isTransferring}
-              />
+              <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="data-type">Data Type</Label>
-              <Select 
-                onValueChange={handleDataTypeChange} 
-                value={dataType}
-                disabled={isTransferring || isLoading}
-              >
-                <SelectTrigger id="data-type">
-                  <SelectValue placeholder="Select data to transfer" />
-                </SelectTrigger>
+              <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
+                <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Class">Class Data (with students)</SelectItem>
-                  <SelectItem value="Grades">Student Grades</SelectItem>
-                  <SelectItem value="Report Card">Student Report Card</SelectItem>
+                  <SelectItem value="Grades" disabled>Student Grades (Coming Soon)</SelectItem>
+                  <SelectItem value="Report Card" disabled>Student Report Card (Coming Soon)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="data-item">Specific Item</Label>
-              <Select 
-                onValueChange={setDataItem} 
-                value={dataItem} 
-                disabled={!dataType || isTransferring || isLoading}
-              >
-                <SelectTrigger id="data-item">
-                  <SelectValue placeholder={isLoading ? "Loading..." : "Select item"} />
-                </SelectTrigger>
+              <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
+                <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
                 <SelectContent>
-                  {dataItemOptions.length === 0 ? (
-                    <SelectItem value="no-items" disabled>
-                      No {dataType === 'Class' ? 'classes' : 'students'} available
-                    </SelectItem>
-                  ) : (
-                    dataItemOptions.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.name}
-                      </SelectItem>
-                    ))
-                  )}
+                  {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
         </CardContent>
         <CardFooter>
-          <Button 
-            onClick={handleTransfer} 
-            disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}
-          >
-            {isTransferring ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Transferring...</>
-            ) : (
-              <><Send className="mr-2 h-4 w-4" /> Transfer Data</>
-            )}
+          <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
+            {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
           </Button>
         </CardFooter>
       </Card>
       
       <Card>
         <CardHeader>
-          <CardTitle>Incoming Transfers</CardTitle>
-          <CardDescription>A log of your recent incoming data transfer requests.</CardDescription>
+          <CardTitle>Incoming & Completed Transfers</CardTitle>
+          <CardDescription>A log of your recent incoming and processed data transfers.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>From User</TableHead>
-                <TableHead>Data Type</TableHead>
+                <TableHead>From</TableHead>
+                <TableHead>Data</TableHead>
                 <TableHead>Details</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Date</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoadingTransfers ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={`skeleton-${i}`}>
-                    <TableCell colSpan={6}>
-                      <Skeleton className="h-10 w-full" />
-                    </TableCell>
-                  </TableRow>
+                  <TableRow key={`skeleton-${i}`}><TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                 ))
-              ) : receivedTransfers && receivedTransfers.length > 0 ? (
-                receivedTransfers.map((transfer) => {
-                  const date = transfer.timestamp?.seconds 
-                    ? new Date(transfer.timestamp.seconds * 1000) 
-                    : new Date();
+              ) : incomingTransfers && incomingTransfers.length > 0 ? (
+                incomingTransfers.map((transfer) => {
                   const isProcessing = processingTransferId === transfer.id;
-                  const isPending = transfer.status === 'pending';
-                  
                   return (
                     <TableRow key={transfer.id}>
-                      <TableCell className="font-mono">{transfer.fromUser}</TableCell>
+                      <TableCell className="font-mono">{transfer.fromUserCode}</TableCell>
                       <TableCell>{transfer.dataType}</TableCell>
                       <TableCell>{transfer.dataTransferred}</TableCell>
                       <TableCell>{getStatusBadge(transfer.status)}</TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {formatDistanceToNow(date, { addSuffix: true })}
+                      <TableCell className="text-sm text-muted-foreground">
+                        {transfer.createdAt ? formatDistanceToNow(new Date(transfer.createdAt.seconds * 1000), { addSuffix: true }) : '...'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {isPending && (
+                        {transfer.status === 'pending' && (
                           <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })}
-                              disabled={isProcessing}
-                            >
-                              {isProcessing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <><Check className="mr-1 h-4 w-4" /> Accept</>
-                              )}
+                            <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })} disabled={isProcessing}>
+                              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Accept
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })}
-                              disabled={isProcessing}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })} disabled={isProcessing}>
                               <X className="mr-1 h-4 w-4" /> Reject
                             </Button>
                           </div>
@@ -599,11 +360,7 @@ export default function TransferPage() {
                   );
                 })
               ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                    No incoming transfers found.
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center h-24 text-muted-foreground">No incoming transfers.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -613,26 +370,20 @@ export default function TransferPage() {
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmDialog.action === 'accept' ? 'Accept Transfer?' : 'Reject Transfer?'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{confirmDialog.action === 'accept' ? 'Accept Transfer?' : 'Reject Transfer?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.action === 'accept' ? (
                 <>
-                  You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from{' '}
-                  <strong>{confirmDialog.transfer?.fromUser}</strong>. This data will be added to your account.
+                  You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>. This data will be copied to your account.
                   {confirmDialog.transfer?.dataType === 'Class' && (
                     <div className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
                       <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">This will transfer the class along with all its students.</span>
+                      <span className="text-sm">This will copy the class and all its students into your records.</span>
                     </div>
                   )}
                 </>
               ) : (
-                <>
-                  Are you sure you want to reject the transfer of <strong>{confirmDialog.transfer?.dataTransferred}</strong> from{' '}
-                  <strong>{confirmDialog.transfer?.fromUser}</strong>? This action cannot be undone.
-                </>
+                <>Are you sure you want to reject this transfer? This action cannot be undone.</>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -640,16 +391,12 @@ export default function TransferPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (confirmDialog.transfer) {
-                  if (confirmDialog.action === 'accept') {
-                    handleAcceptTransfer(confirmDialog.transfer);
-                  } else {
-                    handleRejectTransfer(confirmDialog.transfer);
-                  }
-                }
+                if (!confirmDialog.transfer) return;
+                if (confirmDialog.action === 'accept') handleAcceptTransfer(confirmDialog.transfer);
+                else handleRejectTransfer(confirmDialog.transfer);
               }}
             >
-              {confirmDialog.action === 'accept' ? 'Accept' : 'Reject'}
+              {confirmDialog.action === 'accept' ? 'Yes, Accept' : 'Yes, Reject'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

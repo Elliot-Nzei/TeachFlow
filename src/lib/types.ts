@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -63,13 +64,15 @@ export type ReportCard = {
 
 export type DataTransfer = {
   id: string;
-  fromUser: string;
-  toUser: string;
+  fromUserCode: string;
+  fromUserId: string;
+  toUserId: string;
   dataType: 'Class' | 'Grades' | 'Report Card';
   dataId: string;
   dataTransferred?: string;
-  status: 'pending' | 'completed' | 'failed';
-  timestamp: any;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: any; // Firestore server timestamp
+  processedAt?: any; // Firestore server timestamp
 };
 
 export type Settings = {
@@ -80,5 +83,7 @@ export type Settings = {
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;
 };
+
+    
 
     

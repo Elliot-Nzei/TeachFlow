@@ -257,13 +257,19 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transfer",
       "type": "object",
-      "description": "Represents a data transfer between two users.",
+      "description": "Represents a data transfer request between two users.",
       "properties": {
-        "fromUser": {
-          "type": "string"
+        "fromUserCode": {
+          "type": "string",
+          "description": "The user code of the sender."
         },
-        "toUser": {
-          "type": "string"
+        "fromUserId": {
+          "type": "string",
+          "description": "The UID of the sender."
+        },
+        "toUserId": {
+          "type": "string",
+          "description": "The UID of the recipient."
         },
         "dataType": {
           "type": "string",
@@ -279,20 +285,28 @@
         },
         "status": {
             "type": "string",
-            "enum": ["pending", "completed", "failed"]
+            "enum": ["pending", "accepted", "rejected"]
         },
-        "timestamp": {
+        "createdAt": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Timestamp when the transfer was created."
+        },
+        "processedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the transfer was accepted or rejected."
         }
       },
       "required": [
-        "fromUser",
-        "toUser",
+        "fromUserCode",
+        "fromUserId",
+        "toUserId",
         "dataType",
         "dataId",
+        "dataTransferred",
         "status",
-        "timestamp"
+        "createdAt"
       ]
     }
   },
@@ -364,25 +378,16 @@
         }
       },
       {
-        "path": "users/{userId}/transfers/{transferId}",
+        "path": "users/{userId}/incomingTransfers/{transferId}",
         "definition": {
           "schema": {
             "$ref": "#/entities/Transfer"
           },
-          "description": "A user's personal log of outgoing data transfer requests. This is writable by the user."
-        }
-      },
-      {
-        "path": "transfers/{transferId}",
-        "definition": {
-          "schema": {
-            "$ref": "#/entities/Transfer"
-          },
-          "description": "Global log of data transfers. Writable by a Cloud Function after validation."
+          "description": "A recipient's log of incoming data transfer requests. This collection is where senders write to."
         }
       }
     ],
-    "reasoning": "This data structure is user-centric. All primary data (classes, students, subjects, grades, attendance, traits) is nested under the `/users/{userId}` collection. This makes security rules simple and robust, as we can secure entire branches of the database based on the authenticated user's ID. This prevents data leakage between different school accounts and simplifies queries, as all data for a logged-in user is located in a predictable path."
+    "reasoning": "This data structure is user-centric and secure. All primary data (classes, students, subjects, grades, etc.) is nested under the `/users/{userId}` collection, simplifying security rules. For transfers, instead of a global collection, a request is written to a subcollection (`incomingTransfers`) under the RECIPIENT's user document. This ensures a user only ever needs to listen to changes within their own document tree, which is highly secure and scalable. It eliminates the need for complex queries on global collections and prevents data leakage."
   }
 }
 

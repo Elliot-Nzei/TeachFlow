@@ -2,19 +2,31 @@
 {
   "indexes": [
     {
-      "collectionGroup": "transfers",
+      "collectionGroup": "incomingTransfers",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "toUser",
+          "fieldPath": "status",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "timestamp",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userCode",
+          "order": "ASCENDING"
         }
       ]
     }
   ],
   "fieldOverrides": []
 }
+
+    
