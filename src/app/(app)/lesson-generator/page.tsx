@@ -145,7 +145,7 @@ export default function LessonGeneratorPage() {
     tempContainer.style.boxSizing = 'border-box';
     tempContainer.style.background = '#ffffff';
     tempContainer.style.color = '#000000';
-    tempContainer.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+    tempContainer.style.fontFamily = 'Arial, sans-serif';
     tempContainer.style.fontSize = '12pt';
     tempContainer.style.lineHeight = '1.45';
     // ensure images don't overflow
