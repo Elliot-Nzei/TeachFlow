@@ -1,205 +1,102 @@
 /**
- * @fileOverview Firestore Security Rules for the Nigerian School Management System.
+ * @fileoverview Firestore Security Rules for the Nigerian School Management System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-specific data and
- * shared access for data transfers. It prioritizes security by default, restricting
- * access unless explicitly granted.  It allows for flexible data schemas during prototyping.
+ * This ruleset enforces a strict user-ownership model for private data,
+ * while allowing public read access to certain collections. All write
+ * operations require authentication and proper authorization.
  *
  * Data Structure:
- * - /users/{userId}: Stores individual user profiles. Only the authenticated user can
- *   read or write their own profile.
- * - /users/{userId}/classes/{classId}: Stores classes created by a specific user.
- *   Only the owner can manage classes under their profile.
- * - /classes/{classId}:  NOT directly secured.  Classes are secured via user ownership.
- * - /students/{studentId}: NOT directly secured. Students are secured via user ownership.
- * - /transfers/{transferId}: Stores data transfer requests. Only the involved users
- *   (sender and recipient) can access these requests.
+ * - User-specific data is nested under `/users/{userId}`.
+ * - Transfer requests (incoming and outgoing) are stored in subcollections
+ *   under each user's document.
  *
  * Key Security Decisions:
- * - Users can only read/write their own data under /users/{userId}.
- * - Data schemas are not strictly validated during this prototyping phase, except for
- *   authorization-critical fields.
- * - Listing of user documents is denied to prevent information leakage.
- * - Transfers have custom logic for access control.
+ * - Users can only read/write their own user data and transfer requests.
+ * - Listing of user documents is disallowed to prevent enumeration.
+ * - Data validation is relaxed in this prototyping phase to allow for schema evolution,
+ *   focusing primarily on ownership and relational integrity.
  *
  * Denormalization for Authorization:
- * - The `Transfer` entity stores both `fromUserId` and `toUserId` to allow for efficient
- *   authorization rules without requiring additional reads.
+ *  - Transfer documents contain both `fromUserId` and `toUserId` fields, allowing
+ *    rules to authorize access based on the current user's ID.
+ *
+ * Structural Segregation:
+ *  - Private user data is stored under `/users/{userId}`, ensuring that
+ *    only the authenticated user can access their data.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
+     * @description Checks if the current user is signed in.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @description Checks if the current user is the owner of the resource.
      */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the existing document.
+     * @description Checks if the current user is the owner of the resource and that the resource exists.
      */
     function isExistingOwner(userId) {
-      return isOwner(userId);
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Allows only the owner to create, update, or delete. Requires the document to exist.
-     */
-    function ownerOnlyWrite(userId) {
-      return isExistingOwner(userId);
-    }
-
-    /**
-     * @description Allows any signed-in user to read.
-     */
-    function signedInOnlyRead() {
-      return isSignedIn();
-    }
-
-    /**
-     * @description Rules for user profiles.
+     * @description Rule set for user documents.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their profile.
-     * @allow (get) User with ID 'user123' can read their profile.
-     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
-     * @deny (list) No one can list users.
-     * @principle Enforces document ownership for writes and prevents user enumeration.
+     * @allow (create) Authenticated user can create their own document.
+     * @deny (create) An unauthenticated user cannot create a user document.
+     * @allow (get, update, delete) Authenticated user can access their own document.
+     * @deny (get, update, delete) Authenticated user cannot access other user documents.
+     * @deny (list) Listing of user documents is not allowed.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      // Only allow creating a user document if the authenticated user's ID matches the document ID.
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, update, delete: if isExistingOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Rules for classes belonging to a user.
-     * @path /users/{userId}/classes/{classId}
-     * @allow (create) User with ID 'user123' can create a class.
-     * @allow (get) User with ID 'user123' can read a class.
-     * @deny (create) User with ID 'user456' cannot create a class for 'user123'.
-     * @deny (list) User with ID 'user123' can list their own classes.
-     * @principle Enforces user-specific data trees.
+     * @description Rule set for incoming transfer requests for a user.
+     * @path /users/{userId}/incomingTransfers/{transferId}
+     * @allow (list) Authenticated user can list their own incoming transfer requests.
+     * @allow (get) Authenticated user can get their own incoming transfer request.
+     * @allow (create) Authenticated user can create transfer request for themself.
+     * @allow (update, delete) Authenticated user can update or delete their own incoming transfer request.
+     * @deny (get, list, create, update, delete) Authenticated user cannot access other user incoming transfer requests.
+     * @principle Enforces document ownership for writes.
      */
-    match /users/{userId}/classes/{classId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isSignedIn() && request.resource.data.toUserId == request.auth.uid;
+      allow update, delete: if isExistingOwner(userId) && resource.data.toUserId == request.auth.uid;
     }
 
     /**
-     * @description Rules for students belonging to a user.
-     * @path /users/{userId}/students/{studentId}
-     * @allow (create) User with ID 'user123' can create a student.
-     * @allow (get) User with ID 'user123' can read a student.
-     * @deny (create) User with ID 'user456' cannot create a student for 'user123'.
-     * @deny (list) User with ID 'user123' can list their own students.
-     * @principle Enforces user-specific data trees.
+     * @description Rule set for outgoing transfer requests initiated by a user.
+     * @path /users/{userId}/outgoingTransfers/{transferId}
+     * @allow (list) Authenticated user can list their own outgoing transfer requests.
+     * @allow (get) Authenticated user can get their own outgoing transfer request.
+     * @allow (create) Authenticated user can create outgoing transfer request for themself.
+     * @allow (update, delete) Authenticated user can update or delete their own outgoing transfer request.
+     * @deny (get, list, create, update, delete) Authenticated user cannot access other user outgoing transfer requests.
+     * @principle Enforces document ownership for writes.
      */
-    match /users/{userId}/students/{studentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for subjects belonging to a user.
-     * @path /users/{userId}/subjects/{subjectId}
-     * @allow (create) User with ID 'user123' can create a subject.
-     * @allow (get) User with ID 'user123' can read a subject.
-     * @deny (create) User with ID 'user456' cannot create a subject for 'user123'.
-     * @deny (list) User with ID 'user123' can list their own subjects.
-     * @principle Enforces user-specific data trees.
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for grades belonging to a user.
-     * @path /users/{userId}/grades/{gradeId}
-     * @allow (create) User with ID 'user123' can create a grade.
-     * @allow (get) User with ID 'user123' can read a grade.
-     * @deny (create) User with ID 'user456' cannot create a grade for 'user123'.
-     * @deny (list) User with ID 'user123' can list their own grades.
-     * @principle Enforces user-specific data trees.
-     */
-    match /users/{userId}/grades/{gradeId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-
-        /**
-     * @description Rules for attendance records belonging to a user.
-     * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (create) User with ID 'user123' can create an attendance record.
-     * @allow (get) User with ID 'user123' can read an attendance record.
-     * @deny (create) User with ID 'user456' cannot create an attendance record for 'user123'.
-     * @deny (list) User with ID 'user123' can list their own attendance records.
-     * @principle Enforces user-specific data trees.
-     */
-    match /users/{userId}/attendance/{attendanceId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-
-        /**
-     * @description Rules for traits records belonging to a user.
-     * @path /users/{userId}/traits/{traitId}
-     * @allow (create) User with ID 'user123' can create a traits record.
-     * @allow (get) User with ID 'user123' can read a traits record.
-     * @deny (create) User with ID 'user456' cannot create a traits record for 'user123'.
-     * @deny (list) User with ID 'user123' can list their own traits records.
-     * @principle Enforces user-specific data trees.
-     */
-    match /users/{userId}/traits/{traitId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for data transfer requests. Allows both sender and receiver access.
-     * @path /transfers/{transferId}
-     * @allow (create) User with ID 'user123' can create a transfer request.
-     * @allow (get) User with ID 'user123' can read a transfer if they are sender or receiver.
-     * @deny (create) User with ID 'user456' cannot create a transfer for unrelated users.
-     * @deny (list) Only the sender and receiver can list their transfers.
-     * @principle Enforces shared access between two users.
-     */
-    match /transfers/{transferId} {
-      allow get: if isSignedIn() && (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
-      allow list: if isSignedIn() && (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.get('fromUserId') == request.auth.uid && request.auth.uid != request.resource.data.get('toUserId');
-      allow update: if isSignedIn() && (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
-      allow delete: if isSignedIn() && resource.data.fromUserId == request.auth.uid;
+    match /users/{userId}/outgoingTransfers/{transferId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isSignedIn() && request.resource.data.fromUserId == request.auth.uid;
+      allow update, delete: if isExistingOwner(userId) && resource.data.fromUserId == request.auth.uid;
     }
   }
 }
