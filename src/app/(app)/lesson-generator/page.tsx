@@ -147,7 +147,7 @@ export default function LessonGeneratorPage() {
     tempContainer.style.color = '#000000';
     tempContainer.style.fontFamily = 'Arial';
     tempContainer.style.fontSize = '12pt';
-    tempContainer.style.lineHeight = '1.45';
+    tempContainer.style.lineHeight = '1.15';
     // ensure images don't overflow
     tempContainer.style.maxWidth = '100%';
     tempContainer.style.wordBreak = 'break-word';
@@ -247,7 +247,7 @@ export default function LessonGeneratorPage() {
             const sliceData = sliceCanvas.toDataURL('image/png', 1.0);
             const sliceMmHeight = h / pxPerMm;
 
-            if (pageIndex > 0 || i > 0) {
+            if (pageIndex > 0) {
               pdf.addPage();
             }
             pdf.addImage(sliceData, 'PNG', marginMm, marginMm, renderWidthMm, sliceMmHeight, undefined, 'FAST');
@@ -652,3 +652,5 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
+
+    
