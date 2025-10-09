@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect, useContext, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -60,10 +61,10 @@ export default function TransferPage() {
 
   // Fetch received transfers
   const receivedTransfersQuery = useMemoFirebase(
-    () => userProfile?.userCode 
+    () => (user && userProfile?.userCode)
       ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode))
       : null,
-    [firestore, userProfile?.userCode]
+    [firestore, user, userProfile?.userCode]
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
 

@@ -43,10 +43,10 @@ export default function DashboardPage() {
   const { data: sentTransfers, isLoading: isLoadingSent } = useCollection<DataTransfer>(sentTransfersQuery);
 
   const receivedTransfersQuery = useMemoFirebase(
-    () => userProfile?.userCode 
+    () => (user && userProfile?.userCode)
       ? query(collection(firestore, 'transfers'), where('toUser', '==', userProfile.userCode))
       : null,
-    [firestore, userProfile?.userCode]
+    [firestore, user, userProfile?.userCode]
   );
   const { data: receivedTransfers, isLoading: isLoadingReceived } = useCollection<DataTransfer>(receivedTransfersQuery);
   
@@ -60,7 +60,11 @@ export default function DashboardPage() {
     
     const uniqueTransfers = Array.from(new Map(combined.map(item => [item.id, item])).values());
     
-    uniqueTransfers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    uniqueTransfers.sort((a, b) => {
+        const timeA = a.timestamp?.seconds ?? 0;
+        const timeB = b.timestamp?.seconds ?? 0;
+        return timeB - timeA;
+    });
     
     return uniqueTransfers;
   }, [sentTransfers, receivedTransfers]);
