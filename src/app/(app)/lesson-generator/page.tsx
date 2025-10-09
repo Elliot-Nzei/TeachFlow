@@ -32,19 +32,30 @@ type SavedNote = {
 const STORAGE_KEY = 'lesson-generator-history';
 const MAX_HISTORY_ITEMS = 20;
 
-export default function LessonGeneratorPage() {
-  const [loading, setLoading] = useState(false);
-  const [generatedNote, setGeneratedNote] = useState('');
-  const [history, setHistory] = useState<SavedNote[]>([]);
-  const [copied, setCopied] = useState(false);
-  const [formState, setFormState] = useState<GenerateLessonNoteInput>({
-    classLevel: '',
-    subject: '',
-    schemeOfWork: '',
-    weeks: 1,
-  });
-  const { toast } = useToast();
 
+// --- New, Improved PDF Generation Logic ---
+interface UseDownloadPdfProps {
+  generatedNote: string | null;
+  formState: GenerateLessonNoteInput;
+  toast: (props: { variant?: 'destructive' | 'default', title: string, description: string }) => void;
+  setIsDownloadingPdf: (loading: boolean) => void;
+}
+
+const generateFileName = (subject: string, classLevel: string): string => {
+  const sanitize = (str: string): string =>
+    str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const timestamp = new Date().toISOString().split('T')[0];
+  const subjectSlug = sanitize(subject);
+  const classSlug = sanitize(classLevel);
+  return `lesson-note-${subjectSlug}-${classSlug}-${timestamp}.pdf`;
+};
+
+export const useDownloadPdf = ({
+  generatedNote,
+  formState,
+  toast,
+  setIsDownloadingPdf,
+}: UseDownloadPdfProps) => {
   const handleDownloadPdf = useCallback(async () => {
     if (!generatedNote) {
       toast({
@@ -55,7 +66,7 @@ export default function LessonGeneratorPage() {
       return;
     }
 
-    setLoading(true);
+    setIsDownloadingPdf(true);
 
     try {
       const noteElement = document.getElementById('note-content');
@@ -69,7 +80,7 @@ export default function LessonGeneratorPage() {
         format: 'a4',
       });
       
-      const fileName = `lesson-note-${formState.subject}-${formState.classLevel}.pdf`;
+      const fileName = generateFileName(formState.subject, formState.classLevel);
       
       await doc.html(noteElement, {
         callback: function (doc) {
@@ -77,8 +88,8 @@ export default function LessonGeneratorPage() {
         },
         x: 15,
         y: 15,
-        width: 170,
-        windowWidth: 650,
+        width: 170, // A4 width minus margins
+        windowWidth: 650, // Arbitrary width for rendering
       });
 
       toast({
@@ -91,12 +102,38 @@ export default function LessonGeneratorPage() {
       toast({
         variant: 'destructive',
         title: 'Download Failed',
-        description: 'An unexpected error occurred while generating the PDF. Please try again.',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred while generating the PDF.',
       });
     } finally {
-      setLoading(false);
+      setIsDownloadingPdf(false);
     }
-  }, [generatedNote, formState.subject, formState.classLevel, toast]);
+  }, [generatedNote, formState.subject, formState.classLevel, toast, setIsDownloadingPdf]);
+
+  return { handleDownloadPdf };
+};
+// --- End of New PDF Logic ---
+
+
+export default function LessonGeneratorPage() {
+  const [loading, setLoading] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [generatedNote, setGeneratedNote] = useState('');
+  const [history, setHistory] = useState<SavedNote[]>([]);
+  const [copied, setCopied] = useState(false);
+  const [formState, setFormState] = useState<GenerateLessonNoteInput>({
+    classLevel: '',
+    subject: '',
+    schemeOfWork: '',
+    weeks: 1,
+  });
+  const { toast } = useToast();
+
+  const { handleDownloadPdf } = useDownloadPdf({
+    generatedNote,
+    formState,
+    toast,
+    setIsDownloadingPdf,
+  });
 
 
   // Load history from localStorage on mount
@@ -305,6 +342,8 @@ export default function LessonGeneratorPage() {
     { group: 'Senior Secondary', items: Array.from({ length: 3 }, (_, i) => `SSS ${i + 1}`) },
   ];
 
+  const anyLoading = loading || isDownloadingPdf;
+
   return (
     <>
       <div className="flex items-center justify-between mb-6 print:hidden">
@@ -329,7 +368,7 @@ export default function LessonGeneratorPage() {
                     name="classLevel" 
                     onValueChange={(value) => handleSelectChange('classLevel', value)} 
                     value={formState.classLevel}
-                    disabled={loading}
+                    disabled={anyLoading}
                   >
                     <SelectTrigger id="classLevel">
                       <SelectValue placeholder="Select a class level" />
@@ -357,7 +396,7 @@ export default function LessonGeneratorPage() {
                     value={formState.subject} 
                     onChange={handleInputChange} 
                     placeholder="e.g., Mathematics, English, Biology"
-                    disabled={loading}
+                    disabled={anyLoading}
                     maxLength={100}
                   />
                 </div>
@@ -371,7 +410,7 @@ export default function LessonGeneratorPage() {
                     onChange={handleInputChange} 
                     placeholder="Week 1: Introduction to Algebra&#10;Week 2: Linear Equations&#10;Week 3: Solving Word Problems&#10;Week 4: Review and Assessment" 
                     className="h-32 resize-none"
-                    disabled={loading}
+                    disabled={anyLoading}
                     maxLength={2000}
                   />
                   <p className="text-xs text-muted-foreground">
@@ -394,7 +433,7 @@ export default function LessonGeneratorPage() {
                         setFormState(prev => ({...prev, weeks: value}));
                       }
                     }}
-                    disabled={loading}
+                    disabled={anyLoading}
                   />
                   <p className="text-xs text-muted-foreground">
                     Enter the number of weeks/lessons (1-52)
@@ -403,7 +442,7 @@ export default function LessonGeneratorPage() {
               </CardContent>
               
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={anyLoading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -433,7 +472,7 @@ export default function LessonGeneratorPage() {
                   variant="ghost" 
                   size="icon" 
                   onClick={clearHistory}
-                  disabled={loading}
+                  disabled={anyLoading}
                   title="Clear all history"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -464,7 +503,7 @@ export default function LessonGeneratorPage() {
                               size="sm" 
                               onClick={() => loadFromHistory(item)}
                               className="flex-1"
-                              disabled={loading}
+                              disabled={anyLoading}
                             >
                               Load Note
                             </Button>
@@ -472,7 +511,7 @@ export default function LessonGeneratorPage() {
                               variant="ghost" 
                               size="sm"
                               onClick={(e) => deleteFromHistory(item.id, e)}
-                              disabled={loading}
+                              disabled={anyLoading}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -513,7 +552,7 @@ export default function LessonGeneratorPage() {
                     variant="outline" 
                     onClick={handleCopy} 
                     size="sm"
-                    disabled={loading}
+                    disabled={anyLoading}
                   >
                     {copied ? (
                       <Check className="mr-2 h-4 w-4" />
@@ -526,9 +565,9 @@ export default function LessonGeneratorPage() {
                     variant="outline" 
                     onClick={handleDownloadPdf} 
                     size="sm"
-                    disabled={loading}
+                    disabled={anyLoading}
                   >
-                    {loading ? (
+                    {isDownloadingPdf ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <FileDown className="mr-2 h-4 w-4" />
@@ -538,7 +577,7 @@ export default function LessonGeneratorPage() {
                   <Button 
                     onClick={handlePrint} 
                     size="sm"
-                    disabled={loading}
+                    disabled={anyLoading}
                   >
                     <Printer className="mr-2 h-4 w-4" />
                     Print
@@ -607,9 +646,9 @@ export default function LessonGeneratorPage() {
 
       <style jsx global>{`
         @media print {
-          body {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+          body, html {
+            background: white !important;
+            color: black !important;
           }
           body * {
             visibility: hidden;
@@ -627,21 +666,13 @@ export default function LessonGeneratorPage() {
           #note-content {
             box-shadow: none !important;
             border: none !important;
+            color: black !important;
+          }
+          #note-content * {
+            color: black !important;
           }
         }
         
-        /* Styles for PDF rendering via jspdf.html() */
-        #note-content {
-          background: white !important;
-          color: black !important;
-        }
-        #note-content h1, #note-content h2, #note-content h3, #note-content h4, #note-content p, #note-content li, #note-content span {
-          color: black !important;
-        }
-        #note-content blockquote {
-            border-left-color: #ccc !important;
-        }
-
         @page {
           size: A4;
           margin: 15mm;
@@ -650,3 +681,5 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
+
+    
