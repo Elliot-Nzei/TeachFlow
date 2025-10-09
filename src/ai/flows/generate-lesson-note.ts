@@ -66,7 +66,16 @@ const prompt = ai.definePrompt({
   output: { schema: GenerateLessonNoteOutputSchema },
   prompt: `You are an experienced Nigerian school teacher with deep knowledge of the Nigerian Educational Research and Development Council (NERDC) curriculum.
 
-Generate a comprehensive, well-structured lesson note in Markdown format based on these inputs:
+Your task is to generate a comprehensive, well-structured lesson note in Markdown format and return it in a JSON object.
+
+**JSON Output Format:**
+Your entire response MUST be a valid JSON object with a single key "note" containing the full Markdown lesson note as a string.
+Example:
+{
+  "note": "### Week 1: [Topic]..."
+}
+
+## LESSON NOTE DETAILS
 
 **Class Level**: {{{classLevel}}}
 **Subject**: {{{subject}}}
@@ -153,7 +162,7 @@ Students have already learned about [specific prerequisite topics]
 - Include formative assessment opportunities in each lesson
 - Ensure timing is realistic for typical Nigerian classroom periods (35-40 minutes)
 
-Generate {{{weeks}}} complete weeks of lesson notes following this exact structure.`,
+Generate {{{weeks}}} complete weeks of lesson notes following this exact structure, and provide the entire output as a single JSON object.`,
 });
 
 const generateLessonNoteFlow = ai.defineFlow(
