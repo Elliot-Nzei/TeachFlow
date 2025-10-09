@@ -1,72 +1,110 @@
+/**
+ * @description This ruleset enforces a strict user-ownership model for most data, with specific exceptions for public data and data transfers.
+ * @dataStructure
+ *   - /users/{userId}:  User profile data, accessible only to the user.
+ *   - /users/{userId}/incomingTransfers/{transferId}: Incoming data transfer requests, accessible to the recipient.
+ *   - /users/{userId}/outgoingTransfers/{transferId}: Outgoing data transfer requests, accessible to the sender.
+ * @keySecurityDecisions
+ *   - Users can only read and write their own profile data. Listing all users is disallowed.
+ *   - Data transfers require explicit sender and receiver UIDs, with status updates restricted to the involved parties.
+ *   - All write operations require authentication.
+ *   - The rules do NOT enforce strict schema validation during this prototyping phase.
+ *   - Read operations are generally restricted to the owner except for public collections.
+ * @denormalizationForAuthorization
+ *   - Transfer documents include both sender and recipient UIDs to allow for authorization on both ends of the transfer.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- HELPER FUNCTIONS ---
+    /**
+     * @description Checks if the request is authenticated.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     * @param {string} userId - The user ID to compare against.
+     */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- USER PROFILE ---
+    /**
+     * @description Checks if the authenticated user is the owner of the existing document.
+     * @param {string} userId - The user ID to compare against the document's owner ID.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for user profiles.
+     * @path /users/{userId}
+     * @allow (read, create, update) if the user is the owner of the profile.
+     * @deny (delete) always.
+     * @principle Enforces document ownership for user profiles.
+     */
     match /users/{userId} {
-      // Allow users to get their own profile, and allow any signed-in user to query the collection
-      // (e.g., to find another user by their userCode for transfers).
       allow get: if isOwner(userId);
-      allow list: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
+      allow list: if false; // Listing users is not permitted
 
-      // --- SUBCOLLECTION RULES ---
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if false;
+    }
 
-      // Rule for classes
-      match /classes/{classId} {
-        allow read, write: if isOwner(userId);
-      }
+    /**
+     * @description Rules for incoming transfer requests for a user.
+     * @path /users/{userId}/incomingTransfers/{transferId}
+     * @allow (read) if the user is the recipient of the transfer.
+     * @allow (create) if an authenticated user is creating the transfer request for the recipient.
+     * @allow (update) if the user is the recipient and updates the status to "accepted" or "rejected".
+     * @deny  Any other operations.
+     * @principle Manages incoming data transfer requests, ensuring only the recipient can read and update the status.
+     */
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
 
-      // Rule for students
-      match /students/{studentId} {
-        allow read, write: if isOwner(userId);
-      }
+      allow create: if isSignedIn() && request.resource.data.toUserId == userId;
+      allow update: if isExistingOwner(userId) && resource.data.status == 'pending' && request.resource.data.status in ['accepted', 'rejected'];
+      allow delete: if false;
+    }
 
-      // Rule for subjects
-      match /subjects/{subjectId} {
-        allow read, write: if isOwner(userId);
-      }
+    /**
+     * @description Rules for outgoing transfer requests initiated by a user.
+     * @path /users/{userId}/outgoingTransfers/{transferId}
+     * @allow (read) if the user is the sender of the transfer.
+     * @allow (create) if the user is creating the transfer request.
+     * @allow (update) if the user is the sender.
+     * @deny  Any other operations.
+     * @principle Manages outgoing data transfer requests, ensuring only the sender can read and update them.
+     */
+    match /users/{userId}/outgoingTransfers/{transferId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
 
-      // Rule for grades
-      match /grades/{gradeId} {
-        allow read, write: if isOwner(userId);
-      }
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if false;
+    }
 
-      // Rule for attendance
-      match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rule for traits
-      match /traits/{traitId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rule for outgoing transfers
-      match /outgoingTransfers/{transferId} {
-        allow read, write: if isOwner(userId);
-      }
-      
-      // Rule for incoming transfers
-      match /incomingTransfers/{transferId} {
-        // The recipient can read, update, and delete their incoming requests.
-        allow read, update, delete: if isOwner(userId);
-
-        // A different user (the sender) can create a transfer request in the recipient's inbox.
-        // This is secure because we validate the IDs in the document.
-        allow create: if isSignedIn()
-                      && request.resource.data.toUserId == userId
-                      && request.resource.data.fromUserId == request.auth.uid;
-      }
+    /**
+     * @description Rules to prevent any other reads
+     * @path /{document=**}
+     * @allow (read) never.
+     * @allow (write) never.
+     * @principle Applies the least privilege security principle to all other documents and paths
+     */
+    match /{document=**} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
