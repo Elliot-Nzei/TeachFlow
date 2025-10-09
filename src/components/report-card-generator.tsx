@@ -12,8 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle } from 'lucide-react';
+import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -228,6 +229,8 @@ export default function ReportCardGenerator() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [generatedReports, setGeneratedReports] = useState<ReportWithStudentAndGradeInfo[]>([]);
   const { settings } = useContext(SettingsContext);
+  const [classPopoverOpen, setClassPopoverOpen] = useState(false);
+  const [studentPopoverOpen, setStudentPopoverOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -571,33 +574,82 @@ export default function ReportCardGenerator() {
           <Card>
             <CardHeader>
               <CardTitle>Select Generation Target</CardTitle>
-              <CardDescription>Choose a class or an individual student to generate report cards for.</CardDescription>
+              <CardDescription>Choose a class or an individual student.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Command className="rounded-lg border shadow-md">
-                    <CommandInput placeholder="Search for class or student..." />
-                    <CommandList>
-                        <CommandEmpty>No results found.</CommandEmpty>
-                        <CommandGroup heading="Classes">
-                        {classes?.map((cls) => (
-                            <CommandItem key={cls.id} onSelect={() => { setSelectedClass(cls); setSelectedStudent(null); }}>
-                            <Users className="mr-2 h-4 w-4" />
-                            <span>{cls.name}</span>
-                            </CommandItem>
-                        ))}
-                        </CommandGroup>
-                        <CommandGroup heading="Students">
-                        {allStudents?.map((student) => (
-                            <CommandItem key={student.id} onSelect={() => { setSelectedStudent(student); setSelectedClass(null); }}>
-                            <User className="mr-2 h-4 w-4" />
-                            <span>{student.name}</span>
-                            </CommandItem>
-                        ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-              </div>
+               <div className="space-y-2">
+                 <Popover open={classPopoverOpen} onOpenChange={setClassPopoverOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" aria-expanded={classPopoverOpen} className="w-full justify-between">
+                            {selectedClass ? selectedClass.name : "Select a class..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                        <Command>
+                            <CommandInput placeholder="Search class..." />
+                            <CommandList>
+                                <CommandEmpty>No class found.</CommandEmpty>
+                                <CommandGroup>
+                                    {classes?.map((cls) => (
+                                        <CommandItem
+                                            key={cls.id}
+                                            value={cls.name}
+                                            onSelect={() => {
+                                                setSelectedClass(cls);
+                                                setSelectedStudent(null);
+                                                setClassPopoverOpen(false);
+                                            }}
+                                        >
+                                            <Users className="mr-2 h-4 w-4" />
+                                            {cls.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                 </Popover>
+               </div>
+               <div className="flex items-center">
+                    <div className="flex-grow border-t border-muted-foreground"></div>
+                    <span className="flex-shrink mx-2 text-xs text-muted-foreground">OR</span>
+                    <div className="flex-grow border-t border-muted-foreground"></div>
+                </div>
+                 <div className="space-y-2">
+                     <Popover open={studentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" aria-expanded={studentPopoverOpen} className="w-full justify-between">
+                                {selectedStudent ? selectedStudent.name : "Select a student..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                            <Command>
+                                <CommandInput placeholder="Search student..." />
+                                <CommandList>
+                                    <CommandEmpty>No student found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {allStudents?.map((student) => (
+                                            <CommandItem
+                                                key={student.id}
+                                                value={student.name}
+                                                onSelect={() => {
+                                                    setSelectedStudent(student);
+                                                    setSelectedClass(null);
+                                                    setStudentPopoverOpen(false);
+                                                }}
+                                            >
+                                                <User className="mr-2 h-4 w-4" />
+                                                {student.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                     </Popover>
+                </div>
                 {(selectedClass || selectedStudent) && (
                 <div className="mt-4 p-3 bg-secondary border rounded-lg">
                     <div className="flex items-start justify-between">
