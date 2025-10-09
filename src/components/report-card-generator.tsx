@@ -95,19 +95,34 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
 
 
     return (
-        <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-lg">
-            <div className="text-center border-b-4 border-green-700 pb-2 mb-2">
-                <div className="flex items-center justify-center gap-3 mb-2">
-                    <div className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center">
-                        <span className="text-3xl font-bold text-white">{(report.schoolName || 'S').charAt(0)}</span>
-                    </div>
-                    <div className="text-left">
-                        <h1 className="text-2xl font-bold text-green-800">{(report.schoolName || '').toUpperCase()}</h1>
-                        <p className="text-[10px] text-gray-600">{report.schoolAddress}</p>
-                    </div>
+        <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-xl border border-gray-200 rounded-lg p-6">
+            <div className="text-center border-b-4 border-green-700 pb-4 mb-6 relative">
+                <div className="flex items-center justify-center gap-4 mb-3">
+                <div className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center shadow-md">
+                    <span className="text-3xl font-extrabold text-white drop-shadow-sm">
+                    {(report.schoolName || 'S').charAt(0)}
+                    </span>
                 </div>
-                {report.schoolMotto && <p className="text-[10px] font-semibold italic text-gray-700 bg-gray-50 py-1 px-4 inline-block rounded-full">"{report.schoolMotto}"</p>}
-                <h2 className="text-sm font-bold text-green-700 mt-2 bg-green-50 py-1 tracking-widest">TERMINAL REPORT CARD</h2>
+
+                <div className="text-left leading-tight">
+                    <h1 className="text-2xl font-extrabold text-green-800 tracking-wide uppercase">
+                    {report.schoolName || 'Your School Name'}
+                    </h1>
+                    <p className="text-[11px] text-gray-600 font-medium">
+                    {report.schoolAddress || 'School Address Here'}
+                    </p>
+                </div>
+                </div>
+
+                {report.schoolMotto && (
+                <p className="text-[11px] italic font-semibold text-gray-700 bg-green-50 border border-green-100 py-1 px-6 inline-block rounded-full shadow-sm">
+                    “{report.schoolMotto}”
+                </p>
+                )}
+
+                <h2 className="text-sm font-bold text-white bg-green-700 py-2 px-6 mt-4 inline-block rounded-md tracking-widest shadow-md">
+                TERMINAL REPORT CARD
+                </h2>
             </div>
 
             <div className="grid grid-cols-3 gap-x-4 gap-y-1 mb-2 text-[9px] border-b pb-2">
@@ -512,17 +527,18 @@ export default function ReportCardGenerator() {
                     useCORS: true,
                     backgroundColor: '#ffffff',
                 });
+                
+                if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                    throw new Error('Invalid canvas generated: zero dimensions');
+                }
+
             } finally {
                 document.body.removeChild(clone);
-            }
-            
-            if (!canvas || canvas.width === 0 || canvas.height === 0) {
-                throw new Error('Invalid canvas generated');
             }
 
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
             if (!imgData || imgData === 'data:,') {
-                throw new Error('Failed to generate image data');
+                throw new Error('Failed to generate image data from canvas');
             }
 
             if (i > 0) {
@@ -820,4 +836,3 @@ export default function ReportCardGenerator() {
     </>
   );
 }
-
