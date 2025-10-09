@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import type { Student, Class, Grade, Trait, Attendance } from '@/lib/types';
+import type { Student, Class, Grade } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -152,8 +152,8 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                             <tr key={index} className="hover:bg-gray-50">
                                 <td className="border p-1 font-semibold align-middle">{subject.subject}</td>
                                 <td className="border p-1 text-center align-middle">{subject.ca1 ?? 'N/A'}</td>
-                                <td className="border p-1 text-center align-middle">{subject.ca2 ?? 'N/A'}</td>
-                                <td className="border p-1 text-center align-middle">{subject.exam ?? 'N/A'}</td>
+                                <td className="border p-1 text-center align-middle">{subject.ca2 ?? 'N_A'}</td>
+                                <td className="border p-1 text-center align-middle">{subject.exam ?? 'N_A'}</td>
                                 <td className="border p-1 text-center font-bold align-middle">{subject.total}</td>
                                 <td className="border p-1 text-center font-bold align-middle">{subject.grade}</td>
                                 <td className="border p-1 text-center align-middle">{subject.remark}</td>
@@ -247,10 +247,10 @@ export default function ReportCardGenerator() {
   const { data: allGrades, isLoading: isLoadingGrades } = useCollection<Grade>(allGradesQuery);
   
   const allTraitsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'traits')) : null, [firestore, user]);
-  const { data: allTraits, isLoading: isLoadingTraits } = useCollection<Trait>(allTraitsQuery);
+  const { data: allTraits, isLoading: isLoadingTraits } = useCollection<any>(allTraitsQuery);
   
   const allAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance')) : null, [firestore, user]);
-  const { data: allAttendance, isLoading: isLoadingAttendance } = useCollection<Attendance>(allAttendanceQuery);
+  const { data: allAttendance, isLoading: isLoadingAttendance } = useCollection<any>(allAttendanceQuery);
 
 
   const studentsInClass = useMemo(() => {
@@ -835,3 +835,5 @@ export default function ReportCardGenerator() {
     </>
   );
 }
+
+    
