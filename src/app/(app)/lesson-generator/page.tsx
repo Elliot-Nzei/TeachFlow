@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateLessonNote } from '@/ai/flows/generate-lesson-note';
+import { generateLessonNote, type GenerateLessonNoteInput } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import jsPDF from 'jspdf';
@@ -18,14 +18,6 @@ import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase
 import { collection, query } from 'firebase/firestore';
 import type { Class, Subject } from '@/lib/types';
 
-
-type GenerateLessonNoteInput = {
-  classLevel: string;
-  subject: string;
-  schemeOfWork: string;
-  weeks: number;
-  additionalContext: string;
-};
 
 type SavedNote = {
   id: string;
@@ -50,6 +42,7 @@ export default function LessonGeneratorPage() {
   const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
   const { toast } = useToast();
 
   const { firestore, user } = useFirebase();
@@ -81,23 +74,21 @@ export default function LessonGeneratorPage() {
 
     setIsDownloadingPdf(true);
     
-    // Temporarily apply print styles
     document.body.classList.add('printing');
 
     html2canvas(noteElement, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#ffffff', // Ensure a white background
+      backgroundColor: '#ffffff',
     }).then(canvas => {
-      // Remove print styles right after capture
       document.body.classList.remove('printing');
       
       try {
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        if (!imgData || imgData === 'data:,') {
-          throw new Error('Canvas returned empty image data.');
+        if (!canvas || canvas.width === 0 || canvas.height === 0) {
+          throw new Error('Canvas returned empty or invalid image data.');
         }
 
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
         const pdf = new jsPDF({
           orientation: 'p',
           unit: 'mm',
@@ -117,7 +108,7 @@ export default function LessonGeneratorPage() {
         heightLeft -= pdfHeight;
         
         while (heightLeft > 0) {
-          position = heightLeft - imgHeightInPdf;
+          position -= pdfHeight;
           pdf.addPage();
           pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf, undefined, 'FAST');
           heightLeft -= pdfHeight;
@@ -188,12 +179,33 @@ export default function LessonGeneratorPage() {
       });
       return;
     }
+
     setIsLoading(true);
     setGeneratedNote(null);
+    setGenerationProgress('');
+    let fullNote = '';
+
     try {
-      const result = await generateLessonNote(formState);
-      setGeneratedNote(result.note);
-      saveNoteToHistory(formState, result.note);
+      for (let i = 1; i <= formState.weeks; i++) {
+        setGenerationProgress(`Generating Week ${i} of ${formState.weeks}...`);
+        
+        const result = await generateLessonNote({
+          ...formState,
+          weeks: 1, // Generate one week at a time
+          previousContent: fullNote, // Provide context of what has been generated
+          currentWeek: i,
+        });
+
+        fullNote += result.note + '\n\n';
+        setGeneratedNote(fullNote);
+      }
+      
+      saveNoteToHistory(formState, fullNote);
+      toast({
+        title: 'Generation Complete!',
+        description: `Successfully generated ${formState.weeks} weeks of lesson notes.`
+      })
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       toast({
@@ -203,8 +215,10 @@ export default function LessonGeneratorPage() {
       });
     } finally {
       setIsLoading(false);
+      setGenerationProgress('');
     }
   };
+
 
   const saveNoteToHistory = (formInput: GenerateLessonNoteInput, note: string) => {
     const newNote: SavedNote = {
@@ -361,8 +375,8 @@ export default function LessonGeneratorPage() {
               <Card className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
                 <h2 className="text-xl font-semibold mb-2">Generating Your Lesson Note</h2>
-                <p className="text-muted-foreground">This may take 30-60 seconds...</p>
-                 <p className="text-sm text-muted-foreground mt-2 max-w-md">The AI is creating a comprehensive lesson plan based on your requirements, ensuring it meets NERDC standards.</p>
+                <p className="text-muted-foreground">{generationProgress || 'Initializing...'}</p>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md">The AI is creating a comprehensive lesson plan based on your requirements, ensuring it meets NERDC standards.</p>
               </Card>
             )}
 
@@ -374,7 +388,7 @@ export default function LessonGeneratorPage() {
                 </Card>
             )}
 
-            {generatedNote && (
+            {generatedNote && !isLoading && (
             <div id="print-section">
               <Card>
                 <CardHeader className="flex flex-row justify-between items-center print:hidden">

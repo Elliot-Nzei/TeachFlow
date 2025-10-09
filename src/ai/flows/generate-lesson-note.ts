@@ -16,13 +16,14 @@ const GenerateLessonNoteInputSchema = z.object({
   schemeOfWork: z.string().describe('The scheme of work or topic outline.'),
   weeks: z.number().min(1).max(12).describe('The number of weeks or lessons to generate (1-12).'),
   additionalContext: z.string().optional().describe('Additional context or specific requirements for the lesson notes.'),
+  previousContent: z.string().optional().describe('The content of the lesson notes generated for previous weeks, to provide context and avoid repetition.'),
+  currentWeek: z.number().optional().describe('The specific week number to generate content for in an iterative process.'),
 });
 export type GenerateLessonNoteInput = z.infer<typeof GenerateLessonNoteInputSchema>;
 
 const GenerateLessonNoteOutputSchema = z.object({
-  note: z.string().describe('The generated lesson note in Markdown format.'),
+  note: z.string().describe('The generated lesson note in Markdown format for the requested week.'),
   metadata: z.object({
-    totalWeeks: z.number(),
     generatedAt: z.string(),
     classLevel: z.string(),
     subject: z.string(),
@@ -49,7 +50,6 @@ export async function generateLessonNote(input: GenerateLessonNoteInput): Promis
     return {
       ...result,
       metadata: {
-        totalWeeks: input.weeks,
         generatedAt: new Date().toISOString(),
         classLevel: input.classLevel,
         subject: input.subject,
@@ -67,10 +67,10 @@ const prompt = ai.definePrompt({
   output: { schema: z.object({ note: z.string() }) },
   prompt: `You are an experienced Nigerian school teacher with deep knowledge of the Nigerian Educational Research and Development Council (NERDC) curriculum.
 
-Your task is to generate a comprehensive, well-structured lesson note in Markdown format and return it in a JSON object.
+Your task is to generate a comprehensive, well-structured lesson note in Markdown format for a SINGLE week and return it in a JSON object.
 
 **JSON Output Format:**
-Your entire response MUST be a valid JSON object with a single key "note" containing the full Markdown lesson note as a string.
+Your entire response MUST be a valid JSON object with a single key "note" containing the full Markdown lesson note for the specified week.
 Example:
 {
   "note": "### Week 1: [Topic]..."
@@ -81,22 +81,26 @@ Example:
 **Class Level**: {{{classLevel}}}
 **Subject**: {{{subject}}}
 **Scheme of Work**: {{{schemeOfWork}}}
-**Number of Weeks**: {{{weeks}}}
+**Current Week to Generate**: Week {{{currentWeek}}}
 {{#if additionalContext}}
 **Additional Context**: {{{additionalContext}}}
+{{/if}}
+{{#if previousContent}}
+**Content from Previous Weeks (for context, DO NOT repeat):**
+{{{previousContent}}}
 {{/if}}
 
 ## CRITICAL REQUIREMENTS:
 
-1. **No Repetition**: Each week must have unique, progressive content that builds upon previous weeks
-2. **Age-Appropriate**: Ensure language and activities match the cognitive level of {{{classLevel}}}
-3. **Nigerian Context**: Use examples, names, and scenarios relevant to Nigerian students
-4. **Curriculum Alignment**: Follow NERDC curriculum standards for {{{subject}}}
-5. **Progressive Difficulty**: Content should increase in complexity across weeks
+1. **Generate ONLY for Week {{{currentWeek}}}**: Your entire output should be just the lesson note for this single week.
+2. **No Repetition**: The content for Week {{{currentWeek}}} must be unique and build upon previous weeks if context is provided.
+3. **Age-Appropriate**: Ensure language and activities match the cognitive level of {{{classLevel}}}.
+4. **Nigerian Context**: Use examples, names, and scenarios relevant to Nigerian students.
+5. **Curriculum Alignment**: Follow NERDC curriculum standards for {{{subject}}}.
 
-## STRUCTURE FOR EACH WEEK:
+## STRUCTURE FOR THE WEEK:
 
-### Week [Number]: [Specific Topic Title]
+### Week {{{currentWeek}}}: [Specific Topic Title for this week]
 
 #### Learning Objectives
 By the end of this lesson, students should be able to:
@@ -112,7 +116,11 @@ By the end of this lesson, students should be able to:
 (Be specific: instead of "charts", say "Chart showing parts of speech with examples")
 
 #### Previous Knowledge
-Students have already learned about [specific prerequisite topics]
+{{#if previousContent}}
+Students have already learned about the topics from the previous weeks.
+{{else}}
+Students have already learned about [specific prerequisite topics].
+{{/if}}
 
 #### Lesson Development
 
@@ -157,13 +165,11 @@ Students have already learned about [specific prerequisite topics]
 
 - Use Nigerian names in examples (e.g., Chidi, Amina, Tunde, Ngozi)
 - Include references to Nigerian culture, locations, and contexts where relevant
-- Ensure proper grammar, spelling, and punctuation throughout
-- Make each week's content distinctly different and progressively more challenging
+- Ensure proper grammar, spelling, and punctuation
+- Make this week's content distinct and progressively more challenging than any previous content provided
 - Use active learning strategies (think-pair-share, demonstrations, hands-on activities)
-- Include formative assessment opportunities in each lesson
-- Ensure timing is realistic for typical Nigerian classroom periods (35-40 minutes)
 
-Generate {{{weeks}}} complete weeks of lesson notes following this exact structure, and provide the entire output as a single JSON object.`,
+Generate ONLY the lesson note for Week {{{currentWeek}}} following this exact structure, and provide the entire output as a single JSON object.`,
 });
 
 const generateLessonNoteFlow = ai.defineFlow(
