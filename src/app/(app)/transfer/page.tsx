@@ -149,32 +149,37 @@ export default function TransferPage() {
     if (!classSnap.exists()) throw new Error('Source class not found');
     const classData = classSnap.data();
     
+    // Create the new class document with an empty students array initially
     const newClassRef = doc(collection(firestore, 'users', toUserId, 'classes'));
     batch.set(newClassRef, {
       ...classData,
-      students: [], // Start with an empty student list
+      students: [], // CRITICAL: Start with an empty student list
       transferredFrom: fromUserId,
       transferredAt: serverTimestamp(),
     });
 
+    // Find all students from the source class
     const studentsQuery = query(collection(firestore, 'users', fromUserId, 'students'), where('classId', '==', classId));
     const studentsSnap = await getDocs(studentsQuery);
     
     const newStudentIds: string[] = [];
+    // Loop through source students, create new student docs for the recipient, and collect their new IDs
     studentsSnap.docs.forEach((studentDoc) => {
       const newStudentRef = doc(collection(firestore, 'users', toUserId, 'students'));
       batch.set(newStudentRef, {
         ...studentDoc.data(),
-        classId: newClassRef.id,
+        classId: newClassRef.id, // Update student's classId to the new class
         className: classData.name,
         transferredFrom: fromUserId,
         transferredAt: serverTimestamp(),
       });
-      newStudentIds.push(newStudentRef.id);
+      newStudentIds.push(newStudentRef.id); // Collect the new student ID
     });
 
+    // After all students are processed, update the new class with the array of new student IDs
     batch.update(newClassRef, { students: newStudentIds });
 
+    // Commit all batched writes
     await batch.commit();
     return { studentsCount: studentsSnap.size };
   };
@@ -406,5 +411,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    
