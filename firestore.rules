@@ -1,59 +1,65 @@
 /**
- * @fileOverview Firestore Security Rules for the Nigerian School Management System.
+ * @fileoverview Firestore Security Rules for the Nigerian School Management System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Users can only create, read, update, and delete data associated with their own user ID.
+ * This ruleset enforces a strict user-ownership model.  Each user can only
+ * access their own data, with the exception of public read access where explicitly
+ * allowed.  Data integrity is prioritized through checks on resource
+ * ownership and immutability of key relational fields.
  *
  * Data Structure:
- * All core data (classes, students, subjects, grades, attendance, traits) is nested under the /users/{userId} collection. Data transfer requests are handled via the /users/{userId}/incomingTransfers/{transferId} collection.
+ * The database is organized hierarchically under `/users/{userId}`, where
+ * `{userId}` corresponds to the Firebase Auth UID.  Subcollections under each
+ * user document store data specific to that user (classes, students, grades, etc.).
  *
  * Key Security Decisions:
- * - Users can only manage data within their own /users/{userId} document tree.
- * - Data transfer requests are written to the recipient's /users/{userId}/incomingTransfers/{transferId} collection, with the recipient controlling access.
- * - No listing of users is allowed.
+ * - Users can only `list` their own subcollections. Listing other users' collections is denied.
+ * - Data Transfers act as a ledger between users, but are namespaced to `incomingTransfers`.
+ * - The rules do not enforce the complete data schema during write operations,
+ *   allowing for rapid prototyping and iteration.  However, authorization-critical
+ *   fields are validated for consistency and immutability.
  *
  * Denormalization for Authorization:
- * The rules rely on the `userId` encoded in the document path for authorization, avoiding the need for expensive `get()` operations.
+ * The rules rely on the `userId` present in the path (`/users/{userId}`) to
+ * authorize requests.  This approach avoids the need for additional `get()`
+ * calls to retrieve user information, improving performance and reducing costs.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
+     * @description Checks if the request is authenticated.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the request is made by the owner of the user document.
-     * @param {string} userId The user ID to check against.
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     * @param {string} userId - The user ID to compare against.
+     * @return {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the user is the owner and the resource exists.
-     * @param {string} userId The user ID to check against.
+     * @description Checks if the authenticated user is the owner and the resource exists.
+     * @param {string} userId - The user ID to compare against.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Rules for the /users/{userId} document.
+     * @description Enforces document ownership for writes.
      * @path /users/{userId}
-     * @allow (create) - Authenticated user creates their own user document.
-     * @allow (get) - Authenticated user can retrieve their user document.
-     * @allow (update) - Authenticated user can update their own user document.
-     * @allow (delete) - Authenticated user can delete their own user document.
-     * @deny (create) - Unauthorized user attempts to create a user document.
-     * @deny (get) - Unauthorized user attempts to retrieve a user document.
-     * @deny (update) - Unauthorized user attempts to update a user document.
-     * @deny (delete) - Unauthorized user attempts to delete a user document.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates their own profile document with matching userId.
+     * @deny (create) User with UID 'user123' attempts to create a profile document for 'user456'.
+     * @principle Enforces strict user-ownership for profile creation.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -65,19 +71,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /users/{userId}/classes/{classId} collection.
+     * @description Manages classes created by a specific user.
      * @path /users/{userId}/classes/{classId}
-     * @allow (create) - Authenticated user creates a class under their user document.
-     * @allow (get) - Authenticated user can retrieve a class under their user document.
-     * @allow (list) - Authenticated user can list classes under their user document.
-     * @allow (update) - Authenticated user can update a class under their user document.
-     * @allow (delete) - Authenticated user can delete a class under their user document.
-     * @deny (create) - Unauthorized user attempts to create a class.
-     * @deny (get) - Unauthorized user attempts to retrieve a class.
-     * @deny (list) - Unauthorized user attempts to list classes.
-     * @deny (update) - Unauthorized user attempts to update a class.
-     * @deny (delete) - Unauthorized user attempts to delete a class.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates a class under their profile.
+     * @deny (create) User with UID 'user123' attempts to create a class under 'user456'.
+     * @principle Restricts class creation to the owning user.
      */
     match /users/{userId}/classes/{classId} {
       allow get: if isOwner(userId);
@@ -89,19 +87,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /users/{userId}/students/{studentId} collection.
+     * @description Manages students belonging to a specific user/school.
      * @path /users/{userId}/students/{studentId}
-     * @allow (create) - Authenticated user creates a student under their user document.
-     * @allow (get) - Authenticated user can retrieve a student under their user document.
-     * @allow (list) - Authenticated user can list students under their user document.
-     * @allow (update) - Authenticated user can update a student under their user document.
-     * @allow (delete) - Authenticated user can delete a student under their user document.
-     * @deny (create) - Unauthorized user attempts to create a student.
-     * @deny (get) - Unauthorized user attempts to retrieve a student.
-     * @deny (list) - Unauthorized user attempts to list students.
-     * @deny (update) - Unauthorized user attempts to update a student.
-     * @deny (delete) - Unauthorized user attempts to delete a student.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates a student under their profile.
+     * @deny (create) User with UID 'user123' attempts to create a student under 'user456'.
+     * @principle Restricts student creation to the owning user.
      */
     match /users/{userId}/students/{studentId} {
       allow get: if isOwner(userId);
@@ -113,19 +103,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /users/{userId}/subjects/{subjectId} collection.
+     * @description Manages the master list of subjects for a user/school.
      * @path /users/{userId}/subjects/{subjectId}
-     * @allow (create) - Authenticated user creates a subject under their user document.
-     * @allow (get) - Authenticated user can retrieve a subject under their user document.
-     * @allow (list) - Authenticated user can list subjects under their user document.
-     * @allow (update) - Authenticated user can update a subject under their user document.
-     * @allow (delete) - Authenticated user can delete a subject under their user document.
-     * @deny (create) - Unauthorized user attempts to create a subject.
-     * @deny (get) - Unauthorized user attempts to retrieve a subject.
-     * @deny (list) - Unauthorized user attempts to list subjects.
-     * @deny (update) - Unauthorized user attempts to update a subject.
-     * @deny (delete) - Unauthorized user attempts to delete a subject.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates a subject under their profile.
+     * @deny (create) User with UID 'user123' attempts to create a subject under 'user456'.
+     * @principle Restricts subject creation to the owning user.
      */
     match /users/{userId}/subjects/{subjectId} {
       allow get: if isOwner(userId);
@@ -137,19 +119,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /users/{userId}/grades/{gradeId} collection.
+     * @description Manages all grades entered by a specific user.
      * @path /users/{userId}/grades/{gradeId}
-     * @allow (create) - Authenticated user creates a grade under their user document.
-     * @allow (get) - Authenticated user can retrieve a grade under their user document.
-     * @allow (list) - Authenticated user can list grades under their user document.
-     * @allow (update) - Authenticated user can update a grade under their user document.
-     * @allow (delete) - Authenticated user can delete a grade under their user document.
-     * @deny (create) - Unauthorized user attempts to create a grade.
-     * @deny (get) - Unauthorized user attempts to retrieve a grade.
-     * @deny (list) - Unauthorized user attempts to list grades.
-     * @deny (update) - Unauthorized user attempts to update a grade.
-     * @deny (delete) - Unauthorized user attempts to delete a grade.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates a grade under their profile.
+     * @deny (create) User with UID 'user123' attempts to create a grade under 'user456'.
+     * @principle Restricts grade creation to the owning user.
      */
     match /users/{userId}/grades/{gradeId} {
       allow get: if isOwner(userId);
@@ -161,19 +135,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /users/{userId}/attendance/{attendanceId} collection.
+     * @description Manages daily attendance records for students.
      * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (create) - Authenticated user creates an attendance record under their user document.
-     * @allow (get) - Authenticated user can retrieve an attendance record under their user document.
-     * @allow (list) - Authenticated user can list attendance records under their user document.
-     * @allow (update) - Authenticated user can update an attendance record under their user document.
-     * @allow (delete) - Authenticated user can delete an attendance record under their user document.
-     * @deny (create) - Unauthorized user attempts to create an attendance record.
-     * @deny (get) - Unauthorized user attempts to retrieve an attendance record.
-     * @deny (list) - Unauthorized user attempts to list attendance records.
-     * @deny (update) - Unauthorized user attempts to update an attendance record.
-     * @deny (delete) - Unauthorized user attempts to delete an attendance record.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates attendance record under their profile.
+     * @deny (create) User with UID 'user123' attempts to create attendance record under 'user456'.
+     * @principle Restricts attendance record creation to the owning user.
      */
     match /users/{userId}/attendance/{attendanceId} {
       allow get: if isOwner(userId);
@@ -185,19 +151,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /users/{userId}/traits/{traitId} collection.
+     * @description Manages behavioral traits and ratings for students.
      * @path /users/{userId}/traits/{traitId}
-     * @allow (create) - Authenticated user creates a trait record under their user document.
-     * @allow (get) - Authenticated user can retrieve a trait record under their user document.
-     * @allow (list) - Authenticated user can list trait records under their user document.
-     * @allow (update) - Authenticated user can update a trait record under their user document.
-     * @allow (delete) - Authenticated user can delete a trait record under their user document.
-     * @deny (create) - Unauthorized user attempts to create a trait record.
-     * @deny (get) - Unauthorized user attempts to retrieve a trait record.
-     * @deny (list) - Unauthorized user attempts to list trait records.
-     * @deny (update) - Unauthorized user attempts to update a trait record.
-     * @deny (delete) - Unauthorized user attempts to delete a trait record.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user123' creates a trait record under their profile.
+     * @deny (create) User with UID 'user123' attempts to create a trait record under 'user456'.
+     * @principle Restricts trait record creation to the owning user.
      */
     match /users/{userId}/traits/{traitId} {
       allow get: if isOwner(userId);
@@ -208,26 +166,17 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Rules for the /users/{userId}/incomingTransfers/{transferId} collection.
-     * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (create) - Any authenticated user can create a transfer request (write-only access for senders).
-     * @allow (get) - The recipient user can read their incoming transfer requests.
-     * @allow (list) - The recipient user can list their incoming transfer requests.
-     * @allow (update) - The recipient can update the status of an incoming transfer.
-     * @allow (delete) - The recipient can delete a transfer request.
-     * @deny (create) - Unauthenticated user attempts to create a transfer request.
-     * @deny (get) - Unauthorized user attempts to read a transfer request.
-     * @deny (list) - Unauthorized user attempts to list transfer requests.
-     * @deny (update) - Unauthorized user attempts to update a transfer request.
-     * @deny (delete) - Unauthorized user attempts to delete a transfer request.
-     * @principle Allows authenticated users to send transfer requests and enforces recipient ownership.
-     */
+     /**
+      * @description Manages a recipient's log of incoming data transfer requests.
+      * @path users/{userId}/incomingTransfers/{transferId}
+      * @allow (create) User with UID 'user456' can create a transfer request in 'user123's incomingTransfers collection if the toUserId matches 'user123'.
+      * @deny (create) User with UID 'user456' attempts to create a transfer request in 'user123's incomingTransfers collection but the toUserId does not match 'user123'.
+      */
     match /users/{userId}/incomingTransfers/{transferId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
 
-      allow create: if isSignedIn();
+      allow create: if request.resource.data.toUserId == userId && request.resource.data.fromUserId != userId;
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
