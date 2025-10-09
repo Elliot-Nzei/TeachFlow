@@ -496,20 +496,21 @@ export default function ReportCardGenerator() {
                 console.error(`Report element not found for ${report.studentId}`);
                 continue;
             }
+            
+            // Temporarily make the element visible for capture
+            reportElement.style.display = 'block';
+            reportElement.style.visibility = 'visible';
 
             try {
                 const canvas = await html2canvas(reportElement, {
                     scale: 2,
                     useCORS: true,
                     backgroundColor: '#ffffff',
-                    onclone: (clonedDoc) => {
-                      const clonedElement = clonedDoc.getElementById(`report-card-${report.studentId}`);
-                      if(clonedElement) {
-                        clonedElement.style.display = 'block';
-                        clonedElement.style.visibility = 'visible';
-                      }
-                    }
                 });
+                
+                // Hide element again after capture
+                reportElement.style.display = 'none';
+                reportElement.style.visibility = 'hidden';
                 
                 if (!canvas || canvas.width === 0 || canvas.height === 0) {
                     throw new Error('Invalid canvas generated');
@@ -526,6 +527,9 @@ export default function ReportCardGenerator() {
                 
                 doc.addImage(imgData, 'JPEG', 0, 0, a4_width, a4_height, undefined, 'FAST');
             } catch (canvasError) {
+                // Ensure element is hidden even if canvas fails
+                reportElement.style.display = 'none';
+                reportElement.style.visibility = 'hidden';
                 console.error(`Error processing canvas for ${report.studentName}:`, canvasError);
                 toast({
                     variant: 'destructive',
@@ -824,3 +828,5 @@ export default function ReportCardGenerator() {
     </>
   );
 }
+
+    
