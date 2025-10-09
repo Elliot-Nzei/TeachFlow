@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check } from 'lucide-react';
+import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLessonNote } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
@@ -47,7 +47,6 @@ export default function LessonGeneratorPage() {
   const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
-  const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
 
 
@@ -167,7 +166,7 @@ export default function LessonGeneratorPage() {
     }
 
     setIsDownloadingPdf(true);
-    const noteElement = printRef.current;
+    const noteElement = document.getElementById('note-content-for-pdf');
 
     if (!noteElement) {
         toast({
@@ -183,57 +182,33 @@ export default function LessonGeneratorPage() {
         const canvas = await html2canvas(noteElement, {
             scale: 2,
             useCORS: true,
-            backgroundColor: '#ffffff',
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = doc.internal.pageSize.getHeight();
         const canvasWidth = canvas.width;
         const canvasHeight = canvas.height;
         const canvasAspectRatio = canvasWidth / canvasHeight;
-        const pdfAspectRatio = pdfWidth / pdfHeight;
-
-        let renderWidth = pdfWidth;
-        let renderHeight = pdfWidth / canvasAspectRatio;
-
-        if (renderHeight > pdfHeight) {
-            renderHeight = pdfHeight;
-            renderWidth = pdfHeight * canvasAspectRatio;
-        }
         
-        const xOffset = (pdfWidth - renderWidth) / 2;
-        
-        let yOffset = 0;
-        let remainingCanvasHeight = canvasHeight;
-        let page = 1;
+        let renderHeight = pdfHeight;
+        let renderWidth = pdfHeight * canvasAspectRatio;
 
-        while (remainingCanvasHeight > 0) {
-            if (page > 1) {
-                pdf.addPage();
-            }
-            
-            const pageCanvas = document.createElement('canvas');
-            const pageCanvasContext = pageCanvas.getContext('2d');
-            
-            const sourceY = (page - 1) * (canvasHeight / (renderHeight/pdfHeight));
-            const sourceHeight = Math.min(canvasHeight - sourceY, canvasHeight / (renderHeight/pdfHeight) );
-
-            pageCanvas.width = canvasWidth;
-            pageCanvas.height = sourceHeight;
-
-            pageCanvasContext?.drawImage(canvas, 0, sourceY, canvasWidth, sourceHeight, 0, 0, canvasWidth, sourceHeight);
-
-            const pageImgData = pageCanvas.toDataURL('image/png');
-            pdf.addImage(pageImgData, 'PNG', xOffset, 0, renderWidth, pdfHeight * (sourceHeight/canvasHeight) * (renderHeight/pdfHeight) );
-
-            remainingCanvasHeight -= sourceHeight * (pdfHeight/renderHeight);
-            page++;
+        if (renderWidth > pdfWidth) {
+          renderWidth = pdfWidth;
+          renderHeight = pdfWidth / canvasAspectRatio;
         }
 
+        const pageCount = Math.ceil(canvasHeight * (renderHeight/pdfHeight) / canvas.height);
+        
+        for (let i = 0; i < pageCount; i++) {
+          if (i > 0) doc.addPage();
+          const yPos = -i * renderHeight;
+          doc.addImage(canvas, 'PNG', 0, yPos, renderWidth, renderHeight);
+        }
+        
         const sanitizedSubject = formState.subject.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-        pdf.save(`lesson-note-${sanitizedSubject}.pdf`);
+        doc.save(`lesson-note-${sanitizedSubject}.pdf`);
 
     } catch (error) {
         console.error("PDF Download Error:", error);
@@ -403,13 +378,22 @@ export default function LessonGeneratorPage() {
                 </div>
             </div>
         )}
-        <div id="note-content-wrapper" className="hidden print:block">
-            <div ref={printRef} className="prose">
+        <div id="note-content-wrapper" className="hidden">
+            <div id="note-content-for-pdf" className="prose bg-white text-black p-8">
                 <ReactMarkdown>{generatedNote || ''}</ReactMarkdown>
             </div>
         </div>
 
       <style jsx global>{`
+        #note-content-for-pdf {
+          color: black !important;
+          background-color: white !important;
+        }
+        #note-content-for-pdf * {
+          color: black !important;
+          background-color: transparent !important;
+        }
+
         @media print {
           body * {
             visibility: hidden;
@@ -438,5 +422,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
