@@ -1,49 +1,40 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default-deny all access unless explicitly allowed
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Allow users to read and write their own user document
     match /users/{userId} {
-      allow read, update, delete: if request.auth.uid == userId;
-      // Allow any authenticated user to create their own user document
-      allow create: if request.auth.uid == userId;
-
-      // Allow authenticated users to query the users collection to find recipients
-      // This is a collection-group query, so it should be defined separately if needed,
-      // but for simple 'where' clauses on top-level fields, this is a start.
-      // A more secure rule would be to only allow reads on specific fields.
-      // For now, let's keep it simple as per the requirement to find users.
-      // NOTE: This rule as written is broad. It's better to lock this down.
-      // However, for the purpose of the query `where('userCode', '==', code)`, we need list access.
-      // A better structure might be a separate collection for userCode lookups.
-      // Given the current structure, we allow a list read on the users collection.
-    }
-
-    // This rule allows querying the 'users' collection.
-    // It's placed outside the `match /users/{userId}` block for individual documents.
-    match /users/{document} {
-        allow list: if request.auth != null;
-    }
-
-
-    // Subcollections within a user's document
-    match /users/{userId}/{collectionId}/{documentId} {
       allow read, write: if request.auth.uid == userId;
-    }
 
-    // Specific rules for the incomingTransfers subcollection
-    match /users/{userId}/incomingTransfers/{transferId} {
-      // The owner of the document (the recipient) can read, update, and delete their transfer requests.
-      allow read, update, delete: if request.auth.uid == userId;
-
-      // Any authenticated user can create a transfer request in another user's subcollection.
-      // We also prevent a user from sending a request to themselves.
-      allow create: if request.auth != null && request.auth.uid != userId;
+      match /classes/{classId} {
+        allow read, write: if request.auth.uid == userId;
+        allow read: if request.auth != null; // Allow reading for transfers
+      }
+      
+      match /students/{studentId} {
+        allow read, write: if request.auth.uid == userId;
+        allow read: if request.auth != null; // Allow reading for transfers
+      }
+      
+      match /subjects/{subjectId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+      
+      match /grades/{gradeId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+      
+      match /attendance/{attendanceId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+      
+      match /traits/{traitId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+      
+      match /incomingTransfers/{transferId} {
+        allow read, update, delete: if request.auth.uid == userId;
+        allow create: if request.auth != null && request.resource.data.fromUserId == request.auth.uid;
+      }
     }
   }
 }
