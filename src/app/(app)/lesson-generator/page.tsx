@@ -70,6 +70,8 @@ export default function LessonGeneratorPage() {
     }
 
     setIsDownloadingPdf(true);
+    
+    // Target the element that contains the rendered markdown
     const noteElement = document.getElementById('note-content-for-pdf');
 
     if (!noteElement) {
@@ -96,7 +98,7 @@ export default function LessonGeneratorPage() {
           },
           margin: [15, 15, 15, 15],
           autoPaging: 'text',
-          width: 180, // A4 width (210) minus margins (15*2)
+          width: 180, // A4 width (210mm) - 30mm margins
           windowWidth: 794 // A4 width in pixels at 96 DPI
         });
 
@@ -392,7 +394,8 @@ export default function LessonGeneratorPage() {
                 </div>
             </div>
         )}
-      <div id="note-content-wrapper" className="hidden">
+      {/* Hidden div for PDF generation */}
+      <div className="hidden">
         <div id="note-content-for-pdf" className="prose bg-white p-8">
             <ReactMarkdown>{generatedNote || ''}</ReactMarkdown>
         </div>
@@ -426,7 +429,7 @@ export default function LessonGeneratorPage() {
         }
         @page {
             size: A4;
-            margin: 20mm;
+            margin: 15mm;
         }
     `}</style>
     </>
