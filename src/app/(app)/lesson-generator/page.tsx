@@ -236,7 +236,7 @@ export default function LessonGeneratorPage() {
       const canvas = await html2canvas(noteElement, {
         scale: 2,
         useCORS: true,
-        backgroundColor: null, // Use element's background
+        backgroundColor: '#ffffff', // Force white background
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -250,11 +250,12 @@ export default function LessonGeneratorPage() {
       const pdfHeight = doc.internal.pageSize.getHeight();
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const width = imgWidth * ratio;
-      const height = imgHeight * ratio;
+      
+      const ratio = imgWidth / imgHeight;
+      const width = pdfWidth;
+      const height = width / ratio;
 
-      doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      doc.addImage(imgData, 'JPEG', 0, 0, width, height);
       
       const fileName = `lesson-note-${formState.subject.toLowerCase().replace(/\s+/g, '-')}-${formState.classLevel.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.pdf`;
       doc.save(fileName);
