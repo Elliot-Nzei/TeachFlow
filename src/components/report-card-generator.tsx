@@ -128,26 +128,26 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
             
             <div className="mb-2">
                 <h3 className="font-bold text-green-700 text-[10px] mb-1 bg-green-50 px-2 py-0.5">ACADEMIC PERFORMANCE</h3>
-                <table className="w-full text-[8px] border-collapse">
+                <table className="w-full text-[9px] border-collapse">
                     <thead>
                     <tr className="bg-green-700 text-white">
-                        <th className="border border-green-600 p-0.5 text-left">Subject</th>
-                        <th className="border border-green-600 p-0.5">CA1<br/>(20)</th>
-                        <th className="border border-green-600 p-0.5">CA2<br/>(20)</th>
-                        <th className="border border-green-600 p-0.5">Exam<br/>(60)</th>
-                        <th className="border border-green-600 p-0.5">Total<br/>(100)</th>
-                        <th className="border border-green-600 p-0.5">Grade</th>
-                        <th className="border border-green-600 p-0.5">Remark</th>
+                        <th className="border border-green-600 p-1 text-left align-middle">Subject</th>
+                        <th className="border border-green-600 p-1 align-middle">CA1<br/>(20)</th>
+                        <th className="border border-green-600 p-1 align-middle">CA2<br/>(20)</th>
+                        <th className="border border-green-600 p-1 align-middle">Exam<br/>(60)</th>
+                        <th className="border border-green-600 p-1 align-middle">Total<br/>(100)</th>
+                        <th className="border border-green-600 p-1 align-middle">Grade</th>
+                        <th className="border border-green-600 p-1 align-middle">Remark</th>
                     </tr>
                     </thead>
                     <tbody>
                     {report.grades.map((subject, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                        <td className="border border-gray-300 p-0.5 font-semibold">{subject.subject}</td>
-                        <td className="border border-gray-300 p-0.5 text-center">{subject.ca1 ?? 'N/A'}</td>
-                        <td className="border border-gray-300 p-0.5 text-center">{subject.ca2 ?? 'N/A'}</td>
-                        <td className="border border-gray-300 p-0.5 text-center">{subject.exam ?? 'N/A'}</td>
-                        <td className="border border-gray-300 p-1.5 text-center">
+                        <td className="border border-gray-300 p-1 font-semibold align-middle">{subject.subject}</td>
+                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.ca1 ?? 'N/A'}</td>
+                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.ca2 ?? 'N/A'}</td>
+                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.exam ?? 'N/A'}</td>
+                        <td className="border border-gray-300 p-1 text-center align-middle">
                             <div className="flex items-center justify-center gap-1">
                                 <span className="font-bold">{subject.total}</span>
                                 <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -158,8 +158,8 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                                 </div>
                             </div>
                         </td>
-                        <td className="border border-gray-300 p-0.5 text-center font-bold text-green-700">{subject.grade}</td>
-                        <td className="border border-gray-300 p-0.5 text-center">{subject.remark}</td>
+                        <td className="border border-gray-300 p-1 text-center font-bold text-green-700 align-middle">{subject.grade}</td>
+                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.remark}</td>
                         </tr>
                     ))}
                     </tbody>
@@ -175,8 +175,8 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                   </div>
                 </div>
             </div>
-             <div className="mb-2 text-[7px]">
-              <h3 className="font-bold text-green-700 text-[9px] mb-1">GRADING SCALE</h3>
+             <div className="mb-2 text-[8px]">
+              <h3 className="font-bold text-green-700 text-[10px] mb-1">GRADING SCALE</h3>
               <div className="flex gap-1 flex-wrap">
                   <span className="bg-gray-50 px-1 py-0.5 border">A: 70-100 (Excellent)</span>
                   <span className="bg-gray-50 px-1 py-0.5 border">B: 60-69 (Good)</span>
@@ -188,22 +188,22 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
             <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
                     <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">AFFECTIVE DOMAIN</h3>
-                    <table className="w-full text-[8px] border-collapse">
-                        <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-0.5 text-left">Trait</th><th className="border border-green-600 p-0.5">Rate</th><th className="border border-green-600 p-0.5">Remark</th></tr></thead>
+                    <table className="w-full text-[9px] border-collapse">
+                        <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-1 text-left align-middle">Trait</th><th className="border border-green-600 p-1 align-middle">Rate</th><th className="border border-green-600 p-1 align-middle">Remark</th></tr></thead>
                         <tbody>
                         {affectiveTraits.map((trait, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-0.5">{trait.name}</td><td className="border border-gray-300 p-0.5 text-center font-bold">{trait.rating}</td><td className="border border-gray-300 p-0.5 text-center">{getRatingText(trait.rating)}</td></tr>
+                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-1 align-middle">{trait.name}</td><td className="border border-gray-300 p-1 text-center font-bold align-middle">{trait.rating}</td><td className="border border-gray-300 p-1 text-center align-middle">{getRatingText(trait.rating)}</td></tr>
                         ))}
                         </tbody>
                     </table>
                 </div>
                 <div>
                     <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">PSYCHOMOTOR DOMAIN</h3>
-                    <table className="w-full text-[8px] border-collapse">
-                    <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-0.5 text-left">Skill</th><th className="border border-green-600 p-0.5">Rate</th><th className="border border-green-600 p-0.5">Remark</th></tr></thead>
+                    <table className="w-full text-[9px] border-collapse">
+                    <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-1 text-left align-middle">Skill</th><th className="border border-green-600 p-1 align-middle">Rate</th><th className="border border-green-600 p-1 align-middle">Remark</th></tr></thead>
                     <tbody>
                         {psychomotorSkills.map((skill, index) => (
-                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-0.5">{skill.name}</td><td className="border border-gray-300 p-0.5 text-center font-bold">{skill.rating}</td><td className="border border-gray-300 p-0.5 text-center">{getRatingText(skill.rating)}</td></tr>
+                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-1 align-middle">{skill.name}</td><td className="border border-gray-300 p-1 text-center font-bold align-middle">{skill.rating}</td><td className="border border-gray-300 p-1 text-center align-middle">{getRatingText(skill.rating)}</td></tr>
                         ))}
                     </tbody>
                     </table>
@@ -497,7 +497,6 @@ export default function ReportCardGenerator() {
                 continue;
             }
             
-            // Clone the node, append it to the body, and then capture
             const clone = reportElement.cloneNode(true) as HTMLElement;
             clone.style.position = 'absolute';
             clone.style.left = '-9999px';
@@ -508,13 +507,12 @@ export default function ReportCardGenerator() {
 
             let canvas;
             try {
-                 canvas = await html2canvas(clone, {
+                canvas = await html2canvas(clone, {
                     scale: 2,
                     useCORS: true,
                     backgroundColor: '#ffffff',
                 });
             } finally {
-                // Always remove the clone
                 document.body.removeChild(clone);
             }
             
@@ -822,6 +820,8 @@ export default function ReportCardGenerator() {
     </>
   );
 }
+
+    
 
     
 
