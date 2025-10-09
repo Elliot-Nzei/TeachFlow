@@ -93,143 +93,181 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
     const affectiveTraits = (report.traits || []).filter(t => ["Punctuality", "Neatness", "Honesty", "Cooperation", "Attentiveness"].includes(t.name));
     const psychomotorSkills = (report.traits || []).filter(t => !affectiveTraits.map(at => at.name).includes(t.name));
 
-
     return (
-        <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-xl border border-gray-200 rounded-lg p-6">
-            <div className="text-center border-b-4 border-green-700 pb-4 mb-6 relative">
-                <div className="flex items-center justify-center gap-4 mb-3">
-                <div className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center shadow-md">
-                    <span className="text-3xl font-extrabold text-white drop-shadow-sm">
-                    {(report.schoolName || 'S').charAt(0)}
-                    </span>
-                </div>
+        <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-xl border border-gray-200 rounded-lg">
+            {/* Modern Header with Gradient Background */}
+            <div className="relative bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 pb-8 pt-6 px-6">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24 blur-3xl"></div>
+                
+                {/* Main Header Content */}
+                <div className="relative z-10">
+                    <div className="flex items-start justify-between gap-6 mb-4">
+                        {/* School Logo & Name */}
+                        <div className="flex items-center gap-4 flex-1">
+                        <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white/20">
+                            <span className="text-4xl font-black text-emerald-600">
+                            {(report.schoolName || 'S').charAt(0)}
+                            </span>
+                        </div>
 
-                <div className="text-left leading-tight">
-                    <h1 className="text-2xl font-extrabold text-green-800 tracking-wide uppercase">
-                    {report.schoolName || 'Your School Name'}
-                    </h1>
-                    <p className="text-[11px] text-gray-600 font-medium">
-                    {report.schoolAddress || 'School Address Here'}
-                    </p>
-                </div>
-                </div>
+                        <div className="text-left">
+                            <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-1">
+                            {report.schoolName || 'Your School Name'}
+                            </h1>
+                            <p className="text-sm text-emerald-50 font-medium flex items-center gap-1.5">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+                            </svg>
+                            {report.schoolAddress || 'School Address Here'}
+                            </p>
+                        </div>
+                        </div>
 
-                {report.schoolMotto && (
-                <p className="text-[11px] italic font-semibold text-gray-700 bg-green-50 border border-green-100 py-1 px-6 inline-block rounded-full shadow-sm">
-                    “{report.schoolMotto}”
-                </p>
-                )}
+                        {/* Academic Year Badge */}
+                        <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-center border border-white/30">
+                        <p className="text-xs font-semibold text-emerald-50 uppercase tracking-wider">Academic Year</p>
+                        <p className="text-lg font-bold text-white">{report.session}</p>
+                        </div>
+                    </div>
 
-                <h2 className="text-sm font-bold text-white bg-green-700 py-2 px-6 mt-4 inline-block rounded-md tracking-widest shadow-md">
-                TERMINAL REPORT CARD
-                </h2>
-            </div>
+                    {/* School Motto */}
+                    {report.schoolMotto && (
+                        <div className="flex justify-center mb-4">
+                        <p className="text-sm italic font-medium text-white bg-white/20 backdrop-blur-sm border border-white/30 py-2 px-6 rounded-full shadow-lg">
+                            "{report.schoolMotto}"
+                        </p>
+                        </div>
+                    )}
 
-            <div className="grid grid-cols-3 gap-x-4 gap-y-1 mb-2 text-[9px] border-b pb-2">
-                <div className="flex"><span className="font-semibold w-24">Name:</span><span className="flex-1">{report.studentName}</span></div>
-                <div className="flex"><span className="font-semibold w-20">Adm. No:</span><span className="flex-1">{report.studentId}</span></div>
-                <div className="flex"><span className="font-semibold w-16">Class:</span><span className="flex-1">{report.className}</span></div>
-                <div className="flex"><span className="font-semibold w-24">Term:</span><span className="flex-1">{report.term}</span></div>
-                <div className="flex"><span className="font-semibold w-20">Session:</span><span className="flex-1">{report.session}</span></div>
-            </div>
-            
-            {report.attendance && (
-            <div className="grid grid-cols-3 gap-2 mb-2 text-[9px]">
-                <div className="bg-gray-50 p-1 text-center border"><p className="text-gray-600">School Opened</p><p className="text-base font-bold text-green-700">{report.attendance.totalDays}</p></div>
-                <div className="bg-gray-50 p-1 text-center border"><p className="text-gray-600">Times Present</p><p className="text-base font-bold text-blue-600">{report.attendance.presentDays}</p></div>
-                <div className="bg-gray-50 p-1 text-center border"><p className="text-gray-600">Times Absent</p><p className="text-base font-bold text-red-600">{report.attendance.absentDays}</p></div>
-            </div>
-            )}
-            
-            <div className="mb-2">
-                <h3 className="font-bold text-green-700 text-[10px] mb-1 bg-green-50 px-2 py-0.5">ACADEMIC PERFORMANCE</h3>
-                <table className="w-full text-[9px] border-collapse">
-                    <thead>
-                    <tr className="bg-green-700 text-white">
-                        <th className="border border-green-600 p-1 text-left align-middle">Subject</th>
-                        <th className="border border-green-600 p-1 align-middle">CA1<br/>(20)</th>
-                        <th className="border border-green-600 p-1 align-middle">CA2<br/>(20)</th>
-                        <th className="border border-green-600 p-1 align-middle">Exam<br/>(60)</th>
-                        <th className="border border-green-600 p-1 align-middle">Total<br/>(100)</th>
-                        <th className="border border-green-600 p-1 align-middle">Grade</th>
-                        <th className="border border-green-600 p-1 align-middle">Remark</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {report.grades.map((subject, index) => (
-                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                        <td className="border border-gray-300 p-1 font-semibold align-middle">{subject.subject}</td>
-                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.ca1 ?? 'N/A'}</td>
-                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.ca2 ?? 'N/A'}</td>
-                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.exam ?? 'N/A'}</td>
-                        <td className="border border-gray-300 p-1 text-center align-middle">
-                            <div className="flex items-center justify-center gap-1">
-                                <span className="font-bold">{subject.total}</span>
-                                <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                <div 
-                                    className={cn("h-full", getGradeColor(subject.total))}
-                                    style={{ width: `${subject.total}%` }}
-                                />
-                                </div>
-                            </div>
-                        </td>
-                        <td className="border border-gray-300 p-1 text-center font-bold text-green-700 align-middle">{subject.grade}</td>
-                        <td className="border border-gray-300 p-1 text-center align-middle">{subject.remark}</td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-                <div className="flex justify-between items-center mt-2">
-                  <div className="flex gap-1 text-[9px]">
-                      <div className="bg-green-50 p-1 text-center border border-green-200 min-w-[70px]"><p className="text-gray-600">Total</p><p className="text-sm font-bold text-green-700">{report.totalScore}</p></div>
-                      <div className="bg-blue-50 p-1 text-center border border-blue-200 min-w-[70px]"><p className="text-gray-600">Average</p><p className="text-sm font-bold text-blue-700">{report.averageScore.toFixed(1)}</p></div>
-                      <div className="bg-purple-50 p-1 text-center border border-purple-200 min-w-[70px]"><p className="text-gray-600">Out of</p><p className="text-sm font-bold text-purple-700">{report.totalStudents}</p></div>
-                  </div>
-                  <div className="p-1">
-                    <PositionBadge position={report.position} />
-                  </div>
+                    {/* Report Title Card */}
+                    <div className="bg-white rounded-xl shadow-xl p-4 mt-6">
+                        <div className="flex items-center justify-center gap-3">
+                        <div className="w-1 h-8 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
+                        <h2 className="text-xl font-black text-gray-800 tracking-wide uppercase">
+                            Terminal Report Card
+                        </h2>
+                        <div className="w-1 h-8 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-             <div className="mb-2 text-[8px]">
-              <h3 className="font-bold text-green-700 text-[10px] mb-1">GRADING SCALE</h3>
-              <div className="flex gap-1 flex-wrap">
-                  <span className="bg-gray-50 px-1 py-0.5 border">A: 70-100 (Excellent)</span>
-                  <span className="bg-gray-50 px-1 py-0.5 border">B: 60-69 (Good)</span>
-                  <span className="bg-gray-50 px-1 py-0.5 border">C: 50-59 (Credit)</span>
-                  <span className="bg-gray-50 px-1 py-0.5 border">D: 45-49 (Pass)</span>
-                  <span className="bg-gray-50 px-1 py-0.5 border">F: 0-44 (Fail)</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-                <div>
-                    <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">AFFECTIVE DOMAIN</h3>
+
+             {/* Student Info Section - Modern Cards */}
+            <div className="px-6 py-6 bg-white">
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Student Name</p>
+                    <p className="text-lg font-bold text-gray-800">{report.studentName}</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Class</p>
+                    <p className="text-lg font-bold text-gray-800">{report.className}</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Term</p>
+                    <p className="text-lg font-bold text-gray-800">{report.term}</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Session</p>
+                    <p className="text-lg font-bold text-gray-800">{report.session}</p>
+                </div>
+                </div>
+                
+                <div className="mb-2">
+                    <h3 className="font-bold text-green-700 text-[10px] mb-1 bg-green-50 px-2 py-0.5">ACADEMIC PERFORMANCE</h3>
                     <table className="w-full text-[9px] border-collapse">
-                        <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-1 text-left align-middle">Trait</th><th className="border border-green-600 p-1 align-middle">Rate</th><th className="border border-green-600 p-1 align-middle">Remark</th></tr></thead>
+                        <thead>
+                        <tr className="bg-green-700 text-white">
+                            <th className="border border-green-600 p-1 text-left align-middle">Subject</th>
+                            <th className="border border-green-600 p-1 align-middle">CA1<br/>(20)</th>
+                            <th className="border border-green-600 p-1 align-middle">CA2<br/>(20)</th>
+                            <th className="border border-green-600 p-1 align-middle">Exam<br/>(60)</th>
+                            <th className="border border-green-600 p-1 align-middle">Total<br/>(100)</th>
+                            <th className="border border-green-600 p-1 align-middle">Grade</th>
+                            <th className="border border-green-600 p-1 align-middle">Remark</th>
+                        </tr>
+                        </thead>
                         <tbody>
-                        {affectiveTraits.map((trait, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-1 align-middle">{trait.name}</td><td className="border border-gray-300 p-1 text-center font-bold align-middle">{trait.rating}</td><td className="border border-gray-300 p-1 text-center align-middle">{getRatingText(trait.rating)}</td></tr>
+                        {report.grades.map((subject, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="border border-gray-300 p-1 font-semibold align-middle">{subject.subject}</td>
+                            <td className="border border-gray-300 p-1 text-center align-middle">{subject.ca1 ?? 'N/A'}</td>
+                            <td className="border border-gray-300 p-1 text-center align-middle">{subject.ca2 ?? 'N/A'}</td>
+                            <td className="border border-gray-300 p-1 text-center align-middle">{subject.exam ?? 'N/A'}</td>
+                            <td className="border border-gray-300 p-1 text-center align-middle">
+                                <div className="flex items-center justify-center gap-1">
+                                    <span className="font-bold">{subject.total}</span>
+                                    <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                        className={cn("h-full", getGradeColor(subject.total))}
+                                        style={{ width: `${subject.total}%` }}
+                                    />
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="border border-gray-300 p-1 text-center font-bold text-green-700 align-middle">{subject.grade}</td>
+                            <td className="border border-gray-300 p-1 text-center align-middle">{subject.remark}</td>
+                            </tr>
                         ))}
                         </tbody>
                     </table>
+                    <div className="flex justify-between items-center mt-2">
+                    <div className="flex gap-1 text-[9px]">
+                        <div className="bg-green-50 p-1 text-center border border-green-200 min-w-[70px]"><p className="text-gray-600">Total</p><p className="text-sm font-bold text-green-700">{report.totalScore}</p></div>
+                        <div className="bg-blue-50 p-1 text-center border border-blue-200 min-w-[70px]"><p className="text-gray-600">Average</p><p className="text-sm font-bold text-blue-700">{report.averageScore.toFixed(1)}</p></div>
+                        <div className="bg-purple-50 p-1 text-center border border-purple-200 min-w-[70px]"><p className="text-gray-600">Out of</p><p className="text-sm font-bold text-purple-700">{report.totalStudents}</p></div>
+                    </div>
+                    <div className="p-1">
+                        <PositionBadge position={report.position} />
+                    </div>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">PSYCHOMOTOR DOMAIN</h3>
-                    <table className="w-full text-[9px] border-collapse">
-                    <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-1 text-left align-middle">Skill</th><th className="border border-green-600 p-1 align-middle">Rate</th><th className="border border-green-600 p-1 align-middle">Remark</th></tr></thead>
-                    <tbody>
-                        {psychomotorSkills.map((skill, index) => (
-                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-1 align-middle">{skill.name}</td><td className="border border-gray-300 p-1 text-center font-bold align-middle">{skill.rating}</td><td className="border border-gray-300 p-1 text-center align-middle">{getRatingText(skill.rating)}</td></tr>
-                        ))}
-                    </tbody>
-                    </table>
-                    <p className="text-[7px] text-gray-600 mt-0.5 italic">Rating: 5-Excellent, 4-Very Good, 3-Good, 2-Fair, 1-Poor</p>
+                <div className="mb-2 text-[8px]">
+                <h3 className="font-bold text-green-700 text-[10px] mb-1">GRADING SCALE</h3>
+                <div className="flex gap-1 flex-wrap">
+                    <span className="bg-gray-50 px-1 py-0.5 border">A: 70-100 (Excellent)</span>
+                    <span className="bg-gray-50 px-1 py-0.5 border">B: 60-69 (Good)</span>
+                    <span className="bg-gray-50 px-1 py-0.5 border">C: 50-59 (Credit)</span>
+                    <span className="bg-gray-50 px-1 py-0.5 border">D: 45-49 (Pass)</span>
+                    <span className="bg-gray-50 px-1 py-0.5 border">F: 0-44 (Fail)</span>
                 </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">AFFECTIVE DOMAIN</h3>
+                        <table className="w-full text-[9px] border-collapse">
+                            <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-1 text-left align-middle">Trait</th><th className="border border-green-600 p-1 align-middle">Rate</th><th className="border border-green-600 p-1 align-middle">Remark</th></tr></thead>
+                            <tbody>
+                            {affectiveTraits.map((trait, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-1 align-middle">{trait.name}</td><td className="border border-gray-300 p-1 text-center font-bold align-middle">{trait.rating}</td><td className="border border-gray-300 p-1 text-center align-middle">{getRatingText(trait.rating)}</td></tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-green-700 text-[9px] mb-1 bg-green-50 px-1 py-0.5">PSYCHOMOTOR DOMAIN</h3>
+                        <table className="w-full text-[9px] border-collapse">
+                        <thead><tr className="bg-green-700 text-white"><th className="border border-green-600 p-1 text-left align-middle">Skill</th><th className="border border-green-600 p-1 align-middle">Rate</th><th className="border border-green-600 p-1 align-middle">Remark</th></tr></thead>
+                        <tbody>
+                            {psychomotorSkills.map((skill, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border border-gray-300 p-1 align-middle">{skill.name}</td><td className="border border-gray-300 p-1 text-center font-bold align-middle">{skill.rating}</td><td className="border border-gray-300 p-1 text-center align-middle">{getRatingText(skill.rating)}</td></tr>
+                            ))}
+                        </tbody>
+                        </table>
+                        <p className="text-[7px] text-gray-600 mt-0.5 italic">Rating: 5-Excellent, 4-Very Good, 3-Good, 2-Fair, 1-Poor</p>
+                    </div>
+                </div>
+                <div className="mb-2">
+                    <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.formTeacherComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
+                    <div><h3 className="font-bold text-green-700 text-[9px] mb-0.5">PRINCIPAL'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.principalComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
+                </div>
+                <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: TBA</p></div>
             </div>
-            <div className="mb-2">
-                <div className="mb-1"><h3 className="font-bold text-green-700 text-[9px] mb-0.5">FORM TEACHER'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.formTeacherComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
-                <div><h3 className="font-bold text-green-700 text-[9px] mb-0.5">PRINCIPAL'S COMMENT</h3><div className="bg-gray-50 p-1 border text-[8px] min-h-[30px]"><p>{report.principalComment}</p></div><p className="text-[7px] text-gray-600 mt-0.5">Signature: _________________ Date: _______</p></div>
-            </div>
-            <div className="text-center bg-green-700 text-white py-1 text-[9px]"><p className="font-bold">Next Term Begins: TBA</p></div>
         </div>
     )
 };
