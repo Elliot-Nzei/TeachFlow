@@ -378,20 +378,22 @@ export default function TransferPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmDialog.action === 'accept' ? 'Accept Transfer?' : 'Reject Transfer?'}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog.action === 'accept' ? (
-                <>
-                  You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>. This data will be copied to your account.
-                  {confirmDialog.transfer?.dataType === 'Class' && (
-                    <div className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
-                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">This will copy the class and all its students into your records.</span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>Are you sure you want to reject this transfer? This action cannot be undone.</>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                {confirmDialog.action === 'accept' ? (
+                  <>
+                    You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>. This data will be copied to your account.
+                    {confirmDialog.transfer?.dataType === 'Class' && (
+                      <span className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
+                        <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">This will copy the class and all its students into your records.</span>
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>Are you sure you want to reject this transfer? This action cannot be undone.</>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
