@@ -732,7 +732,7 @@ export default function LessonGeneratorPage() {
             top: 0;
             width: 100%;
             padding: 2rem;
-            background: white;
+            background: white !important;
           }
           #note-content {
             background: white !important;
