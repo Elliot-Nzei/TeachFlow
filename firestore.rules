@@ -1,59 +1,168 @@
+/**
+ * @fileoverview Firestore Security Rules for the Nigerian School Management System.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user-specific data,
+ * allowing users to manage their own data while restricting access to others' data.
+ * Public read access is granted where explicitly specified.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information and acts as the root for user-specific data.
+ * - /users/{userId}/students/{studentId}: Stores student records associated with a user.
+ * - /users/{userId}/classes/{classId}: Stores class data created by the user.
+ * - /users/{userId}/grades/{gradeId}: Stores grades data created by the user.
+ * - /users/{userId}/attendance/{attendanceId}: Stores attendance data created by the user.
+ * - /users/{userId}/traits/{traitId}: Stores traits data created by the user.
+ * - /users/{userId}/incomingTransfers/{transferId}: Stores incoming data transfer requests for a user.
+ * - /users/{userId}/outgoingTransfers/{transferId}: Stores a log of outgoing data transfers initiated by a user.
+ *
+ * Key Security Decisions:
+ * - Users can only create, read, update, and delete data under their own /users/{userId} path.
+ * - Listing of documents is generally allowed within a user's own data tree.
+ * - Data validation is relaxed to facilitate rapid prototyping, focusing on ownership and relational integrity.
+ *
+ * Denormalization for Authorization:
+ *  - The rules rely on the `request.auth.uid` to match the `{userId}` parameter in the path,
+ *    ensuring that users can only access their own data.
+ *    No external `get()` calls are needed for authorization.
+ *
+ * Structural Segregation:
+ *  - All user-specific data is stored under the /users/{userId} path, ensuring clear separation
+ *    between different users' data.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * @description Checks if the user is signed in.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the authenticated user's ID matches the provided userId.
+     */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
     /**
-     * @description Controls access to student documents under a user's profile.
-     * @path /databases/{database}/documents/users/{userId}/students/{studentId}
-     * @allow (list) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can list students under their own user ID.
-     * @deny (list) User 'someOtherUserId' cannot list students under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
-     * @allow (create) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can create a student document under their own user ID.
-     * @deny (update) User 'someOtherUserId' cannot update a student document under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
-     * @principle Enforces document ownership for writes and restricts listing to owners.
+     * @description Enforces that the user ID in the path matches the user ID in the request.
+     * @path /users/{userId}
+     * @allow (create) - User with UID 'user123' can create their own user document at /users/user123.
+     * @deny (create) - User with UID 'user123' cannot create a user document for /users/otherUser.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Manages student records under a user's profile.
+     * @path /users/{userId}/students/{studentId}
+     * @allow (create) - User with UID 'user123' can create a student record under /users/user123/students.
+     * @deny (create) - User with UID 'user123' cannot create a student record under /users/otherUser/students.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/students/{studentId} {
-      allow read: if isSignedIn() && isOwner(userId);
-      allow write: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Controls access to incoming transfer requests for a user.
-     * @path /databases/{database}/documents/users/{userId}/incomingTransfers/{transferId}
-     * @allow (get) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can get incoming transfer requests for their user ID.
-     * @deny (list) User 'someOtherUserId' cannot list incoming transfer requests under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
-     * @allow (create) Only the server can create transfer requests.  The document must match the path.
-     * @deny (update) User 'someOtherUserId' cannot update an incoming transfer request for user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
-     * @principle Enforces document ownership for reads and writes.
+     * @description Manages class records under a user's profile.
+     * @path /users/{userId}/classes/{classId}
+     * @allow (create) - User with UID 'user123' can create a class record under /users/user123/classes.
+     * @deny (create) - User with UID 'user123' cannot create a class record under /users/otherUser/classes.
+     * @principle Restricts access to a user's own data tree.
      */
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow read: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && request.resource.data.toUserId == userId;
-      allow update: if false;
-      allow delete: if false;
+    match /users/{userId}/classes/{classId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Controls access to outgoing transfer requests for a user.
-     * @path /databases/{database}/documents/users/{userId}/outgoingTransfers/{transferId}
-     * @allow (get) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can get outgoing transfer requests for their user ID.
-     * @deny (list) User 'someOtherUserId' cannot list outgoing transfer requests under user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
-     * @allow (create) User 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1' can create an outgoing transfer request under their own user ID. The document must match the path.
-     * @deny (update) User 'someOtherUserId' cannot update an outgoing transfer request for user ID 'fDtc3Ro9L8VzqNSiXQtYhGEWYef1'.
-     * @principle Enforces document ownership for reads and writes.
+     * @description Manages grade records under a user's profile.
+     * @path /users/{userId}/grades/{gradeId}
+     * @allow (create) - User with UID 'user123' can create a grade record under /users/user123/grades.
+     * @deny (create) - User with UID 'user123' cannot create a grade record under /users/otherUser/grades.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/grades/{gradeId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Manages attendance records under a user's profile.
+     * @path /users/{userId}/attendance/{attendanceId}
+     * @allow (create) - User with UID 'user123' can create an attendance record under /users/user123/attendance.
+     * @deny (create) - User with UID 'user123' cannot create an attendance record under /users/otherUser/attendance.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/attendance/{attendanceId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+        /**
+     * @description Manages traits records under a user's profile.
+     * @path /users/{userId}/traits/{traitId}
+     * @allow (create) - User with UID 'user123' can create a traits record under /users/user123/traits.
+     * @deny (create) - User with UID 'user123' cannot create a traits record under /users/otherUser/traits.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/traits/{traitId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+     /**
+      * @description Manages incoming data transfer requests for a user.
+      * @path /users/{userId}/incomingTransfers/{transferId}
+      * @allow (create) - User with UID 'user123' can create an incoming transfer request under /users/user123/incomingTransfers.
+      * @deny (create) - User with UID 'user123' cannot create an incoming transfer request under /users/otherUser/incomingTransfers.
+      */
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Manages outgoing data transfer requests initiated by a user.
+     * @path /users/{userId}/outgoingTransfers/{transferId}
+     * @allow (create) - User with UID 'user123' can create an outgoing transfer request under /users/user123/outgoingTransfers.
+     * @deny (create) - User with UID 'user123' cannot create an outgoing transfer request under /users/otherUser/outgoingTransfers.
      */
     match /users/{userId}/outgoingTransfers/{transferId} {
-      allow read: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.fromUserId == userId;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
   }
 }
