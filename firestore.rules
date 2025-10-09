@@ -1,150 +1,205 @@
-/**
- * @file Firestore Security Rules for the Nigerian School Management System.
- *
- * @Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-specific data and
- * allows public read access with owner-only writes for some top-level collections.
- * It prioritizes security and data isolation, ensuring that users can only
- * access data explicitly associated with their accounts.
- *
- * @Data Structure:
- * The database is structured with user-specific data nested under `/users/{userId}`.
- * Top-level collections are used for data that may be publicly accessible for reads.
- *
- * @Key Security Decisions:
- * - Users can only list data under their own user ID.
- * - All write operations are strictly controlled and require authentication.
- * - Flexible data validation is enabled to allow rapid prototyping.
- * - Denormalization is preferred for authorization to minimize reads and improve performance.
- * - Listing all users is forbidden.
- *
- * @Denormalization for Authorization:
- * No specific denormalization is required based on the current data model. However, if
- * cross-collection authorization is needed in the future (e.g., checking a user's role in a
- * different document to authorize access to another), consider denormalizing the necessary
- * role information directly onto the document being secured.
- *
- * @Structural Segregation:
- * The application uses structural segregation by placing private user data under the
- * `/users/{userId}` collection and potentially using top-level collections for public data.
- * This approach ensures that listing operations on public collections do not expose any
- * private user information.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Checks if the current user is signed in.
-     * @example isSignedIn() == true if request.auth.uid is 'some_user_id'
-     */
-    function isSignedIn() {
+    
+    // Helper functions
+    function isAuthenticated() {
       return request.auth != null;
     }
-
-    /**
-     * @description Checks if the current user is the owner of the document, based on the provided userId.
-     * @param {string} userId - The user ID to compare against request.auth.uid.
-     * @example isOwner('user123') == true if request.auth.uid is 'user123'
-     */
+    
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
-
-    /**
-     * @description Checks if the current user is the owner of the existing document.
-     * @param {string} userId - The user ID to compare against the document's ownerId.
-     * @example isExistingOwner('user123') == true if request.auth.uid is 'user123' and the document exists
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
     }
-
+    
+    function hasUserData() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    
+    // User profile rules
     match /users/{userId} {
-      /**
-       * @description Controls access to user profile documents.
-       * @path /users/{userId}
-       * @allow (create) - User with UID 'user123' can create their own profile document at /users/user123 if the document's id matches their UID.
-       * @allow (get) - User with UID 'user123' can read their own profile document at /users/user123.
-       * @allow (update) - User with UID 'user123' can update their own profile document at /users/user123.
-       * @allow (delete) - User with UID 'user123' can delete their own profile document at /users/user123.
-       * @deny (create) - User with UID 'user456' cannot create a profile document at /users/user123.
-       * @deny (get) - User with UID 'user456' cannot read the profile document at /users/user123.
-       * @deny (update) - User with UID 'user456' cannot update the profile document at /users/user23.
-       * @deny (delete) - User with UID 'user456' cannot delete the profile document at /users/user123.
-       * @principle Enforces document ownership for all operations.
-       */
-      allow create: if isOwner(userId) && request.resource.data.userCode == userId;
-      allow get: if isOwner(userId);
-      allow update: if isExistingOwner(userId) && request.resource.data.userCode == resource.data.userCode;
-      allow delete: if isExistingOwner(userId);
-      allow list: if false;
-    }
-
-        match /users/{userId}/students/{studentId} {
-            /**
-             * @description Controls access to student documents within a user's subcollection.
-             * @path /users/{userId}/students/{studentId}
-             * @allow (create) - User with UID 'user123' can create a student document under /users/user123/students.
-             * @allow (get) - User with UID 'user123' can read a student document under /users/user123/students.
-             * @allow (update) - User with UID 'user123' can update a student document under /users/user123/students.
-             * @allow (delete) - User with UID 'user123' can delete a student document under /users/user123/students.
-             * @allow (list) - User with UID 'user123' can list student documents under /users/user123/students.
-             * @deny (create) - User with UID 'user456' cannot create a student document under /users/user123/students.
-             * @deny (get) - User with UID 'user456' cannot read a student document under /users/user123/students.
-             * @deny (update) - User with UID 'user456' cannot update a student document under /users/user123/students.
-             * @deny (delete) - User with UID 'user456' cannot delete a student document under /users/user123/students.
-             * @principle Restricts access to a user's own data tree.
-             */
-            allow create: if isOwner(userId);
-            allow get: if isOwner(userId);
-            allow update: if isExistingOwner(userId);
-            allow delete: if isExistingOwner(userId);
-            allow list: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+      
+      // User's incoming transfers subcollection
+      match /incomingTransfers/{transferId} {
+        // User can read their own incoming transfers
+        allow read: if isOwner(userId);
+        
+        // Any authenticated user can create an incoming transfer for another user
+        allow create: if isAuthenticated() && 
+                        request.resource.data.toUserId == userId &&
+                        request.resource.data.fromUserId == request.auth.uid;
+        
+        // User can update their own incoming transfers (to accept/reject)
+        allow update: if isOwner(userId) && 
+                        resource.data.status == 'pending' &&
+                        request.resource.data.status in ['accepted', 'rejected'];
+        
+        // Allow deletion of processed transfers
+        allow delete: if isOwner(userId) && 
+                        resource.data.status in ['accepted', 'rejected', 'cancelled'];
+      }
+      
+      // User's outgoing transfers subcollection
+      match /outgoingTransfers/{transferId} {
+        // User can read their own outgoing transfers
+        allow read: if isOwner(userId);
+        
+        // User can create their own outgoing transfers
+        allow create: if isOwner(userId) && 
+                        request.resource.data.fromUserId == request.auth.uid;
+        
+        // Allow updates to outgoing transfers
+        // This includes status updates from the recipient's actions
+        allow update: if isOwner(userId) || 
+                        (isAuthenticated() && 
+                         resource.data.toUserId == request.auth.uid &&
+                         resource.data.status == 'pending' &&
+                         request.resource.data.status in ['accepted', 'rejected']);
+        
+        // Allow deletion of processed transfers
+        allow delete: if isOwner(userId) && 
+                        resource.data.status in ['accepted', 'rejected', 'cancelled'];
+      }
+      
+      // User's subjects subcollection
+      match /subjects/{subjectId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // User's classes subcollection
+      match /classes/{classId} {
+        allow read: if isOwner(userId) || 
+                       (isAuthenticated() && 
+                        exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(resource.id)).data.status == 'pending');
+        allow write: if isOwner(userId);
+        
+        // Nested students subcollection
+        match /students/{studentId} {
+          allow read: if isOwner(userId);
+          allow write: if isOwner(userId);
         }
-
-    match /users/{userId}/incomingTransfers/{transferId} {
-      /**
-       * @description Controls access to incoming data transfer requests for a user.
-       * @path /users/{userId}/incomingTransfers/{transferId}
-       * @allow (create) - User with UID 'user123' can create a transfer request under /users/user123/incomingTransfers.
-       * @allow (get) - User with UID 'user123' can read a transfer request under /users/user123/incomingTransfers.
-       * @allow (update) - User with UID 'user123' can update a transfer request under /users/user123/incomingTransfers.
-       * @allow (delete) - User with UID 'user123' can delete a transfer request under /users/user123/incomingTransfers.
-       * @allow (list) - User with UID 'user123' can list transfer requests under /users/user123/incomingTransfers.
-       * @deny (create) - User with UID 'user456' cannot create a transfer request under /users/user123/incomingTransfers.
-       * @deny (get) - User with UID 'user456' cannot read a transfer request under /users/user123/incomingTransfers.
-       * @deny (update) - User with UID 'user456' cannot update a transfer request under /users/user123/incomingTransfers.
-       * @deny (delete) - User with UID 'user456' cannot delete a transfer request under /users/user123/incomingTransfers.
-       * @principle Restricts access to a user's own data tree.
-       */
-      allow create: if isOwner(userId) && request.resource.data.toUserId == userId;
-      allow get: if isOwner(userId);
-      allow update: if isExistingOwner(userId) && request.resource.data.toUserId == userId;
-      allow delete: if isExistingOwner(userId);
-      allow list: if isOwner(userId);
+      }
+      
+      // User's students subcollection (direct)
+      match /students/{studentId} {
+        allow read: if isOwner(userId) || 
+                       (isAuthenticated() && 
+                        exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(resource.id)).data.status == 'pending');
+        allow write: if isOwner(userId);
+      }
+      
+      // User's assessments subcollection
+      match /assessments/{assessmentId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // User's gradingSchemes subcollection
+      match /gradingSchemes/{schemeId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // User's academicSessions subcollection
+      match /academicSessions/{sessionId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // Allow any other subcollection under users for extensibility
+      match /{subcollection=**} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
     }
-
-    match /users/{userId}/outgoingTransfers/{transferId} {
-      /**
-       * @description Controls access to outgoing data transfer requests initiated by a user.
-       * @path /users/{userId}/outgoingTransfers/{transferId}
-       * @allow (create) - User with UID 'user123' can create an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @allow (get) - User with UID 'user123' can read an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @allow (update) - User with UID 'user123' can update an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @allow (delete) - User with UID 'user123' can delete an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @allow (list) - User with UID 'user123' can list outgoing transfer requests under /users/user123/outgoingTransfers.
-       * @deny (create) - User with UID 'user456' cannot create an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @deny (get) - User with UID 'user456' cannot read an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @deny (update) - User with UID 'user456' cannot update an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @deny (delete) - User with UID 'user456' cannot delete an outgoing transfer request under /users/user123/outgoingTransfers.
-       * @principle Restricts access to a user's own data tree.
-       */
-      allow create: if isOwner(userId) && request.resource.data.fromUserId == userId;
-      allow get: if isOwner(userId);
-      allow update: if isExistingOwner(userId) && request.resource.data.fromUserId == userId;
-      allow delete: if isExistingOwner(userId);
-      allow list: if isOwner(userId);
+    
+    // School rules
+    match /schools/{schoolId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                     request.resource.data.adminId == request.auth.uid;
+      
+      // School subcollections
+      match /{subcollection=**} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() &&
+                       get(/databases/$(database)/documents/schools/$(schoolId)).data.adminId == request.auth.uid;
+      }
+    }
+    
+    // Public data collections
+    match /publicData/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Templates collection (read-only for authenticated users)
+    match /templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+      
+      match /{subcollection=**} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+    
+    // System configuration (admin only)
+    match /config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                     request.auth.token.admin == true;
+    }
+    
+    // Shared resources
+    match /shared/{resourceId} {
+      allow read: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.uid in resource.data.sharedWith
+      );
+      allow create: if isAuthenticated() && 
+                      request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+                      resource.data.ownerId == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+                      resource.data.ownerId == request.auth.uid;
+    }
+    
+    // Activity logs (write-only for users, read for owner)
+    match /activityLogs/{logId} {
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Notifications
+    match /notifications/{userId}/{notificationId} {
+      allow read: if isOwner(userId);
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId) && 
+                      request.resource.data.keys().hasAll(['read']) &&
+                      request.resource.data.read is bool;
+      allow delete: if isOwner(userId);
+    }
+    
+    // Default deny for everything else
+    match /{document=**} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }
