@@ -7,6 +7,8 @@ import { doc } from 'firebase/firestore';
 type Settings = {
     name: string;
     schoolName: string;
+    schoolMotto: string;
+    schoolAddress: string;
     email: string;
     profilePicture: string;
     currentTerm: 'First Term' | 'Second Term' | 'Third Term';
@@ -57,3 +59,5 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         </SettingsContext.Provider>
     );
 };
+
+    

@@ -136,6 +136,14 @@ export default function SettingsPage() {
                         <Input id="schoolName" value={settings?.schoolName || ''} onChange={handleInputChange} />
                     </div>
                     <div className="space-y-2">
+                        <Label htmlFor="schoolMotto">School Motto</Label>
+                        <Input id="schoolMotto" value={settings?.schoolMotto || ''} onChange={handleInputChange} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="schoolAddress">School Address</Label>
+                        <Input id="schoolAddress" value={settings?.schoolAddress || ''} onChange={handleInputChange} />
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
                         <Input id="email" value={settings?.email || ''} disabled />
                     </div>
@@ -192,3 +200,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
