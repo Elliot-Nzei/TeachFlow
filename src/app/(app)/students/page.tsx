@@ -196,7 +196,7 @@ export default function StudentsPage() {
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {isLoadingStudents ? Array.from({length: 12}).map((_, i) => (
               <Card key={i} className="w-40 h-40"><CardContent className="h-full bg-muted rounded-lg animate-pulse" /></Card>
-          )) : filteredStudents?.map((student) => (
+          )) : filteredStudents?.map((student, index) => (
             <SheetTrigger asChild key={student.id}>
               <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
                 <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
@@ -207,6 +207,7 @@ export default function StudentsPage() {
                         alt={student.name} 
                         fill
                         sizes="160px"
+                        priority={index < 12}
                         className="object-cover transition-transform duration-300 group-hover:scale-110"
                       />
                     )}
