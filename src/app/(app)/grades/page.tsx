@@ -142,7 +142,7 @@ export default function GradesPage() {
         <div className="hidden md:block">
             <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
         </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-4 mb-4 md:hidden">
             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
@@ -161,25 +161,25 @@ export default function GradesPage() {
         </div>
         {selectedClass ? (
           <Card>
-            <CardHeader className="flex flex-row justify-between items-center">
+            <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-4">
                 <div>
                     <CardTitle className="font-headline">{selectedClass.name}</CardTitle>
                     <CardDescription>Manage grades for this class.</CardDescription>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowGrades(!showGrades)}>
+              <div className="flex gap-2 w-full md:w-auto">
+                <Button variant="outline" onClick={() => setShowGrades(!showGrades)} className="flex-1 md:flex-initial">
                     <View className="mr-2 h-4 w-4" />
                     {showGrades ? 'Hide Grades' : 'View Grades'}
                 </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                      <Button>
+                      <Button className="flex-1 md:flex-initial">
                           <PlusCircle className="mr-2 h-4 w-4" /> Add / Edit Grades
                       </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl">
+                  <DialogContent className="max-w-3xl w-[95vw]">
                       <DialogHeader>
                           <DialogTitle>Add/Edit Grades for {selectedClass.name}</DialogTitle>
                           <DialogDescription>Select a subject to enter scores for all students.</DialogDescription>
@@ -202,32 +202,34 @@ export default function GradesPage() {
                               
                               {selectedSubject && (
                                   <ScrollArea className="h-72 mt-4 border rounded-md">
-                                  <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-2/5">Student Name</TableHead>
-                                            <TableHead>CA1 (20)</TableHead>
-                                            <TableHead>CA2 (20)</TableHead>
-                                            <TableHead>Exam (60)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {gradeInputs.map((input) => (
-                                          <TableRow key={input.studentId}>
-                                              <TableCell className="font-medium">{input.studentName}</TableCell>
-                                              <TableCell>
-                                                  <Input type="number" min="0" max="20" value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} />
-                                              </TableCell>
-                                               <TableCell>
-                                                  <Input type="number" min="0" max="20" value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} />
-                                              </TableCell>
-                                               <TableCell>
-                                                  <Input type="number" min="0" max="60" value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} />
-                                              </TableCell>
-                                          </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
+                                  <div className="relative w-full overflow-auto">
+                                      <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="min-w-[150px] sticky left-0 bg-background">Student Name</TableHead>
+                                                <TableHead className="min-w-[100px]">CA1 (20)</TableHead>
+                                                <TableHead className="min-w-[100px]">CA2 (20)</TableHead>
+                                                <TableHead className="min-w-[100px]">Exam (60)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {gradeInputs.map((input) => (
+                                              <TableRow key={input.studentId}>
+                                                  <TableCell className="font-medium sticky left-0 bg-background">{input.studentName}</TableCell>
+                                                  <TableCell>
+                                                      <Input type="number" min="0" max="20" value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} />
+                                                  </TableCell>
+                                                   <TableCell>
+                                                      <Input type="number" min="0" max="20" value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} />
+                                                  </TableCell>
+                                                   <TableCell>
+                                                      <Input type="number" min="0" max="60" value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} />
+                                                  </TableCell>
+                                              </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                  </div>
                                   </ScrollArea>
                               )}
                           </div>
@@ -252,30 +254,32 @@ export default function GradesPage() {
                           {subject}
                         </AccordionTrigger>
                         <AccordionContent>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Student Name</TableHead>
-                                <TableHead>CA1</TableHead>
-                                <TableHead>CA2</TableHead>
-                                <TableHead>Exam</TableHead>
-                                <TableHead>Total</TableHead>
-                                <TableHead className="text-right">Grade</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {subjectGrades.map((grade) => (
-                                <TableRow key={grade.id}>
-                                  <TableCell className="font-medium">{grade.studentName}</TableCell>
-                                  <TableCell>{grade.ca1}</TableCell>
-                                  <TableCell>{grade.ca2}</TableCell>
-                                  <TableCell>{grade.exam}</TableCell>
-                                  <TableCell>{grade.total}</TableCell>
-                                  <TableCell className="text-right font-bold">{grade.grade}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                          <div className="w-full overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="min-w-[150px]">Student Name</TableHead>
+                                    <TableHead>CA1</TableHead>
+                                    <TableHead>CA2</TableHead>
+                                    <TableHead>Exam</TableHead>
+                                    <TableHead>Total</TableHead>
+                                    <TableHead className="text-right">Grade</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {subjectGrades.map((grade) => (
+                                    <TableRow key={grade.id}>
+                                      <TableCell className="font-medium">{grade.studentName}</TableCell>
+                                      <TableCell>{grade.ca1}</TableCell>
+                                      <TableCell>{grade.ca2}</TableCell>
+                                      <TableCell>{grade.exam}</TableCell>
+                                      <TableCell>{grade.total}</TableCell>
+                                      <TableCell className="text-right font-bold">{grade.grade}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                          </div>
                         </AccordionContent>
                       </AccordionItem>
                     ))}
@@ -297,5 +301,3 @@ export default function GradesPage() {
     </div>
   );
 }
-
-    
