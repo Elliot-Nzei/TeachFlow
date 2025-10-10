@@ -14,6 +14,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { ToastAction } from "@/components/ui/toast";
 
 const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -59,6 +60,7 @@ export default function RegisterPage() {
                     variant: 'destructive',
                     title: 'Registration Failed',
                     description: 'This email is already in use. Please try another email or log in.',
+                    action: <ToastAction altText="Go to Login" onClick={() => router.push('/login')}>Go to Login</ToastAction>,
                 });
             } else {
                  toast({
