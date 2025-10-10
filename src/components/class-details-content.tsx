@@ -3,7 +3,7 @@
 import { useState, useMemo, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Users, UserPlus, GraduationCap, Loader2 } from 'lucide-react';
+import { BookOpen, Users, UserPlus, GraduationCap, Loader2, Search } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,6 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { getNextClassName } from '@/lib/utils';
+import { Input } from './ui/input';
 
 
 function ClassDetailsContent({ classId }: { classId: string }) {
@@ -37,6 +38,8 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   const { settings } = useContext(SettingsContext);
   const [isStudentPopoverOpen, setStudentPopoverOpen] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
 
   const classDocQuery = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid, 'classes', classId) : null), [firestore, user, classId]);
   const { data: classDetails, isLoading: isLoadingClass } = useDoc<Class>(classDocQuery);
@@ -50,6 +53,13 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   // Query for students NOT in any class, to make them available for adding
   const unassignedStudentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', '')) : null, [firestore, user]);
   const { data: unassignedStudents, isLoading: isLoadingUnassigned } = useCollection<Student>(unassignedStudentsQuery);
+
+  const filteredStudents = useMemo(() => {
+    if (!studentsInClass) return [];
+    return studentsInClass.filter(student =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [studentsInClass, searchTerm]);
 
   const handleAddStudentToClass = async (student: Student) => {
       if (!user || !classDetails) return;
@@ -195,51 +205,27 @@ function ClassDetailsContent({ classId }: { classId: string }) {
     <div className="p-6 space-y-8">
       {/* Students Section */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center">
-            <Users className="mr-2 h-5 w-5 text-muted-foreground" />
-            Students ({studentsInClass?.length ?? 0})
-          </h3>
-          <Popover open={isStudentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <UserPlus className="mr-2 h-4 w-4" /> Add Student
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[250px] p-0" align="end">
-              <Command>
-                <CommandInput placeholder="Find student..." />
-                <CommandList>
-                  <CommandEmpty>No unassigned students found.</CommandEmpty>
-                  <CommandGroup>
-                    {isLoadingUnassigned ? <CommandItem>Loading...</CommandItem> :
-                      unassignedStudents?.map(student => (
-                        <CommandItem
-                          key={student.id}
-                          value={student.name}
-                          onSelect={() => handleAddStudentToClass(student)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={student.avatarUrl} alt={student.name} />
-                              <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span>{student.name}</span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
+            <h3 className="text-lg font-semibold flex items-center">
+                <Users className="mr-2 h-5 w-5 text-muted-foreground" />
+                Students ({filteredStudents.length ?? 0})
+            </h3>
+            <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search students in class..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
         </div>
         <Card>
           <CardContent className="p-4">
             {isLoadingStudents ? <Skeleton className="h-40 w-full" /> :
               <div className="space-y-1">
-                {studentsInClass && studentsInClass.length > 0 ? (
-                  studentsInClass.map((student) => (
+                {filteredStudents && filteredStudents.length > 0 ? (
+                  filteredStudents.map((student) => (
                     <div key={student.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={student.avatarUrl} alt={student.name} />
@@ -250,7 +236,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
                   ))
                 ) : (
                   <div className="text-center text-sm text-muted-foreground py-8">
-                    No students have been added to this class yet.
+                    {searchTerm ? `No students found for "${searchTerm}".` : 'No students have been added to this class yet.'}
                   </div>
                 )}
               </div>
@@ -336,3 +322,5 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 }
 
 export default ClassDetailsContent;
+
+    
