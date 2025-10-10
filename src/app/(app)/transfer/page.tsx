@@ -112,14 +112,14 @@ export default function TransferPage() {
   }, [classes, students, lessonNotesHistory]);
   
   const fetchStudentSubcollections = async (studentIds: string[]) => {
-      if (studentIds.length === 0) return {};
-      const gradesQuery = query(collection(firestore, 'users', user!.uid, 'grades'), where('studentId', 'in', studentIds));
+      if (!user || studentIds.length === 0) return {};
+      const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIds));
       const gradesSnap = await getDocs(gradesQuery);
       
-      const attendanceQuery = query(collection(firestore, 'users', user!.uid, 'attendance'), where('studentId', 'in', studentIds));
+      const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds));
       const attendanceSnap = await getDocs(attendanceQuery);
       
-      const traitsQuery = query(collection(firestore, 'users', user!.uid, 'traits'), where('studentId', 'in', studentIds));
+      const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', 'in', studentIds));
       const traitsSnap = await getDocs(traitsQuery);
 
       return {
@@ -253,11 +253,13 @@ export default function TransferPage() {
                 if (studentQuerySnap.empty) {
                     const newStudentRef = doc(studentsRef);
                     // Don't set classId/className yet, will be done after class is processed
-                    batch.set(newStudentRef, { ...student, classId: '', className: '' }); 
+                    const { id, ...studentData } = student;
+                    batch.set(newStudentRef, { ...studentData, classId: '', className: '' }); 
                     studentDocId = newStudentRef.id;
                 } else {
                     const existingStudentRef = studentQuerySnap.docs[0].ref;
-                    batch.update(existingStudentRef, student); 
+                    const { id, ...studentData } = student;
+                    batch.update(existingStudentRef, studentData); 
                     studentDocId = existingStudentRef.id;
                 }
                 studentIdMap.set(student.id, studentDocId);
@@ -335,7 +337,8 @@ export default function TransferPage() {
           if (!dataArray) return;
           for (const item of dataArray) {
             const newItemStudentId = studentIdMap.get(item.studentId) || item.studentId;
-            const newItem = { ...item, studentId: newItemStudentId, id: undefined }; // Remove old ID
+            const { id, ...itemData } = item;
+            const newItem = { ...itemData, studentId: newItemStudentId };
 
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
             let uniqueQuery;
@@ -627,5 +630,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    
