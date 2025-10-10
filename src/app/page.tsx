@@ -138,7 +138,15 @@ export default function Home() {
                  <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
                  <div className="flex flex-col items-center gap-4">
                      <Avatar className="h-32 w-32 border-4 border-primary">
-                        <AvatarImage src="/img/my img.jpg" alt="Elliot Ekene Nzei" />
+                        {/* 
+                          DEVELOPER NOTE: 
+                          The image path below is a placeholder. To show your real image:
+                          1. Create a folder named 'img' inside the 'public' directory at the root of your project.
+                          2. Place your image file (e.g., 'my img.jpg') inside the 'public/img/' folder.
+                          3. Update the 'src' prop below to '/img/my img.jpg'.
+                          Next.js serves files from the 'public' directory automatically.
+                        */}
+                        <AvatarImage src="https://picsum.photos/seed/developer-profile/200/200" alt="Elliot Ekene Nzei" />
                         <AvatarFallback className="text-4xl">EN</AvatarFallback>
                      </Avatar>
                      <div className="space-y-1">
