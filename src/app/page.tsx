@@ -126,11 +126,14 @@ export default function Home() {
             <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl mb-8">
               Watch this short video to see how PeerPrep can transform your school's administration.
             </p>
-            <div className="mx-auto max-w-4xl aspect-video bg-muted rounded-xl flex items-center justify-center border border-dashed">
-              <div className="text-center text-muted-foreground">
-                <Video className="h-16 w-16 mx-auto mb-4" />
-                <p className="font-semibold">Video guide coming soon</p>
-              </div>
+            <div className="mx-auto max-w-4xl aspect-video bg-muted rounded-xl overflow-hidden border">
+              <iframe
+                className="w-full h-full"
+                src="https://drive.google.com/file/d/1SqSo7gEQ5nCNbuqKxBx6cCQJw-OXcDfY/preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title="PeerPrep Video Guide"
+              ></iframe>
             </div>
           </div>
         </section>
