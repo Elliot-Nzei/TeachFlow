@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Class, Grade, Student } from '@/lib/types';
-import { PlusCircle, View, PanelLeft } from 'lucide-react';
+import { PlusCircle, View, PanelLeft, Filter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassSidebar from '@/components/class-sidebar';
@@ -26,12 +26,17 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SettingsContext } from '@/contexts/settings-context';
+import { useToast } from '@/hooks/use-toast';
 
 type GradeInput = { studentId: string; studentName: string; avatarUrl: string; ca1: number | string; ca2: number | string; exam: number | string; };
 
 export default function GradesPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const { settings } = useContext(SettingsContext);
+  const { toast } = useToast();
+
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -39,16 +44,34 @@ export default function GradesPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [gradeInputs, setGradeInputs] = useState<GradeInput[]>([]);
 
+  const [filterTerm, setFilterTerm] = useState(settings?.currentTerm || '');
+  const [filterSession, setFilterSession] = useState(settings?.currentSession || '');
+
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
   
-  const gradesQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
-  const { data: grades } = useCollection<Grade>(gradesQuery);
+  const allGradesQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const { data: allGrades } = useCollection<Grade>(allGradesQuery);
+  
+  const uniqueSessions = useMemo(() => {
+    if (!allGrades) return settings?.currentSession ? [settings.currentSession] : [];
+    const sessions = new Set(allGrades.map(g => g.session));
+    if(settings?.currentSession) sessions.add(settings.currentSession);
+    return Array.from(sessions);
+  }, [allGrades, settings?.currentSession]);
+
+  const grades = useMemo(() => {
+    return (allGrades || []).filter(g => g.term === filterTerm && g.session === filterSession);
+  }, [allGrades, filterTerm, filterSession]);
 
   const handleSelectClass = (cls: Class) => {
     setSelectedClass(cls);
     setShowGrades(false);
     setIsSidebarOpen(false);
+    if (settings) {
+        setFilterTerm(settings.currentTerm);
+        setFilterSession(settings.currentSession);
+    }
   };
 
   const handleSubjectSelect = (subject: string) => {
@@ -79,7 +102,14 @@ export default function GradesPage() {
   
   const handleBulkAddGrades = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedClass || !selectedSubject || !user) return;
+    if (!selectedClass || !selectedSubject || !user || !settings?.currentTerm || !settings?.currentSession) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Information',
+            description: 'Cannot save grades without a selected class, subject, and current term/session in settings.',
+        });
+        return;
+    }
     
     const batch = writeBatch(firestore);
 
@@ -105,8 +135,8 @@ export default function GradesPage() {
             studentId: input.studentId,
             classId: selectedClass.id,
             subject: selectedSubject,
-            term: 'First Term', // Replace with dynamic data from settings context later
-            session: '2023/2024', // Replace with dynamic data from settings context later
+            term: settings.currentTerm,
+            session: settings.currentSession,
             ca1: ca1 || 0,
             ca2: ca2 || 0,
             exam: exam || 0,
@@ -185,7 +215,7 @@ export default function GradesPage() {
                   <DialogContent className="max-w-3xl w-[95vw]">
                       <DialogHeader>
                           <DialogTitle>Add/Edit Grades for {selectedClass.name}</DialogTitle>
-                          <DialogDescription>Select a subject to enter scores for all students.</DialogDescription>
+                          <DialogDescription>Select a subject to enter scores for all students. Grades will be saved for {settings?.currentTerm}, {settings?.currentSession}.</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleBulkAddGrades}>
                           <div className="grid gap-4 py-4">
@@ -247,6 +277,29 @@ export default function GradesPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {showGrades && (
+                <div className="flex flex-col sm:flex-row gap-4 items-center mb-4 border-b pb-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <Filter className="h-4 w-4"/> Filters
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 w-full sm:w-auto">
+                      <Select value={filterTerm} onValueChange={setFilterTerm}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="First Term">First Term</SelectItem>
+                          <SelectItem value="Second Term">Second Term</SelectItem>
+                          <SelectItem value="Third Term">Third Term</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterSession} onValueChange={setFilterSession}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              {uniqueSessions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                </div>
+              )}
               {showGrades ? (
                 Object.keys(gradesBySubject).length > 0 ? (
                   <Accordion type="multiple" className="w-full">
@@ -308,7 +361,7 @@ export default function GradesPage() {
                   </Accordion>
                 ) : (
                   <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
-                    <p>No grades recorded for this class yet. Click 'Add / Edit Grades' to start.</p>
+                    <p>No grades recorded for this class for {filterTerm}, {filterSession}.</p>
                   </div>
                 )
               ) : (
@@ -327,5 +380,3 @@ export default function GradesPage() {
     </div>
   );
 }
-
-  

@@ -49,7 +49,7 @@ export type Grade = {
   total: number;
   studentName: string;
   className: string;
-  grade: "A" | "B" | "C" | "D" | "F";
+  grade: "A" | "B" | "C" | "D" | "E" | "F";
   remark?: string;
 };
 
@@ -66,7 +66,9 @@ export type Attendance = {
 export type Trait = {
     id: string;
     studentId: string;
+    studentName: string;
     classId: string;
+    className: string;
     term: string;
     session: string;
     traits: Record<string, number>;
