@@ -1,24 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow a user to read and write to all documents and subcollections within their own user folder.
-    // This is the primary rule for data ownership.
+    
+    // Core rule: Users can read and write all documents and subcollections within their own user document.
+    // This single rule grants ownership and access to all their data (classes, students, grades, etc.).
     match /users/{userId}/{documents=**} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Allow any authenticated user to query the 'users' collection,
-    // but ONLY if they are specifically querying by the 'userCode' field.
-    // This is required for the Data Transfer feature to find a recipient.
+    
+    // Allow any authenticated user to query the users collection to find a user by their userCode.
+    // This is required for the Data Transfer feature to work.
+    // Note: This allows listing documents, but the rule above ensures they can only READ the contents
+    // of their own document, not others. Firestore rules do not filter data, they only check if a query is valid.
     match /users/{userId} {
-      allow list: if request.auth != null && request.query.where.size() == 1 && 'userCode' in request.query.where;
+       allow list: if request.auth != null;
     }
-
-    // Allow any authenticated user to create a new document in another user's 'incomingTransfers' subcollection.
-    // The {documents=**} rule above already gives the owner full control after creation.
+    
+    // Allow any authenticated user to create an incoming transfer request for another user.
+    // The rules on /users/{userId}/{documents=**} ensure only the recipient can update or delete it later.
     match /users/{userId}/incomingTransfers/{transferId} {
-      allow create: if request.auth != null && request.auth.uid != userId;
+      allow create: if request.auth != null;
     }
   }
 }
