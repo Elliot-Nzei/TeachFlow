@@ -197,7 +197,7 @@ export default function TransferPage() {
             fromUserId: user.uid,
             fromUserCode: userProfile.userCode,
             toUserId: recipient.id,
-toUserCode: recipient.code,
+            toUserCode: recipient.code,
             status: 'pending' as const,
             outgoingTransferId: outgoingTransferId,
             ...payload
@@ -240,7 +240,7 @@ toUserCode: recipient.code,
     const batch = writeBatch(firestore);
     
     try {
-        const studentIdsToMerge: string[] = [];
+        const studentIdMap = new Map<string, string>(); // Maps original student ID to new/existing student doc ID
 
         // 1. Process all students first, if they exist in the transfer
         if (transfer.students && transfer.students.length > 0) {
@@ -252,6 +252,7 @@ toUserCode: recipient.code,
                 let studentDocId: string;
                 if (studentQuerySnap.empty) {
                     const newStudentRef = doc(studentsRef);
+                    // Don't set classId/className yet, will be done after class is processed
                     batch.set(newStudentRef, { ...student, classId: '', className: '' }); 
                     studentDocId = newStudentRef.id;
                 } else {
@@ -259,7 +260,7 @@ toUserCode: recipient.code,
                     batch.update(existingStudentRef, student); 
                     studentDocId = existingStudentRef.id;
                 }
-                studentIdsToMerge.push(studentDocId);
+                studentIdMap.set(student.id, studentDocId);
             }
         }
         
@@ -272,20 +273,23 @@ toUserCode: recipient.code,
             const classQuerySnap = await getDocs(q);
 
             let classRef: DocumentReference;
+            const studentDocIdsToMerge = Array.from(studentIdMap.values());
+
             if (classQuerySnap.empty) {
                 classRef = doc(classesRef);
-                batch.set(classRef, { ...transfer.data, students: studentIdsToMerge, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+                batch.set(classRef, { ...transfer.data, students: studentDocIdsToMerge, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
             } else {
                 classRef = classQuerySnap.docs[0].ref;
                 batch.update(classRef, { 
                     subjects: arrayUnion(...(transfer.data.subjects || [])),
-                    students: arrayUnion(...studentIdsToMerge),
+                    students: arrayUnion(...studentDocIdsToMerge), // Correctly use arrayUnion
                     transferredFrom: transfer.fromUserId, 
                     transferredAt: serverTimestamp() 
                 });
             }
 
-            for (const studentId of studentIdsToMerge) {
+            // Update all processed students with the final class ID and name
+            for (const studentId of studentDocIdsToMerge) {
                 const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
                 batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
             }
@@ -330,18 +334,22 @@ toUserCode: recipient.code,
         const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
           if (!dataArray) return;
           for (const item of dataArray) {
+            // Remap original student ID to the new one in the recipient's DB
+            const newItemStudentId = studentIdMap.get(item.studentId) || item.studentId;
+            const newItem = { ...item, studentId: newItemStudentId };
+
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
             let uniqueQuery;
-            if (subcollectionName === 'grades') uniqueQuery = query(subcollectionRef, where('studentId', '==', item.studentId), where('subject', '==', item.subject), where('term', '==', item.term), where('session', '==', item.session), limit(1));
-            else if (subcollectionName === 'attendance') uniqueQuery = query(subcollectionRef, where('studentId', '==', item.studentId), where('date', '==', item.date), limit(1));
-            else if (subcollectionName === 'traits') uniqueQuery = query(subcollectionRef, where('studentId', '==', item.studentId), where('term', '==', item.term), where('session', '==', item.session), limit(1));
+            if (subcollectionName === 'grades') uniqueQuery = query(subcollectionRef, where('studentId', '==', newItem.studentId), where('subject', '==', newItem.subject), where('term', '==', newItem.term), where('session', '==', newItem.session), limit(1));
+            else if (subcollectionName === 'attendance') uniqueQuery = query(subcollectionRef, where('studentId', '==', newItem.studentId), where('date', '==', newItem.date), limit(1));
+            else if (subcollectionName === 'traits') uniqueQuery = query(subcollectionRef, where('studentId', '==', newItem.studentId), where('term', '==', newItem.term), where('session', '==', newItem.session), limit(1));
             
             if (uniqueQuery) {
               const snap = await getDocs(uniqueQuery);
               if (snap.empty) {
-                batch.set(doc(subcollectionRef), { ...item, transferredFrom: transfer.fromUserId });
+                batch.set(doc(subcollectionRef), { ...newItem, transferredFrom: transfer.fromUserId });
               } else {
-                batch.update(snap.docs[0].ref, { ...item, transferredFrom: transfer.fromUserId });
+                batch.update(snap.docs[0].ref, { ...newItem, transferredFrom: transfer.fromUserId });
               }
             }
           }
