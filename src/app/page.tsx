@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, Video, ArrowRightCircle, CheckCircle, Send } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, FileDown, Notebook, Video, ArrowRightCircle, CheckCircle, Send, Linkedin } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -138,16 +138,32 @@ export default function Home() {
                  <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
                  <div className="flex flex-col items-center gap-4">
                      <Avatar className="h-32 w-32 border-4 border-primary">
-                        <AvatarImage src="/img/my img.jpg" alt="Davs Nzei" />
-                        <AvatarFallback className="text-4xl">DN</AvatarFallback>
+                        <AvatarImage src="/img/my img.jpg" alt="Elliot Ekene Nzei" />
+                        <AvatarFallback className="text-4xl">EN</AvatarFallback>
                      </Avatar>
                      <div className="space-y-1">
-                        <h3 className="text-2xl font-bold">Davs Nzei</h3>
-                        <p className="text-muted-foreground">Full-Stack Developer &amp; AI Enthusiast</p>
+                        <h3 className="text-2xl font-bold">Elliot Ekene Nzei</h3>
+                        <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
                      </div>
-                     <p className="max-w-2xl mx-auto text-center">
-                         Davs is a passionate developer dedicated to creating solutions that solve real-world problems. PeerPrep was born from a desire to empower educators in Nigeria with modern, efficient, and intelligent tools to make their work easier and more impactful.
-                     </p>
+                     <div className="max-w-3xl mx-auto text-center space-y-4">
+                        <p>
+                          Hi, I'm Elliot Ekene Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built PeerPrep to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
+                        </p>
+                         <p>
+                          With a strong background in computer science, system automation, and AI integration, I focus on developing intelligent digital tools that simplify complex administrative tasks. My goal is to bridge the gap between traditional education systems and modern technology through reliable, user-friendly solutions that empower teachers and improve learning outcomes.
+                        </p>
+                         <p>
+                          PeerPrep reflects my belief that innovation in education starts with better tools — and I’m committed to building platforms that make that vision a reality.
+                        </p>
+                     </div>
+                     <div className="flex items-center gap-4 mt-4">
+                        <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline"><Linkedin className="mr-2 h-4 w-4" /> LinkedIn</Button>
+                        </Link>
+                         <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline">Upwork Profile</Button>
+                        </Link>
+                     </div>
                  </div>
             </div>
         </section>
