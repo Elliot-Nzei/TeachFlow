@@ -124,4 +124,8 @@ export type Settings = {
   profilePicture: string;
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;
+  userCode: string;
+  studentCounter?: number;
 };
+
+    
