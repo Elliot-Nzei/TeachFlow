@@ -19,11 +19,13 @@ export type Student = {
   age?: number;
   gender?: 'Male' | 'Female';
   createdAt?: any;
+  promotionHistory?: { from: string; to: string; date: string; session: string; }[];
 };
 
 export type Class = {
   id: string;
   name: string;
+  level: number;
   students: string[];
   subjects: string[];
   createdAt?: any;

@@ -1,29 +1,47 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Users, Book, UserPlus } from 'lucide-react';
+import { BookOpen, Users, UserPlus, GraduationCap, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc, collection, query, where, writeBatch, arrayUnion, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Student, Class } from '@/lib/types';
+import type { Student, Class, Grade } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
+import { SettingsContext } from '@/contexts/settings-context';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { getNextClassName } from '@/lib/utils';
 
 
 function ClassDetailsContent({ classId }: { classId: string }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const { toast } = useToast();
+  const { settings } = useContext(SettingsContext);
   const [isStudentPopoverOpen, setStudentPopoverOpen] = useState(false);
+  const [isPromoting, setIsPromoting] = useState(false);
 
   const classDocQuery = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid, 'classes', classId) : null), [firestore, user, classId]);
   const { data: classDetails, isLoading: isLoadingClass } = useDoc<Class>(classDocQuery);
+
+  const allClassQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'users', user.uid, 'classes')) : null), [firestore, user]);
+  const { data: allClasses, isLoading: isLoadingAllClasses } = useCollection<Class>(allClassQuery);
 
   const studentsInClassQuery = useMemoFirebase(() => (user && classId) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', classId)) : null, [firestore, user, classId]);
   const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<Student>(studentsInClassQuery);
@@ -61,6 +79,74 @@ function ClassDetailsContent({ classId }: { classId: string }) {
         });
       }
   };
+
+  const handlePromoteClass = async () => {
+    if (!user || !classDetails || !studentsInClass || !settings || !allClasses) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Missing required data to run promotions.' });
+      return;
+    }
+
+    setIsPromoting(true);
+
+    const studentIds = studentsInClass.map(s => s.id);
+    const gradesQuery = query(
+      collection(firestore, 'users', user.uid, 'grades'),
+      where('classId', '==', classId),
+      where('term', '==', 'Third Term'),
+      where('session', '==', settings.currentSession)
+    );
+
+    const gradesSnapshot = await getDocs(gradesQuery);
+    const gradesData = gradesSnapshot.docs.map(d => d.data() as Grade);
+
+    const batch = writeBatch(firestore);
+    let promotedCount = 0;
+
+    for (const student of studentsInClass) {
+      const studentGrades = gradesData.filter(g => g.studentId === student.id);
+      if (studentGrades.length === 0) continue;
+
+      const totalScore = studentGrades.reduce((acc, g) => acc + g.total, 0);
+      const average = totalScore / studentGrades.length;
+
+      if (average >= 50) { // Passed
+        const nextClassName = getNextClassName(classDetails.name, allClasses.map(c => ({ name: c.name, level: c.level })));
+        const nextClass = allClasses.find(c => c.name === nextClassName);
+
+        if (nextClass) {
+          const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+          const promotionRecord = {
+            from: classDetails.name,
+            to: nextClass.name,
+            date: new Date().toISOString(),
+            session: settings.currentSession
+          };
+          batch.update(studentRef, {
+            classId: nextClass.id,
+            className: nextClass.name,
+            promotionHistory: arrayUnion(promotionRecord)
+          });
+          promotedCount++;
+        }
+      }
+    }
+
+    if (promotedCount > 0) {
+      await batch.commit();
+      toast({
+        title: 'Promotion Complete',
+        description: `${promotedCount} student(s) have been promoted from ${classDetails.name}.`
+      });
+    } else {
+      toast({
+        variant: 'default',
+        title: 'No Promotions Made',
+        description: `No students were eligible for promotion from ${classDetails.name}.`
+      });
+    }
+
+    setIsPromoting(false);
+  }
 
 
   if (isLoadingClass) {
@@ -159,7 +245,6 @@ function ClassDetailsContent({ classId }: { classId: string }) {
               {classDetails.subjects && classDetails.subjects.length > 0 ? (
                 classDetails.subjects?.map((subject: string, index: number) => (
                   <Badge key={index} variant="secondary" className="text-sm">
-                    <Book className="mr-1.5 h-3 w-3" />
                     {subject}
                   </Badge>
                 ))
@@ -169,6 +254,52 @@ function ClassDetailsContent({ classId }: { classId: string }) {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+       <Separator />
+      
+      {/* Promotion Section */}
+      <div>
+        <h3 className="text-lg font-semibold flex items-center mb-4">
+          <GraduationCap className="mr-2 h-5 w-5 text-muted-foreground" />
+          End of Session Promotion
+        </h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>Promote Class</CardTitle>
+            <CardDescription>
+              At the end of the third term, you can promote eligible students to the next class level based on their average performance.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              This action will evaluate all students in <strong>{classDetails.name}</strong> for the <strong>{settings?.currentSession}</strong> session. Only students with an average score of 50% or higher in the third term will be promoted.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button disabled={settings?.currentTerm !== 'Third Term' || isPromoting || isLoadingAllClasses}>
+                  {isPromoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GraduationCap className="mr-2 h-4 w-4" />}
+                  {isPromoting ? 'Promoting...' : 'Promote Class'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to run promotions?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will process promotions for <strong>{classDetails.name}</strong> for the <strong>Third Term, {settings?.currentSession}</strong> session. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handlePromoteClass}>Continue</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {settings?.currentTerm !== 'Third Term' && (
+              <p className="text-xs text-destructive mt-2">Promotion is only available during the Third Term.</p>
+            )}
           </CardContent>
         </Card>
       </div>

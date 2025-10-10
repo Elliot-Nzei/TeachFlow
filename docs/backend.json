@@ -70,6 +70,10 @@
           "type": "string",
           "description": "The name of the class (e.g., Primary 3A)."
         },
+        "level": {
+          "type": "number",
+          "description": "The academic level of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
+        },
         "subjects": {
           "type": "array",
           "description": "List of subject names offered in this class.",
@@ -86,7 +90,8 @@
         }
       },
       "required": [
-        "name"
+        "name",
+        "level"
       ]
     },
     "Student": {
@@ -110,13 +115,24 @@
         "avatarUrl": {
           "type": "string",
           "format": "uri"
+        },
+        "promotionHistory": {
+          "type": "array",
+          "description": "A log of the student's promotions.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "date": { "type": "string", "format": "date-time" },
+              "session": { "type": "string" }
+            }
+          }
         }
       },
       "required": [
         "studentId",
-        "name",
-        "classId",
-        "className"
+        "name"
       ]
     },
     "Subject": {

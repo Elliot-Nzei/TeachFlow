@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, PlusCircle, Users, ChevronRight } from 'lucide-react';
+import { BookOpen, PlusCircle, Users, ChevronRight, ChevronsUpDown } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassDetailsContent from '@/components/class-details-content';
 import type { Class } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
     <SheetTrigger asChild key={cls.id}>
@@ -66,22 +68,33 @@ export default function ClassesPage() {
     const { user } = useUser();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
+    const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading } = useCollection<Class>(classesQuery);
 
+    const classLevels = useMemo(() => {
+        const levels = new Set<number>();
+        (classes || []).forEach(c => levels.add(c.level));
+        const maxLevel = levels.size > 0 ? Math.max(...Array.from(levels)) : 0;
+        const nextLevel = maxLevel + 1;
+        return Array.from({length: nextLevel + 2}, (_, i) => i + 1);
+    }, [classes]);
+
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (newClassName.trim() && user) {
+        if (newClassName.trim() && selectedLevel !== null && user) {
             const classesCollection = collection(firestore, 'users', user.uid, 'classes');
             addDocumentNonBlocking(classesCollection, {
                 name: newClassName,
+                level: selectedLevel,
                 students: [],
                 subjects: [],
                 createdAt: serverTimestamp(),
             });
             setNewClassName('');
+            setSelectedLevel(null);
             setIsDialogOpen(false);
         }
     };
@@ -104,14 +117,48 @@ export default function ClassesPage() {
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>
-                Enter the name for the new class. You can add students and subjects later.
+                Enter the name for the new class and assign its academic level.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddClass}>
                 <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Class Name</Label>
+                    <Label htmlFor="name" className="text-right">Name</Label>
                     <Input id="name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g., Primary 5A" className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="level" className="text-right">Level</Label>
+                    <div className="col-span-3">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    {selectedLevel !== null ? `Level ${selectedLevel}` : "Select level..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width)] p-0">
+                                <Command>
+                                <CommandInput placeholder="Search level..." />
+                                <CommandList>
+                                    <CommandEmpty>No level found.</CommandEmpty>
+                                    <CommandGroup>
+                                    {classLevels.map((level) => (
+                                        <CommandItem
+                                        key={level}
+                                        value={String(level)}
+                                        onSelect={() => {
+                                            setSelectedLevel(level);
+                                        }}
+                                        >
+                                        Level {level}
+                                        </CommandItem>
+                                    ))}
+                                    </CommandGroup>
+                                </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
                 </div>
                 <DialogFooter>
