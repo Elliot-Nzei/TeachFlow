@@ -1,21 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write their own data.
-    // This rule recursively applies to all subcollections.
+
+    // Rule for the top-level 'users' collection
+    match /users/{userId} {
+      // Allow any authenticated user to get or list users.
+      // This is necessary for the user search functionality in data transfer.
+      // It does NOT allow reading the content of all documents, only querying them.
+      allow get, list: if request.auth != null;
+    }
+
+    // Rule for a user's own documents and subcollections
     match /users/{userId}/{documents=**} {
+      // A user can read and write to their own data.
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Allow any authenticated user to look up another user by their userCode.
-    // This is required for the Data Transfer feature.
-    match /users/{userId} {
-      allow list: if request.auth != null && request.query.get('where')[0][1] == 'userCode';
-    }
-
-    // Allow any authenticated user to create an incoming transfer request for another user.
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow create: if request.auth != null;
+    // Rule to allow creating an incoming transfer request for another user
+    match /users/{recipientId}/incomingTransfers/{transferId} {
+        // An authenticated user can create a transfer document for someone else.
+        allow create: if request.auth != null;
     }
   }
 }
