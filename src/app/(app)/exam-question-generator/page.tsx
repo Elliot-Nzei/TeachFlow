@@ -29,7 +29,7 @@ const initialFormState: GenerateExamInput = {
 };
 
 export default function ExamQuestionGeneratorPage() {
-  const [formState, setFormState] = useState<GenerateExamInput>(initialFormState);
+  const [formState, setFormState] = useState<GenerateExamInput | any>(initialFormState);
   const [generatedExam, setGeneratedExam] = useState<GenerateExamOutput | null>(null);
   const [answerKey, setAnswerKey] = useState<string[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -216,7 +216,18 @@ export default function ExamQuestionGeneratorPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="questionCount">Question Count</Label>
-                        <Input id="questionCount" name="questionCount" type="number" value={formState.questionCount} onChange={e => handleSelectChange('questionCount', parseInt(e.target.value, 10))} min="1" max="50" />
+                        <Input 
+                            id="questionCount" 
+                            name="questionCount" 
+                            type="number" 
+                            value={formState.questionCount} 
+                            onChange={e => {
+                                const val = parseInt(e.target.value, 10);
+                                handleSelectChange('questionCount', isNaN(val) ? '' : val)
+                            }} 
+                            min="1" 
+                            max="50" 
+                        />
                     </div>
                 </div>
                 <div className="space-y-2">
