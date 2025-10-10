@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,25 +44,33 @@ export default function GradesPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [gradeInputs, setGradeInputs] = useState<GradeInput[]>([]);
 
-  const [filterTerm, setFilterTerm] = useState(settings?.currentTerm || '');
-  const [filterSession, setFilterSession] = useState(settings?.currentSession || '');
+  const [filterTerm, setFilterTerm] = useState('');
+  const [filterSession, setFilterSession] = useState('');
 
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
   
   const allGradesQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
-  const { data: allGrades } = useCollection<Grade>(allGradesQuery);
+  const { data: allGradesForClass } = useCollection<Grade>(allGradesQuery);
   
+  useEffect(() => {
+    if (settings) {
+      setFilterTerm(settings.currentTerm);
+      setFilterSession(settings.currentSession);
+    }
+  }, [settings]);
+
+
   const uniqueSessions = useMemo(() => {
-    if (!allGrades) return settings?.currentSession ? [settings.currentSession] : [];
-    const sessions = new Set(allGrades.map(g => g.session));
+    if (!allGradesForClass) return settings?.currentSession ? [settings.currentSession] : [];
+    const sessions = new Set(allGradesForClass.map(g => g.session));
     if(settings?.currentSession) sessions.add(settings.currentSession);
-    return Array.from(sessions);
-  }, [allGrades, settings?.currentSession]);
+    return Array.from(sessions).sort((a,b) => b.localeCompare(a));
+  }, [allGradesForClass, settings?.currentSession]);
 
   const grades = useMemo(() => {
-    return (allGrades || []).filter(g => g.term === filterTerm && g.session === filterSession);
-  }, [allGrades, filterTerm, filterSession]);
+    return (allGradesForClass || []).filter(g => g.term === filterTerm && g.session === filterSession);
+  }, [allGradesForClass, filterTerm, filterSession]);
 
   const handleSelectClass = (cls: Class) => {
     setSelectedClass(cls);
@@ -284,7 +292,7 @@ export default function GradesPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 w-full sm:w-auto">
                       <Select value={filterTerm} onValueChange={setFilterTerm}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select term..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="First Term">First Term</SelectItem>
                           <SelectItem value="Second Term">Second Term</SelectItem>
@@ -292,7 +300,7 @@ export default function GradesPage() {
                         </SelectContent>
                       </Select>
                       <Select value={filterSession} onValueChange={setFilterSession}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select session..." /></SelectTrigger>
                           <SelectContent>
                               {uniqueSessions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                           </SelectContent>

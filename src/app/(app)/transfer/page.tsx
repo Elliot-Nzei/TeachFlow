@@ -633,5 +633,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-    
