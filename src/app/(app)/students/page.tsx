@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,52 @@ import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import StudentProfileContent from '@/components/student-profile-content';
 import Image from 'next/image';
+import type { Student } from '@/lib/types';
+
+
+const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
+    <SheetTrigger asChild key={student.id}>
+        <div onClick={onClick} className="group cursor-pointer">
+        <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
+            <CardContent className="p-0 text-center flex flex-col h-full relative">
+            {student.avatarUrl && (
+                <Image 
+                src={student.avatarUrl} 
+                alt={student.name} 
+                fill
+                sizes="160px"
+                priority={index < 12}
+                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="relative flex flex-col h-full justify-end p-3 text-white">
+                <p className="text-sm font-bold font-headline leading-tight">{student.name}</p>
+                <p className="font-mono text-xs text-white/80">{student.studentId}</p>
+                {student.className && <Badge variant="secondary" className="text-xs mt-1 self-center">{student.className}</Badge>}
+            </div>
+            </CardContent>
+        </Card>
+        </div>
+    </SheetTrigger>
+);
+
+const StudentListItem = ({ student, onClick }: { student: Student, onClick: () => void }) => (
+    <SheetTrigger asChild key={student.id}>
+        <div onClick={onClick} className="flex items-center gap-4 p-2 -mx-2 rounded-lg cursor-pointer hover:bg-muted">
+            <Avatar className="h-12 w-12">
+                <AvatarImage src={student.avatarUrl} alt={student.name} />
+                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+                <p className="font-semibold">{student.name}</p>
+                <p className="text-sm text-muted-foreground">{student.studentId} {student.className && `• ${student.className}`}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </div>
+    </SheetTrigger>
+);
+
 
 export default function StudentsPage() {
   const { firestore } = useFirebase();
@@ -31,7 +77,7 @@ export default function StudentsPage() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
-  const { data: students, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<any>(classesQuery);
@@ -194,36 +240,41 @@ export default function StudentsPage() {
         </div>
       </div>
       <Sheet open={!!selectedStudentId} onOpenChange={(isOpen) => !isOpen && setSelectedStudentId(null)}>
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        
+        {/* Desktop Grid View */}
+        <div className="hidden md:grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {isLoadingStudents ? Array.from({length: 12}).map((_, i) => (
               <Card key={i} className="w-40 h-40"><CardContent className="h-full bg-muted rounded-lg animate-pulse" /></Card>
           )) : filteredStudents?.map((student, index) => (
-            <SheetTrigger asChild key={student.id}>
-              <div onClick={() => handleCardClick(student.id)} className="group cursor-pointer">
-                <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
-                  <CardContent className="p-0 text-center flex flex-col h-full relative">
-                    {student.avatarUrl && (
-                      <Image 
-                        src={student.avatarUrl} 
-                        alt={student.name} 
-                        fill
-                        sizes="160px"
-                        priority={index < 12}
-                        className="object-cover transition-transform duration-300 group-hover:scale-110"
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="relative flex flex-col h-full justify-end p-3 text-white">
-                        <p className="text-sm font-bold font-headline leading-tight">{student.name}</p>
-                        <p className="font-mono text-xs text-white/80">{student.studentId}</p>
-                        {student.className && <Badge variant="secondary" className="text-xs mt-1 self-center">{student.className}</Badge>}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </SheetTrigger>
+            <StudentCard 
+                key={student.id} 
+                student={student} 
+                index={index}
+                onClick={() => handleCardClick(student.id)} 
+            />
           ))}
         </div>
+
+        {/* Mobile List View */}
+        <div className="md:hidden space-y-2">
+           {isLoadingStudents ? Array.from({length: 12}).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-2">
+                <div className="h-12 w-12 rounded-full bg-muted animate-pulse" />
+                <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+          )) : filteredStudents?.map((student) => (
+             <StudentListItem 
+                key={student.id}
+                student={student}
+                onClick={() => handleCardClick(student.id)}
+            />
+          ))}
+        </div>
+
+
          {filteredStudents?.length === 0 && !isLoadingStudents && (
           <div className="text-center col-span-full py-12">
               <p className="text-muted-foreground">No students found matching your search.</p>
@@ -242,5 +293,3 @@ export default function StudentsPage() {
     </>
   );
 }
-
-    
