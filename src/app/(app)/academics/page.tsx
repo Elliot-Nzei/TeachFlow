@@ -11,12 +11,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { useCollection, useFirebase, useUser, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, where, query } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AcademicsPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const [newSubject, setNewSubject] = useState('');
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({});
+  const { toast } = useToast();
 
   const subjectsQuery = useMemoFirebase(() => user && query(collection(firestore, 'users', user.uid, 'subjects')), [firestore, user]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<any>(subjectsQuery);
@@ -24,8 +26,18 @@ export default function AcademicsPage() {
   const classesQuery = useMemoFirebase(() => user && query(collection(firestore, 'users', user.uid, 'classes')), [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<any>(classesQuery);
 
+  const subjectNames = useMemo(() => subjects?.map(s => s.name.toLowerCase()) || [], [subjects]);
+
   const handleAddSubject = async () => {
     if (newSubject.trim() !== '' && user) {
+      if (subjectNames.includes(newSubject.trim().toLowerCase())) {
+        toast({
+          variant: 'destructive',
+          title: 'Duplicate Subject',
+          description: 'This subject already exists in your master list.',
+        });
+        return;
+      }
       const subjectsCollection = collection(firestore, 'users', user.uid, 'subjects');
       addDocumentNonBlocking(subjectsCollection, { name: newSubject.trim() });
       setNewSubject('');
@@ -70,6 +82,7 @@ export default function AcademicsPage() {
                   placeholder="New subject name..."
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
                 />
                 <Button onClick={handleAddSubject} size="icon">
                   <PlusCircle className="h-4 w-4" />
@@ -100,7 +113,7 @@ export default function AcademicsPage() {
                     classes.map(cls => (
                         <div key={cls.id} className="border p-4 rounded-lg">
                             <h3 className="font-bold text-lg font-headline mb-3">{cls.name}</h3>
-                            <div className="flex flex-wrap gap-2 mb-4">
+                            <div className="flex flex-wrap gap-2 mb-4 min-h-[24px]">
                                 {cls.subjects?.length > 0 ? cls.subjects.map((subjectName: string) => (
                                     <Badge key={subjectName} variant="default" className="flex items-center gap-1.5">
                                         {subjectName}
