@@ -235,23 +235,20 @@ export default function TransferPage() {
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
     
+    const batch = writeBatch(firestore);
+    
     try {
-        const batch = writeBatch(firestore);
-
-        if (transfer.dataType === 'Full Class Data' && transfer.data) {
+        if (transfer.dataType === 'Full Class Data') {
+            if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
+            
             const classesRef = collection(firestore, 'users', user.uid, 'classes');
             const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
             const classQuerySnap = await getDocs(q);
             
             let classRef;
-            if (classQuerySnap.empty) {
-                classRef = doc(classesRef);
-                batch.set(classRef, { ...transfer.data, students: [], transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
-            } else {
-                classRef = classQuerySnap.docs[0].ref;
-                batch.update(classRef, { ...transfer.data, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
-            }
+            const studentIdsToMerge: string[] = [];
 
+            // Process students first to get their new/existing IDs
             if (transfer.students) {
                 for (const student of transfer.students) {
                     const studentsRef = collection(firestore, 'users', user.uid, 'students');
@@ -261,16 +258,38 @@ export default function TransferPage() {
                     let studentRef;
                     if(studentQuerySnap.empty) {
                         studentRef = doc(studentsRef);
-                        batch.set(studentRef, { ...student, classId: classRef.id, className: transfer.data.name });
+                        batch.set(studentRef, { ...student, classId: '', className: '' }); // Set with placeholder class info first
                     } else {
                         studentRef = studentQuerySnap.docs[0].ref;
-                        batch.update(studentRef, { ...student, classId: classRef.id, className: transfer.data.name });
+                        batch.update(studentRef, { ...student }); // Update existing student data
                     }
-                    batch.update(classRef, { students: arrayUnion(studentRef.id) });
+                    studentIdsToMerge.push(studentRef.id);
                 }
             }
+            
+            if (classQuerySnap.empty) {
+                // Class doesn't exist, create it with all students
+                classRef = doc(classesRef);
+                batch.set(classRef, { ...transfer.data, students: studentIdsToMerge, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+            } else {
+                // Class exists, update it and merge students
+                classRef = classQuerySnap.docs[0].ref;
+                batch.update(classRef, { 
+                    ...transfer.data, // Update class details (like subjects)
+                    students: arrayUnion(...studentIdsToMerge), // Merge student IDs
+                    transferredFrom: transfer.fromUserId, 
+                    transferredAt: serverTimestamp() 
+                });
+            }
 
-        } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
+            // Now, update all processed students to point to the correct class
+            for (const studentId of studentIdsToMerge) {
+                const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
+                batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
+            }
+
+        } else if (transfer.dataType === 'Single Student Record') {
+             if (!transfer.data || !transfer.data.studentId) throw new Error('Invalid student data in transfer.');
              const studentsRef = collection(firestore, 'users', user.uid, 'students');
              const studentQuery = query(studentsRef, where('studentId', '==', transfer.data.studentId), limit(1));
              const studentQuerySnap = await getDocs(studentQuery);
@@ -280,7 +299,8 @@ export default function TransferPage() {
                 batch.update(studentQuerySnap.docs[0].ref, { ...transfer.data, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
              }
         
-        } else if (transfer.dataType === 'Lesson Note' && transfer.lessonNote) {
+        } else if (transfer.dataType === 'Lesson Note') {
+            if (!transfer.lessonNote) throw new Error('Invalid lesson note in transfer.');
             const currentHistory = JSON.parse(localStorage.getItem('lessonNotesHistory') || '[]');
             const noteExists = currentHistory.some((n: LessonNote) => n.id === transfer.lessonNote?.id);
             if (!noteExists) {
@@ -288,6 +308,8 @@ export default function TransferPage() {
                 localStorage.setItem('lessonNotesHistory', JSON.stringify(newHistory));
                 setLessonNotesHistory(newHistory);
             }
+        } else {
+            throw new Error('Invalid transfer data type');
         }
         
         const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
@@ -562,3 +584,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
