@@ -256,6 +256,14 @@ export default function TransferPage() {
         } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
              const newStudentRef = doc(collection(firestore, 'users', user.uid, 'students'));
              batch.set(newStudentRef, { ...transfer.data, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+        
+        } else if (transfer.dataType === 'Lesson Note' && transfer.lessonNote) {
+            const currentHistory = JSON.parse(localStorage.getItem('lessonNotesHistory') || '[]');
+            const newHistory = [transfer.lessonNote, ...currentHistory].slice(0, 20);
+            localStorage.setItem('lessonNotesHistory', JSON.stringify(newHistory));
+            setLessonNotesHistory(newHistory);
+        } else {
+             throw new Error('Invalid transfer data');
         }
         
         if (transfer.grades) {
@@ -275,12 +283,6 @@ export default function TransferPage() {
             const newTraitRef = doc(collection(firestore, 'users', user.uid, 'traits'));
             batch.set(newTraitRef, { ...trait, transferredFrom: transfer.fromUserId });
           }
-        }
-        if (transfer.dataType === 'Lesson Note' && transfer.lessonNote) {
-            const currentHistory = JSON.parse(localStorage.getItem('lessonNotesHistory') || '[]');
-            const newHistory = [transfer.lessonNote, ...currentHistory].slice(0, 20);
-            localStorage.setItem('lessonNotesHistory', JSON.stringify(newHistory));
-            setLessonNotesHistory(newHistory);
         }
         
         const timestamp = serverTimestamp();
