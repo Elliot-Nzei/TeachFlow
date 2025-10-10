@@ -255,15 +255,15 @@ export default function TransferPage() {
                     const studentQuery = query(studentsRef, where('studentId', '==', student.studentId), limit(1));
                     const studentQuerySnap = await getDocs(studentQuery);
 
-                    let studentRef;
+                    let studentDocRef;
                     if(studentQuerySnap.empty) {
-                        studentRef = doc(studentsRef);
-                        batch.set(studentRef, { ...student, classId: '', className: '' }); // Set with placeholder class info first
+                        studentDocRef = doc(studentsRef);
+                        batch.set(studentDocRef, { ...student, classId: '', className: '' }); // Set with placeholder class info first
                     } else {
-                        studentRef = studentQuerySnap.docs[0].ref;
-                        batch.update(studentRef, { ...student }); // Update existing student data
+                        studentDocRef = studentQuerySnap.docs[0].ref;
+                        batch.update(studentDocRef, { ...student }); // Update existing student data
                     }
-                    studentIdsToMerge.push(studentRef.id);
+                    studentIdsToMerge.push(studentDocRef.id);
                 }
             }
             
@@ -584,5 +584,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    
