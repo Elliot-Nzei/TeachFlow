@@ -113,8 +113,6 @@ export default function TransferPage() {
   
   const fetchStudentSubcollections = async (studentIds: string[]) => {
       if (!user || studentIds.length === 0) return {};
-      const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIds));
-      const gradesSnap = await getDocs(gradesQuery);
       
       const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds));
       const attendanceSnap = await getDocs(attendanceQuery);
@@ -123,7 +121,6 @@ export default function TransferPage() {
       const traitsSnap = await getDocs(traitsQuery);
 
       return {
-          grades: gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade)),
           attendance: attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance)),
           traits: traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait)),
       }
@@ -312,16 +309,16 @@ export default function TransferPage() {
         
         } else if (transfer.dataType === 'Single Student Record') {
              if (!transfer.data || !transfer.data.studentId) throw new Error('Invalid student data in transfer.');
-             const { id: originalStudentDocId, studentId: systemStudentId, ...studentData } = transfer.data as Student;
+             const { id: originalStudentDocId, ...studentData } = transfer.data as Student;
              
              const studentsRef = collection(firestore, 'users', user.uid, 'students');
-             const studentQuery = query(studentsRef, where('studentId', '==', systemStudentId), limit(1));
+             const studentQuery = query(studentsRef, where('studentId', '==', studentData.studentId), limit(1));
              const studentQuerySnap = await getDocs(studentQuery);
              
              let finalStudentDocId: string;
              if (studentQuerySnap.empty) {
                 const newStudentRef = doc(studentsRef);
-                batch.set(newStudentRef, { studentId: systemStudentId, ...studentData, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+                batch.set(newStudentRef, { ...studentData, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
                 finalStudentDocId = newStudentRef.id;
              } else {
                 finalStudentDocId = studentQuerySnap.docs[0].id;
@@ -341,7 +338,7 @@ export default function TransferPage() {
         }
         
         // Step 3: Process subcollection data using the studentIdMap
-        const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
+        const upsertSubcollectionData = async (subcollectionName: 'attendance' | 'traits', dataArray: any[] | undefined) => {
           if (!dataArray) return;
           for (const item of dataArray) {
             const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
@@ -353,15 +350,7 @@ export default function TransferPage() {
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
             
             let uniqueQuery;
-            if (subcollectionName === 'grades') {
-              uniqueQuery = query(subcollectionRef, 
-                where('studentId', '==', dataToSave.studentId), 
-                where('subject', '==', dataToSave.subject), 
-                where('term', '==', dataToSave.term), 
-                where('session', '==', dataToSave.session), 
-                limit(1)
-              );
-            } else if (subcollectionName === 'attendance') {
+            if (subcollectionName === 'attendance') {
               uniqueQuery = query(subcollectionRef, 
                 where('studentId', '==', dataToSave.studentId), 
                 where('date', '==', dataToSave.date), 
@@ -387,7 +376,6 @@ export default function TransferPage() {
           }
         };
 
-        await upsertSubcollectionData('grades', transfer.grades);
         await upsertSubcollectionData('attendance', transfer.attendance);
         await upsertSubcollectionData('traits', transfer.traits);
         
@@ -639,5 +627,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    
