@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BookOpen, PlusCircle, Users } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, serverTimestamp } from 'firebase/firestore';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassDetailsContent from '@/components/class-details-content';
 
@@ -30,7 +30,8 @@ export default function ClassesPage() {
             addDocumentNonBlocking(classesCollection, {
                 name: newClassName,
                 students: [],
-                subjects: []
+                subjects: [],
+                createdAt: serverTimestamp(),
             });
             setNewClassName('');
             setIsDialogOpen(false);

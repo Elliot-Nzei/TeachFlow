@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirebase, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, arrayUnion, increment, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, doc, arrayUnion, increment, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -78,6 +78,7 @@ export default function StudentsPage() {
                 className: studentClass?.name || '',
                 classId: studentClass?.id || '',
                 avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
+                createdAt: serverTimestamp(),
             });
             
             // If a class was selected, update the class document as well
