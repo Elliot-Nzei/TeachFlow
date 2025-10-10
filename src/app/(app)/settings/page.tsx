@@ -20,13 +20,24 @@ export default function SettingsPage() {
     const { firestore, user } = useFirebase();
     const [previewImage, setPreviewImage] = useState('');
     const [isClearing, setIsClearing] = useState(false);
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+    const [confirmationText, setConfirmationText] = useState('');
     const { toast } = useToast();
+
+    const CONFIRMATION_PHRASE = 'DELETE';
 
     useEffect(() => {
         if (settings?.profilePicture) {
             setPreviewImage(settings.profilePicture);
         }
     }, [settings?.profilePicture]);
+    
+    useEffect(() => {
+        if (!isAlertOpen) {
+            setConfirmationText('');
+        }
+    }, [isAlertOpen]);
+
 
     const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
@@ -125,6 +136,7 @@ export default function SettingsPage() {
             });
         } finally {
             setIsClearing(false);
+            setIsAlertOpen(false);
         }
     };
 
@@ -278,7 +290,7 @@ export default function SettingsPage() {
                 <p className="font-semibold">Clear All School Data</p>
                 <p className="text-sm text-destructive">This will permanently delete all your classes, students, grades, and other records.</p>
               </div>
-              <AlertDialog>
+              <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">Clear All Data</Button>
                 </AlertDialogTrigger>
@@ -290,14 +302,25 @@ export default function SettingsPage() {
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       This action is irreversible. All of your school data, including all classes, students, subjects, grades, attendance, and transfer history will be permanently deleted. This data cannot be recovered.
+                       <br/><br/>
+                       Please type <strong className="text-foreground">{CONFIRMATION_PHRASE}</strong> to confirm.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
+                  <div className="my-2">
+                    <Input
+                        id="delete-confirmation"
+                        value={confirmationText}
+                        onChange={(e) => setConfirmationText(e.target.value)}
+                        placeholder={`Type "${CONFIRMATION_PHRASE}" to confirm`}
+                        autoComplete="off"
+                    />
+                  </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive hover:bg-destructive/90"
                       onClick={handleClearAllData}
-                      disabled={isClearing}
+                      disabled={isClearing || confirmationText !== CONFIRMATION_PHRASE}
                     >
                       {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Yes, Delete Everything
