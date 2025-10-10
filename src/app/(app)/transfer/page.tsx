@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit } from 'firebase/firestore';
-import type { Class, DataTransfer, Student } from '@/lib/types';
+import type { Class, DataTransfer, Student, Grade } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -84,7 +84,9 @@ export default function TransferPage() {
 
   const dataItemOptions = useMemo(() => {
     if (!dataType) return [];
-    return dataType === 'Class' ? (classes || []) : (students || []);
+    if (dataType === 'Class') return (classes || []);
+    if (dataType === 'Grades') return (students || []);
+    return [];
   }, [dataType, classes, students]);
 
   const getItemName = useCallback((itemId: string, type: DataType): string => {
@@ -93,8 +95,8 @@ export default function TransferPage() {
   }, [classes, students]);
 
   const handleTransfer = async () => {
-    if (!recipientCode || !dataType || !dataItem || !user || !userProfile) {
-      toast({ variant: 'destructive', title: 'Invalid Transfer', description: 'Please fill all fields.' });
+    if (!recipientCode || !dataType || !dataItem || !user || !userProfile || !userProfile.currentSession) {
+      toast({ variant: 'destructive', title: 'Invalid Transfer', description: 'Please fill all fields and ensure session is set.' });
       return;
     }
     if (recipientCode === userProfile.userCode) {
@@ -117,6 +119,7 @@ export default function TransferPage() {
 
         let dataToTransfer: any = {};
         let studentsToTransfer: any[] = [];
+        let gradesToTransfer: any[] = [];
         const dataName = getItemName(dataItem, dataType);
 
         if (dataType === 'Class') {
@@ -129,12 +132,26 @@ export default function TransferPage() {
                 const studentsSnap = await getDocs(studentsQueryRef);
                 studentsToTransfer = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             }
+        } else if (dataType === 'Grades') {
+            const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
+            const studentSnap = await getDoc(studentRef);
+            if (studentSnap.exists()) {
+              dataToTransfer = studentSnap.data();
+            }
+
+            const gradesQueryRef = query(
+              collection(firestore, 'users', user.uid, 'grades'),
+              where('studentId', '==', dataItem),
+              where('session', '==', userProfile.currentSession)
+            );
+            const gradesSnap = await getDocs(gradesQueryRef);
+            gradesToTransfer = gradesSnap.docs.map(doc => doc.data());
         }
         
         const outgoingTransferRef = doc(collection(firestore, `users/${user.uid}/outgoingTransfers`));
         const outgoingTransferId = outgoingTransferRef.id;
 
-        const transferPayload = {
+        const transferPayload: Omit<DataTransfer, 'id' | 'createdAt' | 'processedAt'> = {
             dataType,
             dataId: dataItem,
             dataTransferred: dataName,
@@ -143,18 +160,17 @@ export default function TransferPage() {
             toUserId: recipient.id,
             toUserCode: recipient.code,
             status: 'pending' as const,
-            createdAt: serverTimestamp(),
-            processedAt: null,
+            outgoingTransferId: outgoingTransferId,
             data: dataToTransfer,
             students: studentsToTransfer,
-            outgoingTransferId: outgoingTransferId,
+            grades: gradesToTransfer
         };
 
         const batch = writeBatch(firestore);
         
-        batch.set(outgoingTransferRef, transferPayload);
+        batch.set(outgoingTransferRef, { ...transferPayload, createdAt: serverTimestamp(), processedAt: null });
         const incomingTransferRef = doc(collection(firestore, `users/${recipient.id}/incomingTransfers`));
-        batch.set(incomingTransferRef, transferPayload);
+        batch.set(incomingTransferRef, { ...transferPayload, createdAt: serverTimestamp(), processedAt: null });
 
         await batch.commit();
       
@@ -212,6 +228,15 @@ export default function TransferPage() {
                 }
             }
             batch.update(newClassRef, { students: newStudentIds });
+        } else if (transfer.dataType === 'Grades' && transfer.grades) {
+          for (const gradeData of transfer.grades) {
+            const newGradeRef = doc(collection(firestore, 'users', user.uid, 'grades'));
+            batch.set(newGradeRef, {
+              ...gradeData,
+              transferredFrom: transfer.fromUserId,
+              transferredAt: serverTimestamp(),
+            });
+          }
         } else {
              toast({ variant: 'destructive', title: 'Invalid Data', description: 'Transfer data is missing or type is not supported.' });
              throw new Error('Invalid transfer data');
@@ -228,7 +253,7 @@ export default function TransferPage() {
 
         toast({
             title: 'Transfer Accepted',
-            description: `Class "${transfer.dataTransferred}" has been added to your account.`,
+            description: `Data for "${transfer.dataTransferred}" has been added to your account.`,
         });
 
     } catch(error) {
@@ -376,7 +401,7 @@ export default function TransferPage() {
                             <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
                             <SelectContent>
                             <SelectItem value="Class">Class Data (with students)</SelectItem>
-                            <SelectItem value="Grades" disabled>Student Grades (Coming Soon)</SelectItem>
+                            <SelectItem value="Grades">Student Grades</SelectItem>
                             <SelectItem value="Report Card" disabled>Student Report Card (Coming Soon)</SelectItem>
                             </SelectContent>
                         </Select>

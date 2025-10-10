@@ -77,6 +77,7 @@ export type DataTransfer = {
   outgoingTransferId?: string;
   data?: any; // Contains the class or student data
   students?: any[]; // For class transfers, include student list
+  grades?: any[]; // For grade transfers
 };
 
 export type Settings = {
@@ -91,3 +92,4 @@ export type Settings = {
     
 
     
+
