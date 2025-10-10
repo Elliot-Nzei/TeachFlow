@@ -8,7 +8,6 @@ import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import FeedbackForm from '@/components/feedback-form';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -131,23 +130,6 @@ export default function Home() {
               <div className="text-center text-muted-foreground">
                 <Video className="h-16 w-16 mx-auto mb-4" />
                 <p className="font-semibold">Video guide coming soon</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="feedback" className="w-full py-12 md:py-24 lg:py-32 bg-card">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-10 lg:grid-cols-2">
-              <div className="space-y-4">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Feedback</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Help Us Improve PeerPrep</h2>
-                <p className="max-w-[600px] text-muted-foreground md:text-xl/relaxed">
-                  Your feedback is vital for making PeerPrep better. Whether you've found a bug, have a suggestion for a new feature, or just want to share your thoughts, we'd love to hear from you.
-                </p>
-              </div>
-              <div className="flex items-center justify-center">
-                <FeedbackForm />
               </div>
             </div>
           </div>
