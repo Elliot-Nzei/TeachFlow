@@ -129,7 +129,7 @@ export default function Home() {
             <div className="mx-auto max-w-4xl aspect-video bg-muted rounded-xl overflow-hidden border">
               <iframe
                 className="w-full h-full"
-                src="https://drive.google.com/file/d/1SqSo7gEQ5nCNbuqKxBx6cCQJw-OXcDfY/preview"
+                src="https://drive.google.com/file/d/1hVO2ew80kpiDGbE5yRJSxwVurK6HYS9E/preview"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 title="PeerPrep Video Guide"
