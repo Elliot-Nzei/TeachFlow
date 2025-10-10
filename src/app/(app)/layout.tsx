@@ -45,6 +45,7 @@ import { doc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsProvider } from '@/contexts/settings-context';
+import NotificationBell from '@/components/notification-bell';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -171,10 +172,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
               <SidebarTrigger className="md:hidden" />
               <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-                  <div className="ml-auto flex-1 sm:flex-initial">
-                      {/* Search can go here */}
+                  <div className="ml-auto flex items-center gap-2">
+                      <NotificationBell />
+                      <UserProfileDisplay />
                   </div>
-                  <UserProfileDisplay />
               </div>
             </header>
             <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
