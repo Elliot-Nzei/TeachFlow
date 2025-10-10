@@ -14,6 +14,7 @@ import ClassDetailsContent from '@/components/class-details-content';
 import type { Class } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
     <SheetTrigger asChild key={cls.id}>
@@ -21,7 +22,7 @@ const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
             <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="font-headline">{cls.name}</CardTitle>
-                <CardDescription>A class for the current session.</CardDescription>
+                <CardDescription>Level {cls.level}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 flex-grow">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -47,6 +48,9 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
             <div className="flex-1">
                 <p className="font-semibold font-headline">{cls.name}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                    <div className="flex items-center gap-1.5">
+                         <Badge variant="outline">Level {cls.level}</Badge>
+                    </div>
                     <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" />
                         <span>{cls.students?.length || 0} Students</span>
@@ -74,13 +78,7 @@ export default function ClassesPage() {
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading } = useCollection<Class>(classesQuery);
 
-    const classLevels = useMemo(() => {
-        const levels = new Set<number>();
-        (classes || []).forEach(c => levels.add(c.level));
-        const maxLevel = levels.size > 0 ? Math.max(...Array.from(levels)) : 0;
-        const nextLevel = maxLevel + 1;
-        return Array.from({length: nextLevel + 2}, (_, i) => i + 1);
-    }, [classes]);
+    const classLevels = Array.from({length: 12}, (_, i) => i + 1);
 
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -150,6 +148,7 @@ export default function ClassesPage() {
                                             setSelectedLevel(level);
                                         }}
                                         >
+                                         <Check className={cn("mr-2 h-4 w-4", selectedLevel === level ? "opacity-100" : "opacity-0")} />
                                         Level {level}
                                         </CommandItem>
                                     ))}
@@ -170,16 +169,16 @@ export default function ClassesPage() {
       </div>
       <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
         {/* Desktop Grid View */}
-        <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {isLoading ? Array.from({length: 3}).map((_, i) => (
+        <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
+          {isLoading ? Array.from({length: 4}).map((_, i) => (
               <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
-          )) : classes?.map((cls) => (
+          )) : (classes || []).sort((a,b) => a.level - b.level).map((cls) => (
             <ClassCard key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
           ))}
         </div>
 
         {/* Mobile List View */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-3 mt-8">
            {isLoading ? Array.from({length: 3}).map((_, i) => (
               <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
                 <div className="flex-1 space-y-2">
@@ -187,7 +186,7 @@ export default function ClassesPage() {
                     <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
                 </div>
               </div>
-          )) : classes?.map((cls) => (
+          )) : (classes || []).sort((a,b) => a.level - b.level).map((cls) => (
              <ClassListItem 
                 key={cls.id}
                 cls={cls}
