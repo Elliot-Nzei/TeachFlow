@@ -1,5 +1,6 @@
+
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,6 +13,8 @@ import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -34,6 +37,18 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
   
   const attendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
   const { data: attendanceForStudent, isLoading: isLoadingAttendance } = useCollection<any>(attendanceQuery);
+
+  const attendanceSummary = useMemo(() => {
+    if (!attendanceForStudent) {
+      return { present: 0, absent: 0, late: 0, total: 0 };
+    }
+    return {
+      present: attendanceForStudent.filter(a => a.status === 'Present').length,
+      absent: attendanceForStudent.filter(a => a.status === 'Absent').length,
+      late: attendanceForStudent.filter(a => a.status === 'Late').length,
+      total: attendanceForStudent.length,
+    };
+  }, [attendanceForStudent]);
   
   const handleDeleteStudent = async () => {
     if (!student || !user) return;
@@ -170,31 +185,61 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <CalendarCheck className="h-5 w-5"/>
-                        Attendance History
+                        Attendance
                     </CardTitle>
-                    <CardDescription>Attendance for the current session.</CardDescription>
+                    <CardDescription>Summary for the current session.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isLoadingAttendance ? <Skeleton className="h-32 w-full" /> : 
-                        attendanceForStudent && attendanceForStudent.length > 0 ? (
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {attendanceForStudent.sort((a,b) => b.date.localeCompare(a.date)).map((att: any) => (
-                                <div key={att.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                                    <div className="flex items-center gap-2">
-                                        <AttendanceIcon status={att.status} />
-                                        <span className="text-sm font-medium">{format(new Date(att.date), 'PPP')}</span>
-                                    </div>
-                                    <Badge variant={
-                                        att.status === 'Present' ? 'default' : att.status === 'Absent' ? 'destructive' : 'secondary'
-                                    } className={att.status === 'Present' ? 'bg-green-600' : ''}>{att.status}</Badge>
+                    {isLoadingAttendance ? <Skeleton className="h-24 w-full" /> :
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p className="text-2xl font-bold text-green-600">{attendanceSummary.present}</p>
+                                <p className="text-xs text-muted-foreground">Present</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-red-600">{attendanceSummary.absent}</p>
+                                <p className="text-xs text-muted-foreground">Absent</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-yellow-600">{attendanceSummary.late}</p>
+                                <p className="text-xs text-muted-foreground">Late</p>
+                            </div>
+                        </div>
+                    }
+                </CardContent>
+                <CardContent>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary" className="w-full" disabled={attendanceSummary.total === 0}>View History</Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Attendance History for {student.name}</DialogTitle>
+                                <DialogDescription>
+                                    All recorded attendance for the current session.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <ScrollArea className="h-72">
+                                <div className="space-y-2 pr-4">
+                                {attendanceForStudent && attendanceForStudent.length > 0 ? (
+                                    attendanceForStudent.sort((a,b) => b.date.localeCompare(a.date)).map((att: any) => (
+                                        <div key={att.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                            <div className="flex items-center gap-2">
+                                                <AttendanceIcon status={att.status} />
+                                                <span className="text-sm font-medium">{format(new Date(att.date), 'PPP')}</span>
+                                            </div>
+                                            <Badge variant={
+                                                att.status === 'Present' ? 'default' : att.status === 'Absent' ? 'destructive' : 'secondary'
+                                            } className={att.status === 'Present' ? 'bg-green-600' : ''}>{att.status}</Badge>
+                                        </div>
+                                    ))
+                                 ) : (
+                                     <p className="text-sm text-muted-foreground text-center py-8">No records found.</p>
+                                 )}
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center text-sm text-muted-foreground py-4">
-                            No attendance records found.
-                        </div>
-                    )}
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
                 </CardContent>
             </Card>
         </div>
