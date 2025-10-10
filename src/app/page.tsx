@@ -7,6 +7,7 @@ import { ArrowRight, BookOpen, Users, FileDown, Notebook, Video, ArrowRightCircl
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -134,37 +135,41 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="about-developer" className="w-full py-12 md:py-24 lg:py-32 bg-card">
-            <div className="container px-4 md:px-6 text-center">
-                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
-                 <div className="flex flex-col items-center gap-4">
-                     <Avatar className="h-32 w-32 border-4 border-primary">
-                        <AvatarFallback className="text-4xl">EN</AvatarFallback>
-                     </Avatar>
-                     <div className="space-y-1">
-                        <h3 className="text-2xl font-bold">Elliot Ekene Nzei</h3>
-                        <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
-                     </div>
-                     <div className="max-w-3xl mx-auto text-center space-y-4">
-                        <p>
-                          Hi, I'm Elliot Ekene Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built PeerPrep to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
-                        </p>
-                         <p>
-                          With a strong background in computer science, system automation, and AI integration, I focus on developing intelligent digital tools that simplify complex administrative tasks. My goal is to bridge the gap between traditional education systems and modern technology through reliable, user-friendly solutions that empower teachers and improve learning outcomes.
-                        </p>
-                         <p>
-                          PeerPrep reflects my belief that innovation in education starts with better tools — and I’m committed to building platforms that make that vision a reality.
-                        </p>
-                     </div>
-                     <div className="flex items-center gap-4 mt-4">
-                        <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
-                           <Button variant="outline"><Linkedin className="mr-2 h-4 w-4" /> LinkedIn</Button>
-                        </Link>
-                         <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
-                           <Button variant="outline">Upwork Profile</Button>
-                        </Link>
-                     </div>
-                 </div>
+        <section id="about-developer" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+            <div className="container px-4 md:px-6">
+                <Card className="overflow-hidden">
+                    <div className="grid md:grid-cols-3">
+                        <div className="md:col-span-1 bg-secondary/50 p-8 flex flex-col items-center justify-center text-center">
+                            <Avatar className="h-32 w-32 border-4 border-primary shadow-lg mb-4">
+                                <AvatarFallback className="text-5xl font-bold">
+                                EN
+                                </AvatarFallback>
+                            </Avatar>
+                            <h3 className="text-2xl font-bold">Elliot Ekene Nzei</h3>
+                            <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
+                             <div className="flex items-center gap-4 mt-6">
+                                <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
+                                   <Button variant="outline"><Linkedin className="mr-2 h-4 w-4" /> LinkedIn</Button>
+                                </Link>
+                                 <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
+                                   <Button variant="outline">Upwork</Button>
+                                </Link>
+                             </div>
+                        </div>
+                        <div className="md:col-span-2 p-8 md:p-12 space-y-4">
+                           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
+                           <p>
+                             Hi, I'm Elliot Ekene Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built PeerPrep to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
+                           </p>
+                            <p>
+                             With a strong background in computer science, system automation, and AI integration, I focus on developing intelligent digital tools that simplify complex administrative tasks. My goal is to bridge the gap between traditional education systems and modern technology through reliable, user-friendly solutions that empower teachers and improve learning outcomes.
+                           </p>
+                            <p>
+                             PeerPrep reflects my belief that innovation in education starts with better tools — and I’m committed to building platforms that make that vision a reality.
+                           </p>
+                        </div>
+                    </div>
+                </Card>
             </div>
         </section>
 
