@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -50,8 +49,8 @@ export default function GradesPage() {
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
   
-  const allGradesQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
-  const { data: allGradesForClass } = useCollection<Grade>(allGradesQuery);
+  const allGradesForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const { data: allGradesForClass, isLoading: isLoadingAllGrades } = useCollection<Grade>(allGradesForClassQuery);
   
   useEffect(() => {
     if (settings) {
@@ -69,8 +68,9 @@ export default function GradesPage() {
   }, [allGradesForClass, settings?.currentSession]);
 
   const grades = useMemo(() => {
+    if (!showGrades || isLoadingAllGrades) return [];
     return (allGradesForClass || []).filter(g => g.term === filterTerm && g.session === filterSession);
-  }, [allGradesForClass, filterTerm, filterSession]);
+  }, [allGradesForClass, filterTerm, filterSession, showGrades, isLoadingAllGrades]);
 
   const handleSelectClass = (cls: Class) => {
     setSelectedClass(cls);
@@ -86,8 +86,8 @@ export default function GradesPage() {
     setSelectedSubject(subject);
     if (selectedClass && studentsInSelectedClass) {
         const studentGrades = studentsInSelectedClass.map(student => {
-            const existingGrade = (grades || []).find(
-                (g: Grade) => g.studentId === student.id && g.subject === subject
+            const existingGrade = (allGradesForClass || []).find(
+                (g: Grade) => g.studentId === student.id && g.subject === subject && g.term === settings?.currentTerm && g.session === settings?.currentSession
             );
             return {
                 studentId: student.id,
@@ -137,7 +137,7 @@ export default function GradesPage() {
         else if (total >= 45) grade = 'D';
         else if (total > 40) grade = 'E';
         
-        const existingGrade = (grades || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject);
+        const existingGrade = (allGradesForClass || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject && g.term === settings.currentTerm && g.session === settings.currentSession);
 
         const gradeData = {
             studentId: input.studentId,
@@ -170,7 +170,7 @@ export default function GradesPage() {
     setGradeInputs([]);
   };
 
-  const gradesBySubject = (grades || []).reduce((acc, grade) => {
+  const gradesBySubject = grades.reduce((acc, grade) => {
     if (!acc[grade.subject]) {
       acc[grade.subject] = [];
     }
