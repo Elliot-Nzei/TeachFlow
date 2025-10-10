@@ -167,8 +167,8 @@ function ClassDetailsContent({ classId }: { classId: string }) {
                     </Badge>
                 ))
                 ) : (
-                    <div className="text-center text-sm text-muted-foreground">
-                        No subjects assigned yet.
+                    <div className="text-center text-sm text-muted-foreground p-4">
+                        No subjects assigned yet. Go to the 'Academics' page to assign them.
                     </div>
                 )}
                 </div>
@@ -181,5 +181,3 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 }
 
 export default ClassDetailsContent;
-
-    
