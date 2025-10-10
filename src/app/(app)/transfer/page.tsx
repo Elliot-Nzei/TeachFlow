@@ -114,8 +114,8 @@ export default function TransferPage() {
   const fetchStudentSubcollections = async (studentIds: string[]) => {
       if (!user || studentIds.length === 0) return {};
       
-      const subcollectionNames: ('grades' | 'attendance' | 'traits')[] = ['grades', 'attendance', 'traits'];
-      const results: { grades: Grade[], attendance: Attendance[], traits: Trait[] } = { grades: [], attendance: [], traits: [] };
+      const subcollectionNames: ('traits')[] = ['traits'];
+      const results: { traits: Trait[] } = { traits: [] };
 
       for (const name of subcollectionNames) {
         const q = query(collection(firestore, 'users', user.uid, name), where('studentId', 'in', studentIds));
@@ -336,7 +336,7 @@ export default function TransferPage() {
         
         const upsertSubcollectionData = async (
           batch: WriteBatch,
-          subcollectionName: 'grades' | 'attendance' | 'traits',
+          subcollectionName: 'traits',
           dataArray: any[] | undefined
         ) => {
             if (!dataArray || !user) return;
@@ -348,25 +348,15 @@ export default function TransferPage() {
                 if (!newStudentDocId) continue;
 
                 let uniquenessQuery;
-                if (subcollectionName === 'grades') {
-                    uniquenessQuery = query(subcollectionRef,
-                        where('studentId', '==', newStudentDocId),
-                        where('subject', '==', item.subject),
-                        where('term', '==', item.term),
-                        where('session', '==', item.session)
-                    );
-                } else if (subcollectionName === 'attendance') {
-                    uniquenessQuery = query(subcollectionRef,
-                        where('studentId', '==', newStudentDocId),
-                        where('date', '==', item.date)
-                    );
-                } else { // traits
+                if (subcollectionName === 'traits') { // traits
                     uniquenessQuery = query(subcollectionRef,
                         where('studentId', '==', newStudentDocId),
                         where('term', '==', item.term),
                         where('session', '==', item.session)
                     );
                 }
+
+                if (!uniquenessQuery) continue;
 
                 const existingSnap = await getDocs(uniquenessQuery);
                 const dataToSave = { ...itemData, studentId: newStudentDocId, transferredFrom: transfer.fromUserId };
@@ -380,8 +370,6 @@ export default function TransferPage() {
             }
         };
 
-        await upsertSubcollectionData(batch, 'grades', transfer.grades);
-        await upsertSubcollectionData(batch, 'attendance', transfer.attendance);
         await upsertSubcollectionData(batch, 'traits', transfer.traits);
         
         const timestamp = serverTimestamp();

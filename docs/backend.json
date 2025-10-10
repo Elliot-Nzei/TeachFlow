@@ -316,6 +316,12 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp when the transfer was accepted or rejected."
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/Trait"
+          }
         }
       },
       "required": [
