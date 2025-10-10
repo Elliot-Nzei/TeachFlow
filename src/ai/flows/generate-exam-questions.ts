@@ -10,7 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const GenerateExamInputSchema = z.object({
+const GenerateExamInputSchema = z.object({
   classLevel: z.string().describe('The class level for the exam (e.g., Primary 4, JSS 2).'),
   subject: z.string().describe('The subject for the exam (e.g., English, Mathematics).'),
   topics: z.string().describe('A comma-separated list of topics to be covered in the exam.'),
@@ -20,7 +20,7 @@ export const GenerateExamInputSchema = z.object({
 });
 export type GenerateExamInput = z.infer<typeof GenerateExamInputSchema>;
 
-export const GenerateExamOutputSchema = z.object({
+const GenerateExamOutputSchema = z.object({
   objectiveQuestions: z.array(z.object({
     question: z.string(),
     options: z.array(z.string()),
