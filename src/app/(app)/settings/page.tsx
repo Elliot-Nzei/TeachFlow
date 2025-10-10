@@ -7,14 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clipboard, User as UserIcon, Upload, Loader2 } from 'lucide-react';
+import { Clipboard, User as UserIcon, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useFirebase } from '@/firebase';
+import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 export default function SettingsPage() {
     const { settings, setSettings, isLoading } = useContext(SettingsContext);
+    const { firestore, user } = useFirebase();
     const [previewImage, setPreviewImage] = useState('');
+    const [isClearing, setIsClearing] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -61,6 +66,68 @@ export default function SettingsPage() {
             description: 'Your changes have been saved successfully.',
         });
     }
+
+    const handleClearAllData = async () => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
+            return;
+        }
+
+        setIsClearing(true);
+
+        const collectionsToDelete = [
+            'classes', 
+            'students', 
+            'subjects', 
+            'grades', 
+            'attendance', 
+            'traits',
+            'incomingTransfers', 
+            'outgoingTransfers'
+        ];
+
+        try {
+            const batch = writeBatch(firestore);
+
+            for (const collectionName of collectionsToDelete) {
+                const collRef = collection(firestore, 'users', user.uid, collectionName);
+                const snapshot = await getDocs(collRef);
+                snapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+            }
+            
+            // Also reset the student counter in the main user document
+            const userRef = doc(firestore, 'users', user.uid);
+            batch.update(userRef, { studentCounter: 0 });
+
+            await batch.commit();
+
+            // Also clear local storage for things like lesson note history
+            localStorage.removeItem('lessonNotesHistory');
+            
+            setSettings({ studentCounter: 0 });
+
+            toast({
+                title: 'Data Cleared',
+                description: 'All your school data has been successfully deleted.',
+            });
+
+            // Consider reloading the page or redirecting to reflect the cleared state
+            window.location.reload();
+
+        } catch (error) {
+            console.error("Error clearing data:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error Clearing Data',
+                description: 'Could not clear all data. Please try again.',
+            });
+        } finally {
+            setIsClearing(false);
+        }
+    };
+
 
     if (isLoading && !settings) {
         return (
@@ -197,8 +264,50 @@ export default function SettingsPage() {
           </Button>
         </CardFooter>
       </Card>
+
+      <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardDescription>
+              These actions are permanent and cannot be undone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 bg-destructive/10 rounded-md">
+              <div>
+                <p className="font-semibold">Clear All School Data</p>
+                <p className="text-sm text-destructive">This will permanently delete all your classes, students, grades, and other records.</p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">Clear All Data</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="text-destructive" />
+                        Are you absolutely sure?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action is irreversible. All of your school data, including all classes, students, subjects, grades, attendance, and transfer history will be permanently deleted. This data cannot be recovered.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive hover:bg-destructive/90"
+                      onClick={handleClearAllData}
+                      disabled={isClearing}
+                    >
+                      {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Yes, Delete Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </CardContent>
+        </Card>
     </div>
   );
 }
-
-    
