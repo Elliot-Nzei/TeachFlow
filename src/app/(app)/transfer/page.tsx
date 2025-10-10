@@ -250,15 +250,14 @@ export default function TransferPage() {
                 const studentQuerySnap = await getDocs(studentQuery);
 
                 let studentDocId: string;
+                const { id, ...studentData } = student;
+
                 if (studentQuerySnap.empty) {
                     const newStudentRef = doc(studentsRef);
-                    // Don't set classId/className yet, will be done after class is processed
-                    const { id, ...studentData } = student;
                     batch.set(newStudentRef, { ...studentData, classId: '', className: '' }); 
                     studentDocId = newStudentRef.id;
                 } else {
                     const existingStudentRef = studentQuerySnap.docs[0].ref;
-                    const { id, ...studentData } = student;
                     batch.update(existingStudentRef, studentData); 
                     studentDocId = existingStudentRef.id;
                 }
@@ -338,30 +337,31 @@ export default function TransferPage() {
           for (const item of dataArray) {
             const newItemStudentId = studentIdMap.get(item.studentId) || item.studentId;
             const { id, ...itemData } = item;
-            const newItem = { ...itemData, studentId: newItemStudentId };
+            
+            const dataToSave = { ...itemData, studentId: newItemStudentId, transferredFrom: transfer.fromUserId };
 
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
             let uniqueQuery;
             
             if (subcollectionName === 'grades') {
               uniqueQuery = query(subcollectionRef, 
-                where('studentId', '==', newItem.studentId), 
-                where('subject', '==', newItem.subject), 
-                where('term', '==', newItem.term), 
-                where('session', '==', newItem.session), 
+                where('studentId', '==', dataToSave.studentId), 
+                where('subject', '==', dataToSave.subject), 
+                where('term', '==', dataToSave.term), 
+                where('session', '==', dataToSave.session), 
                 limit(1)
               );
             } else if (subcollectionName === 'attendance') {
               uniqueQuery = query(subcollectionRef, 
-                where('studentId', '==', newItem.studentId), 
-                where('date', '==', newItem.date), 
+                where('studentId', '==', dataToSave.studentId), 
+                where('date', '==', dataToSave.date), 
                 limit(1)
               );
             } else if (subcollectionName === 'traits') {
               uniqueQuery = query(subcollectionRef, 
-                where('studentId', '==', newItem.studentId), 
-                where('term', '==', newItem.term), 
-                where('session', '==', newItem.session), 
+                where('studentId', '==', dataToSave.studentId), 
+                where('term', '==', dataToSave.term), 
+                where('session', '==', dataToSave.session), 
                 limit(1)
               );
             }
@@ -370,9 +370,9 @@ export default function TransferPage() {
               const snap = await getDocs(uniqueQuery);
               if (snap.empty) {
                 const newDocRef = doc(subcollectionRef);
-                batch.set(newDocRef, { ...newItem, transferredFrom: transfer.fromUserId });
+                batch.set(newDocRef, dataToSave);
               } else {
-                batch.update(snap.docs[0].ref, { ...newItem, transferredFrom: transfer.fromUserId });
+                batch.update(snap.docs[0].ref, dataToSave);
               }
             }
           }
