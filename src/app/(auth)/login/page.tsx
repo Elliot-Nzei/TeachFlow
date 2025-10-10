@@ -6,15 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import placeholderImages from '@/lib/placeholder-images.json';
 import { useAuth } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
-
-const loginImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -54,9 +51,9 @@ export default function LoginPage() {
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
             <Logo />
-            <h1 className="text-3xl font-bold font-headline mt-4">Login</h1>
+            <h1 className="text-3xl font-bold font-headline mt-4">Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              Enter your credentials to access your dashboard.
             </p>
           </div>
           <form onSubmit={handleLogin}>
@@ -103,17 +100,11 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <div className="hidden bg-muted lg:block">
-        {loginImage && (
-            <Image
-                src={loginImage.imageUrl}
-                alt={loginImage.description}
-                width="1920"
-                height="1080"
-                className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-                data-ai-hint={loginImage.imageHint}
-            />
-        )}
+      <div className="hidden bg-primary lg:flex items-center justify-center p-12 text-center">
+        <div className="text-primary-foreground">
+            <h2 className="text-4xl font-bold font-headline mb-4">Empowering Nigerian Educators</h2>
+            <p className="text-lg max-w-md mx-auto">Join a growing community of teachers using PeerPrep to streamline their workflow and focus on what matters most: teaching.</p>
+        </div>
       </div>
     </div>
   )

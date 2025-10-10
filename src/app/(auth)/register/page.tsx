@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import placeholderImages from '@/lib/placeholder-images.json';
 import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
@@ -15,8 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ToastAction } from "@/components/ui/toast";
-
-const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 export default function RegisterPage() {
     const { firestore } = useFirebase();
@@ -76,17 +73,11 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-       <div className="hidden bg-muted lg:block">
-        {registerImage && (
-            <Image
-                src={registerImage.imageUrl}
-                alt={registerImage.description}
-                width="1920"
-                height="1080"
-                className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-                data-ai-hint={registerImage.imageHint}
-            />
-        )}
+      <div className="hidden bg-primary lg:flex items-center justify-center p-12 text-center">
+        <div className="text-primary-foreground">
+            <h2 className="text-4xl font-bold font-headline mb-4">A Modern Toolkit for Today's Teacher</h2>
+            <p className="text-lg max-w-md mx-auto">From AI-powered lesson plans to seamless data sharing, PeerPrep is designed to simplify your administrative tasks.</p>
+        </div>
       </div>
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[400px] gap-6">
