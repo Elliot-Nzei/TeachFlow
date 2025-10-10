@@ -20,6 +20,8 @@ export type Student = {
   gender?: 'Male' | 'Female';
   createdAt?: any;
   promotionHistory?: { from: string; to: string; date: string; session: string; }[];
+  transferredFrom?: string;
+  transferredAt?: any;
 };
 
 export type Class = {
@@ -127,5 +129,3 @@ export type Settings = {
   userCode: string;
   studentCounter?: number;
 };
-
-    

@@ -239,32 +239,52 @@ export default function TransferPage() {
     
     try {
         const studentIdMap = new Map<string, string>(); // Maps original student ID to new/existing student doc ID
+        const recipientStudentsRef = collection(firestore, 'users', user.uid, 'students');
 
         const processStudent = async (student: Student) => {
             const { id: originalStudentDocId, ...studentData } = student;
+            let finalStudentDocId;
 
-            studentCounter++;
-            const schoolAcronym = (userProfile.schoolName || 'SPS').split(' ').map(w => w[0]).join('').toUpperCase();
-            const newStudentId = `${schoolAcronym}-${String(studentCounter).padStart(3, '0')}`;
-            
-            studentData.studentId = newStudentId;
+            // Check for existing student from the same source
+            const existingStudentQuery = query(
+                recipientStudentsRef, 
+                where('name', '==', studentData.name),
+                where('transferredFrom', '==', transfer.fromUserId)
+            );
 
-            const studentsRef = collection(firestore, 'users', user.uid, 'students');
-            
-            const newStudentRef = doc(studentsRef);
-            batch.set(newStudentRef, { ...studentData, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
-            const finalStudentDocId = newStudentRef.id;
+            const existingStudentSnap = await getDocs(existingStudentQuery);
+
+            if (!existingStudentSnap.empty) {
+                // Student exists, use existing document ID
+                finalStudentDocId = existingStudentSnap.docs[0].id;
+            } else {
+                // Student is new, create a new document
+                studentCounter++;
+                const schoolAcronym = (userProfile.schoolName || 'SPS').split(' ').map(w => w[0]).join('').toUpperCase();
+                const newStudentId = `${schoolAcronym}-${String(studentCounter).padStart(3, '0')}`;
+                
+                studentData.studentId = newStudentId;
+                studentData.transferredFrom = transfer.fromUserId;
+                studentData.transferredAt = serverTimestamp();
+
+                const newStudentRef = doc(recipientStudentsRef);
+                batch.set(newStudentRef, studentData);
+                finalStudentDocId = newStudentRef.id;
+            }
 
             studentIdMap.set(originalStudentDocId, finalStudentDocId);
         }
 
         // Step 1: Process Students and build the ID map
-        if (transfer.dataType === 'Full Class Data' && transfer.students && transfer.students.length > 0) {
-            for (const student of transfer.students) {
-                await processStudent(student);
-            }
+        const studentsToProcess: Student[] = [];
+        if (transfer.dataType === 'Full Class Data' && transfer.students) {
+            studentsToProcess.push(...transfer.students);
         } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
-             await processStudent(transfer.data as Student);
+            studentsToProcess.push(transfer.data as Student);
+        }
+
+        for (const student of studentsToProcess) {
+            await processStudent(student);
         }
         
         // Step 2: Process main data (Class, Lesson Note)
@@ -347,12 +367,16 @@ export default function TransferPage() {
         const outgoingRef = doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId);
         batch.update(outgoingRef, { status: 'accepted', processedAt: timestamp });
         
-        const userRef = doc(firestore, 'users', user.uid);
-        batch.update(userRef, { studentCounter: studentCounter });
+        if (studentCounter > (userProfile.studentCounter || 0)) {
+          const userRef = doc(firestore, 'users', user.uid);
+          batch.update(userRef, { studentCounter: studentCounter });
+        }
 
         await batch.commit();
         
-        setSettings({ studentCounter: studentCounter });
+        if (studentCounter > (userProfile.studentCounter || 0)) {
+          setSettings({ studentCounter: studentCounter });
+        }
 
         toast({
             title: 'Transfer Accepted',
