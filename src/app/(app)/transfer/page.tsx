@@ -487,105 +487,107 @@ export default function TransferPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
+    <>
+      <div className="mb-8">
         <h1 className="text-3xl font-bold font-headline">Data Transfer</h1>
         <p className="text-muted-foreground">Securely transfer data to another user with their unique code.</p>
       </div>
 
-      {userProfile?.userCode && (
-        <div className="rounded-lg border bg-card p-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div className='flex-1'>
-                    <span className="text-sm text-muted-foreground mr-2">Your Code:</span>
-                    <span className="font-mono font-bold text-primary">{userProfile.userCode}</span>
+      <div className="space-y-8">
+          {userProfile?.userCode && (
+            <div className="rounded-lg border bg-card p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div className='flex-1'>
+                        <span className="text-sm text-muted-foreground mr-2">Your Code:</span>
+                        <span className="font-mono font-bold text-primary">{userProfile.userCode}</span>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            if(userProfile.userCode) {
+                                navigator.clipboard.writeText(userProfile.userCode);
+                                toast({ title: 'Copied!', description: 'Your transfer code is copied to clipboard.' });
+                            }
+                        }}
+                    >
+                        Copy
+                    </Button>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                        if(userProfile.userCode) {
-                            navigator.clipboard.writeText(userProfile.userCode);
-                            toast({ title: 'Copied!', description: 'Your transfer code is copied to clipboard.' });
-                        }
-                    }}
-                >
-                    Copy
-                </Button>
             </div>
-        </div>
-      )}
+          )}
 
-    <Tabs defaultValue="new-transfer">
-        <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="new-transfer">New Transfer</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="new-transfer">
-            <Card>
-                <CardHeader>
-                <CardTitle>Initiate a New Transfer</CardTitle>
-                <CardDescription>Enter the recipient's code and select the data you wish to send.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="recipient-code">Recipient's User Code</Label>
-                    <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+        <Tabs defaultValue="new-transfer">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="new-transfer">New Transfer</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="new-transfer">
+                <Card>
+                    <CardHeader>
+                    <CardTitle>Initiate a New Transfer</CardTitle>
+                    <CardDescription>Enter the recipient's code and select the data you wish to send.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="data-type">Data Type</Label>
-                        <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
-                            <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Full Class Data">Full Class Data</SelectItem>
-                                <SelectItem value="Single Student Record">Single Student Record</SelectItem>
-                                <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="recipient-code">Recipient's User Code</Label>
+                        <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="data-item">Specific Item</Label>
-                        <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
-                            <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
-                            <SelectContent>
-                            {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="data-type">Data Type</Label>
+                            <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
+                                <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Full Class Data">Full Class Data</SelectItem>
+                                    <SelectItem value="Single Student Record">Single Student Record</SelectItem>
+                                    <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="data-item">Specific Item</Label>
+                            <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
+                                <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
+                                <SelectContent>
+                                {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                </div>
-                </CardContent>
-                <CardFooter>
-                <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
-                    {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
-                </Button>
-                </CardFooter>
-            </Card>
-        </TabsContent>
-        <TabsContent value="history">
-            <Card>
-                <CardHeader>
-                <CardTitle>Transfer History</CardTitle>
-                <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
-                    ))
-                ) : combinedTransfers.length > 0 ? (
-                    combinedTransfers.map((transfer) => (
-                        <TransferHistoryItem key={transfer.id} transfer={transfer} />
-                    ))
-                ) : (
-                    <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
-                        <p>No transfer history yet.</p>
-                    </div>
-                )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-    </Tabs>
+                    </CardContent>
+                    <CardFooter>
+                    <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
+                        {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
+                    </Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+            <TabsContent value="history">
+                <Card>
+                    <CardHeader>
+                    <CardTitle>Transfer History</CardTitle>
+                    <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                    {isLoading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
+                        ))
+                    ) : combinedTransfers.length > 0 ? (
+                        combinedTransfers.map((transfer) => (
+                            <TransferHistoryItem key={transfer.id} transfer={transfer} />
+                        ))
+                    ) : (
+                        <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                            <p>No transfer history yet.</p>
+                        </div>
+                    )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+      </div>
 
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
         <AlertDialogContent>
@@ -624,8 +626,6 @@ export default function TransferPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
-
-    
