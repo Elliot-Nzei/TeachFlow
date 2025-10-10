@@ -110,6 +110,25 @@ export default function TransferPage() {
     
     return items?.find(item => item.id === itemId)?.name || 'Unknown';
   }, [classes, students, lessonNotesHistory]);
+  
+  const fetchStudentSubcollections = async (studentIds: string[]) => {
+      if (studentIds.length === 0) return {};
+      const gradesQuery = query(collection(firestore, 'users', user!.uid, 'grades'), where('studentId', 'in', studentIds));
+      const gradesSnap = await getDocs(gradesQuery);
+      
+      const attendanceQuery = query(collection(firestore, 'users', user!.uid, 'attendance'), where('studentId', 'in', studentIds));
+      const attendanceSnap = await getDocs(attendanceQuery);
+      
+      const traitsQuery = query(collection(firestore, 'users', user!.uid, 'traits'), where('studentId', 'in', studentIds));
+      const traitsSnap = await getDocs(traitsQuery);
+
+      return {
+          grades: gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade)),
+          attendance: attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance)),
+          traits: traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait)),
+      }
+  }
+
 
   const handleTransfer = async () => {
     if (!recipientCode || !dataType || !dataItem || !user || !userProfile) {
@@ -136,25 +155,6 @@ export default function TransferPage() {
 
         let payload: Partial<DataTransfer> = {};
         const dataName = getItemName(dataItem, dataType);
-
-        const fetchStudentSubcollections = async (studentIds: string[]) => {
-            if (studentIds.length === 0) return {};
-            const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIds));
-            const gradesSnap = await getDocs(gradesQuery);
-            
-            const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds));
-            const attendanceSnap = await getDocs(attendanceQuery);
-            
-            const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', 'in', studentIds));
-            const traitsSnap = await getDocs(traitsQuery);
-
-            return {
-                grades: gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade)),
-                attendance: attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance)),
-                traits: traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait)),
-            }
-        }
-
 
         if (dataType === 'Full Class Data') {
             const classRef = doc(firestore, `users/${user.uid}/classes/${dataItem}`);
@@ -282,7 +282,7 @@ export default function TransferPage() {
                 classRef = classQuerySnap.docs[0].ref;
                 batch.update(classRef, { 
                     subjects: arrayUnion(...(transfer.data.subjects || [])),
-                    students: arrayUnion(...studentDocIdsToMerge), // Correctly use arrayUnion
+                    students: arrayUnion(...studentDocIdsToMerge),
                     transferredFrom: transfer.fromUserId, 
                     transferredAt: serverTimestamp() 
                 });
@@ -334,26 +334,47 @@ export default function TransferPage() {
         const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
           if (!dataArray) return;
           for (const item of dataArray) {
-            // Remap original student ID to the new one in the recipient's DB
             const newItemStudentId = studentIdMap.get(item.studentId) || item.studentId;
-            const newItem = { ...item, studentId: newItemStudentId };
+            const newItem = { ...item, studentId: newItemStudentId, id: undefined }; // Remove old ID
 
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
             let uniqueQuery;
-            if (subcollectionName === 'grades') uniqueQuery = query(subcollectionRef, where('studentId', '==', newItem.studentId), where('subject', '==', newItem.subject), where('term', '==', newItem.term), where('session', '==', newItem.session), limit(1));
-            else if (subcollectionName === 'attendance') uniqueQuery = query(subcollectionRef, where('studentId', '==', newItem.studentId), where('date', '==', newItem.date), limit(1));
-            else if (subcollectionName === 'traits') uniqueQuery = query(subcollectionRef, where('studentId', '==', newItem.studentId), where('term', '==', newItem.term), where('session', '==', newItem.session), limit(1));
+            
+            if (subcollectionName === 'grades') {
+              uniqueQuery = query(subcollectionRef, 
+                where('studentId', '==', newItem.studentId), 
+                where('subject', '==', newItem.subject), 
+                where('term', '==', newItem.term), 
+                where('session', '==', newItem.session), 
+                limit(1)
+              );
+            } else if (subcollectionName === 'attendance') {
+              uniqueQuery = query(subcollectionRef, 
+                where('studentId', '==', newItem.studentId), 
+                where('date', '==', newItem.date), 
+                limit(1)
+              );
+            } else if (subcollectionName === 'traits') {
+              uniqueQuery = query(subcollectionRef, 
+                where('studentId', '==', newItem.studentId), 
+                where('term', '==', newItem.term), 
+                where('session', '==', newItem.session), 
+                limit(1)
+              );
+            }
             
             if (uniqueQuery) {
               const snap = await getDocs(uniqueQuery);
               if (snap.empty) {
-                batch.set(doc(subcollectionRef), { ...newItem, transferredFrom: transfer.fromUserId });
+                const newDocRef = doc(subcollectionRef);
+                batch.set(newDocRef, { ...newItem, transferredFrom: transfer.fromUserId });
               } else {
                 batch.update(snap.docs[0].ref, { ...newItem, transferredFrom: transfer.fromUserId });
               }
             }
           }
         };
+
 
         await upsertSubcollectionData('grades', transfer.grades);
         await upsertSubcollectionData('attendance', transfer.attendance);
@@ -606,3 +627,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
