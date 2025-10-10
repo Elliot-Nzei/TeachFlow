@@ -143,13 +143,13 @@ export default function Home() {
                             <Avatar className="h-32 w-32 border-4 border-primary shadow-lg mb-4">
                                 <Image 
                                   src="https://drive.google.com/uc?export=view&id=1kI6Um7t0VE-lMPJI4kNXGTItTvMio3_0" 
-                                  alt="Elliot Ekene Nzei"
+                                  alt="Elliot Nzei"
                                   width={128}
                                   height={128}
                                   className="object-cover"
                                 />
                             </Avatar>
-                            <h3 className="text-2xl font-bold">Elliot Ekene Nzei</h3>
+                            <h3 className="text-2xl font-bold">Elliot Nzei</h3>
                             <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
                              <div className="flex items-center gap-4 mt-6">
                                 <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
@@ -163,7 +163,7 @@ export default function Home() {
                         <div className="md:col-span-2 p-8 md:p-12 space-y-4">
                            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
                            <p>
-                             Hi, I'm Elliot Ekene Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built PeerPrep to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
+                             Hi, I'm Elliot Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built PeerPrep to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
                            </p>
                             <p>
                              With a strong background in computer science, system automation, and AI integration, I focus on developing intelligent digital tools that simplify complex administrative tasks. My goal is to bridge the gap between traditional education systems and modern technology through reliable, user-friendly solutions that empower teachers and improve learning outcomes.
