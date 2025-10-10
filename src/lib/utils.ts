@@ -10,6 +10,8 @@ export const getNextClassName = (currentName: string, allClasses: { name: string
   if (!currentClass) return null;
 
   const nextLevel = currentClass.level + 1;
+  
+  // Find a class with the exact next level
   const nextClass = allClasses.find(c => c.level === nextLevel);
 
   return nextClass ? nextClass.name : null;

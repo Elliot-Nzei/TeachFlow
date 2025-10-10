@@ -1,13 +1,14 @@
 
 'use client';
 import { useState, useMemo, useContext } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Users, UserPlus, GraduationCap, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, writeBatch, arrayUnion, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, writeBatch, arrayUnion, arrayRemove, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Student, Class, Grade } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -89,6 +90,12 @@ function ClassDetailsContent({ classId }: { classId: string }) {
     setIsPromoting(true);
 
     const studentIds = studentsInClass.map(s => s.id);
+    if(studentIds.length === 0) {
+        toast({ title: 'No Students', description: 'There are no students in this class to promote.' });
+        setIsPromoting(false);
+        return;
+    }
+
     const gradesQuery = query(
       collection(firestore, 'users', user.uid, 'grades'),
       where('classId', '==', classId),
@@ -104,7 +111,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
 
     for (const student of studentsInClass) {
       const studentGrades = gradesData.filter(g => g.studentId === student.id);
-      if (studentGrades.length === 0) continue;
+      if (studentGrades.length === 0) continue; // Skip students with no grades for the term
 
       const totalScore = studentGrades.reduce((acc, g) => acc + g.total, 0);
       const average = totalScore / studentGrades.length;
@@ -119,24 +126,45 @@ function ClassDetailsContent({ classId }: { classId: string }) {
             from: classDetails.name,
             to: nextClass.name,
             date: new Date().toISOString(),
-            session: settings.currentSession
+            session: settings.currentSession,
+            average: parseFloat(average.toFixed(2))
           };
+
+          // 1. Update the student's document
           batch.update(studentRef, {
             classId: nextClass.id,
             className: nextClass.name,
             promotionHistory: arrayUnion(promotionRecord)
           });
+
+          // 2. Remove student from old class
+          const oldClassRef = doc(firestore, 'users', user.uid, 'classes', classId);
+          batch.update(oldClassRef, { students: arrayRemove(student.id) });
+
+          // 3. Add student to new class
+          const newClassRef = doc(firestore, 'users', user.uid, 'classes', nextClass.id);
+          batch.update(newClassRef, { students: arrayUnion(student.id) });
+          
           promotedCount++;
         }
       }
     }
 
     if (promotedCount > 0) {
-      await batch.commit();
-      toast({
-        title: 'Promotion Complete',
-        description: `${promotedCount} student(s) have been promoted from ${classDetails.name}.`
-      });
+      try {
+        await batch.commit();
+        toast({
+          title: 'Promotion Complete',
+          description: `${promotedCount} student(s) have been promoted from ${classDetails.name}.`
+        });
+      } catch (error) {
+        console.error("Error during promotion batch commit: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Promotion Failed',
+            description: 'An error occurred while saving promotion data.'
+        });
+      }
     } else {
       toast({
         variant: 'default',
@@ -281,7 +309,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
               <AlertDialogTrigger asChild>
                 <Button disabled={settings?.currentTerm !== 'Third Term' || isPromoting || isLoadingAllClasses}>
                   {isPromoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GraduationCap className="mr-2 h-4 w-4" />}
-                  {isPromoting ? 'Promoting...' : 'Promote Class'}
+                  {isPromoting ? 'Promoting...' : 'Run Promotions'}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
