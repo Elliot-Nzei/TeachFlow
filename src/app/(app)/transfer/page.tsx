@@ -11,7 +11,7 @@ import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Cale
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit, type DocumentReference, increment } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit, type DocumentReference, increment, type WriteBatch } from 'firebase/firestore';
 import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -245,7 +245,6 @@ export default function TransferPage() {
             const { id: originalStudentDocId, ...studentData } = student;
             let finalStudentDocId;
 
-            // Check for existing student from the same source
             const existingStudentQuery = query(
                 recipientStudentsRef, 
                 where('name', '==', studentData.name),
@@ -255,27 +254,24 @@ export default function TransferPage() {
             const existingStudentSnap = await getDocs(existingStudentQuery);
 
             if (!existingStudentSnap.empty) {
-                // Student exists, use existing document ID
                 finalStudentDocId = existingStudentSnap.docs[0].id;
             } else {
-                // Student is new, create a new document
                 studentCounter++;
                 const schoolAcronym = (userProfile.schoolName || 'SPS').split(' ').map(w => w[0]).join('').toUpperCase();
                 const newStudentId = `${schoolAcronym}-${String(studentCounter).padStart(3, '0')}`;
                 
-                studentData.studentId = newStudentId;
-                studentData.transferredFrom = transfer.fromUserId;
-                studentData.transferredAt = serverTimestamp();
-
                 const newStudentRef = doc(recipientStudentsRef);
-                batch.set(newStudentRef, studentData);
+                batch.set(newStudentRef, {
+                  ...studentData,
+                  studentId: newStudentId,
+                  transferredFrom: transfer.fromUserId,
+                  transferredAt: serverTimestamp(),
+                });
                 finalStudentDocId = newStudentRef.id;
             }
-
             studentIdMap.set(originalStudentDocId, finalStudentDocId);
         }
 
-        // Step 1: Process Students and build the ID map
         const studentsToProcess: Student[] = [];
         if (transfer.dataType === 'Full Class Data' && transfer.students) {
             studentsToProcess.push(...transfer.students);
@@ -287,7 +283,6 @@ export default function TransferPage() {
             await processStudent(student);
         }
         
-        // Step 2: Process main data (Class, Lesson Note)
         if (transfer.dataType === 'Full Class Data') {
             if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
             
@@ -339,27 +334,56 @@ export default function TransferPage() {
             }
         }
         
-        // Step 3: Process subcollection data using the studentIdMap
-        const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
-          if (!dataArray) return;
-          for (const item of dataArray) {
-            const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
-            
-            const newStudentDocId = studentIdMap.get(originalStudentId);
-            if (!newStudentDocId) continue; 
-
-            const dataToSave = { ...itemData, studentId: newStudentDocId, transferredFrom: transfer.fromUserId };
+        const upsertSubcollectionData = async (
+          batch: WriteBatch,
+          subcollectionName: 'grades' | 'attendance' | 'traits',
+          dataArray: any[] | undefined
+        ) => {
+            if (!dataArray || !user) return;
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
-            
-            batch.set(doc(subcollectionRef), dataToSave);
-          }
+
+            for (const item of dataArray) {
+                const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
+                const newStudentDocId = studentIdMap.get(originalStudentId);
+                if (!newStudentDocId) continue;
+
+                let uniquenessQuery;
+                if (subcollectionName === 'grades') {
+                    uniquenessQuery = query(subcollectionRef,
+                        where('studentId', '==', newStudentDocId),
+                        where('subject', '==', item.subject),
+                        where('term', '==', item.term),
+                        where('session', '==', item.session)
+                    );
+                } else if (subcollectionName === 'attendance') {
+                    uniquenessQuery = query(subcollectionRef,
+                        where('studentId', '==', newStudentDocId),
+                        where('date', '==', item.date)
+                    );
+                } else { // traits
+                    uniquenessQuery = query(subcollectionRef,
+                        where('studentId', '==', newStudentDocId),
+                        where('term', '==', item.term),
+                        where('session', '==', item.session)
+                    );
+                }
+
+                const existingSnap = await getDocs(uniquenessQuery);
+                const dataToSave = { ...itemData, studentId: newStudentDocId, transferredFrom: transfer.fromUserId };
+
+                if (existingSnap.empty) {
+                    batch.set(doc(subcollectionRef), dataToSave);
+                } else {
+                    const existingDocRef = existingSnap.docs[0].ref;
+                    batch.update(existingDocRef, dataToSave);
+                }
+            }
         };
 
-        await upsertSubcollectionData('grades', transfer.grades);
-        await upsertSubcollectionData('attendance', transfer.attendance);
-        await upsertSubcollectionData('traits', transfer.traits);
+        await upsertSubcollectionData(batch, 'grades', transfer.grades);
+        await upsertSubcollectionData(batch, 'attendance', transfer.attendance);
+        await upsertSubcollectionData(batch, 'traits', transfer.traits);
         
-        // Step 4: Finalize transfer status
         const timestamp = serverTimestamp();
         const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
         batch.update(incomingRef, { status: 'accepted', processedAt: timestamp });
@@ -409,18 +433,16 @@ export default function TransferPage() {
             const classSnap = await getDocs(q);
 
             if (!classSnap.empty) {
-                // Class exists, show confirmation dialog
                 setConfirmDialog({
                     open: true,
                     transfer: transfer,
                     action: 'accept',
                 });
-                setProcessingTransferId(null); // Stop spinner while dialog is open
+                setProcessingTransferId(null);
                 return; 
             }
         }
 
-        // No conflict found, or not a class transfer, so proceed directly
         await processAcceptTransfer(transfer);
 
     } catch(error) {
