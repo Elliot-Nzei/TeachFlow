@@ -6,11 +6,59 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, PlusCircle, Users } from 'lucide-react';
+import { BookOpen, PlusCircle, Users, ChevronRight } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassDetailsContent from '@/components/class-details-content';
+import type { Class } from '@/lib/types';
+
+const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
+    <SheetTrigger asChild key={cls.id}>
+        <div onClick={onClick} className="h-full">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="font-headline">{cls.name}</CardTitle>
+                <CardDescription>A class for the current session.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 flex-grow">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{cls.students?.length || 0} Students</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <BookOpen className="h-4 w-4" />
+                    <span>{cls.subjects?.length || 0} Subjects</span>
+                </div>
+            </CardContent>
+            <CardFooter>
+                <Button variant="outline" className="w-full">View Details</Button>
+            </CardFooter>
+            </Card>
+        </div>
+    </SheetTrigger>
+);
+
+const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
+    <SheetTrigger asChild key={cls.id}>
+        <div onClick={onClick} className="flex items-center gap-4 p-3 rounded-lg cursor-pointer hover:bg-muted border">
+            <div className="flex-1">
+                <p className="font-semibold font-headline">{cls.name}</p>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                    <div className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
+                        <span>{cls.students?.length || 0} Students</span>
+                    </div>
+                     <div className="flex items-center gap-1.5">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        <span>{cls.subjects?.length || 0} Subjects</span>
+                    </div>
+                </div>
+            </div>
+            <Button variant="ghost" size="sm">View <ChevronRight className="h-4 w-4 ml-1" /></Button>
+        </div>
+    </SheetTrigger>
+);
 
 
 export default function ClassesPage() {
@@ -21,7 +69,7 @@ export default function ClassesPage() {
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
-    const { data: classes, isLoading } = useCollection<any>(classesQuery);
+    const { data: classes, isLoading } = useCollection<Class>(classesQuery);
 
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -74,33 +122,33 @@ export default function ClassesPage() {
         </Dialog>
       </div>
       <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Desktop Grid View */}
+        <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {isLoading ? Array.from({length: 3}).map((_, i) => (
               <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
           )) : classes?.map((cls) => (
-            <SheetTrigger asChild key={cls.id}>
-              <Card onClick={() => handleCardClick(cls.id)} className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="font-headline">{cls.name}</CardTitle>
-                  <CardDescription>A class for the current session.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>{cls.students?.length || 0} Students</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <BookOpen className="h-4 w-4" />
-                        <span>{cls.subjects?.length || 0} Subjects</span>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full">View Details</Button>
-                </CardFooter>
-              </Card>
-            </SheetTrigger>
+            <ClassCard key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
           ))}
         </div>
+
+        {/* Mobile List View */}
+        <div className="md:hidden space-y-3">
+           {isLoading ? Array.from({length: 3}).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
+                <div className="flex-1 space-y-2">
+                    <div className="h-5 w-3/4 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+          )) : classes?.map((cls) => (
+             <ClassListItem 
+                key={cls.id}
+                cls={cls}
+                onClick={() => handleCardClick(cls.id)}
+            />
+          ))}
+        </div>
+
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Class Details</SheetTitle>

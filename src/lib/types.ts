@@ -18,6 +18,7 @@ export type Student = {
   avatarUrl: string;
   age?: number;
   gender?: 'Male' | 'Female';
+  createdAt?: any;
 };
 
 export type Class = {
@@ -25,6 +26,7 @@ export type Class = {
   name: string;
   students: string[];
   subjects: string[];
+  createdAt?: any;
 };
 
 export type Subject = {
