@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -139,14 +140,13 @@ export default function Home() {
                  <div className="flex flex-col items-center gap-4">
                      <Avatar className="h-32 w-32 border-4 border-primary">
                         {/* 
-                          DEVELOPER NOTE: 
-                          The image path below is a placeholder. To show your real image:
+                          DEVELOPER NOTE: To show your real image:
                           1. Create a folder named 'img' inside the 'public' directory at the root of your project.
-                          2. Place your image file (e.g., 'my img.jpg') inside the 'public/img/' folder.
-                          3. Update the 'src' prop below to '/img/my img.jpg'.
+                          2. Place your image file (e.g., 'my-img.jpg') inside that new 'public/img/' folder.
+                          3. The 'src' prop below is already set up to look for '/img/my-img.jpg'.
                           Next.js serves files from the 'public' directory automatically.
                         */}
-                        <AvatarImage src="https://picsum.photos/seed/developer-profile/200/200" alt="Elliot Ekene Nzei" />
+                        <AvatarImage src="/img/my-img.jpg" alt="Elliot Ekene Nzei" />
                         <AvatarFallback className="text-4xl">EN</AvatarFallback>
                      </Avatar>
                      <div className="space-y-1">
