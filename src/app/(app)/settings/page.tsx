@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,11 +13,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useFirebase } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { Progress } from '@/components/ui/progress';
 
 export default function SettingsPage() {
-    const { settings, setSettings, isLoading } = useContext(SettingsContext);
-    const { firestore, user } = useFirebase();
+    const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
+    const { firestore, storage, user } = useFirebase();
     const [previewImage, setPreviewImage] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [isClearing, setIsClearing] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
@@ -42,11 +46,9 @@ export default function SettingsPage() {
     const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
             const file = event.target.files[0];
+            setImageFile(file);
             const imageUrl = URL.createObjectURL(file);
             setPreviewImage(imageUrl);
-            // This is a temporary frontend update. The actual upload logic needs to be implemented.
-            // For now, let's just update the local state.
-            // In a real app, you would upload the file to Firebase Storage and get a URL.
         }
     };
 
@@ -69,13 +71,64 @@ export default function SettingsPage() {
         setSettings({[id]: value});
     };
     
-    const handleSaveChanges = () => {
-        // Here we would ideally check which fields have changed and save them.
-        // The setSettings in context already handles the DB update.
-        toast({
-            title: 'Settings Saved',
-            description: 'Your changes have been saved successfully.',
-        });
+    const handleSaveChanges = async () => {
+        if (!user || !settings) return;
+
+        setIsSaving(true);
+        setUploadProgress(0);
+
+        const updates = { ...settings };
+        
+        try {
+            // If there's a new image file, upload it first
+            if (imageFile) {
+                const storageRef = ref(storage, `profile-pictures/${user.uid}/${imageFile.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+                await new Promise<void>((resolve, reject) => {
+                    uploadTask.on('state_changed',
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            setUploadProgress(progress);
+                        },
+                        (error) => {
+                            console.error("Upload failed:", error);
+                            toast({
+                                variant: "destructive",
+                                title: "Image Upload Failed",
+                                description: "Could not upload the new profile picture. Please try again.",
+                            });
+                            reject(error);
+                        },
+                        async () => {
+                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                            updates.profilePicture = downloadURL;
+                            resolve();
+                        }
+                    );
+                });
+            }
+
+            // Update Firestore with new settings (including new profile pic URL if any)
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, updates);
+            
+            // Update local context
+            setSettings(updates);
+
+            toast({
+                title: 'Settings Saved',
+                description: 'Your changes have been saved successfully.',
+            });
+
+        } catch (error) {
+            console.error("Error saving settings:", error);
+            // Error is already toasted inside the upload listener
+        } finally {
+            setIsSaving(false);
+            setUploadProgress(0);
+            setImageFile(null); // Clear the file after upload
+        }
     }
 
     const handleClearAllData = async () => {
@@ -140,8 +193,9 @@ export default function SettingsPage() {
         }
     };
 
+    const isLoading = isLoadingSettings || !settings;
 
-    if (isLoading && !settings) {
+    if (isLoading) {
         return (
              <div className="space-y-8 max-w-4xl mx-auto">
                 <div>
@@ -196,31 +250,37 @@ export default function SettingsPage() {
                     <div className="grid w-full max-w-sm items-center gap-1.5">
                         <Label htmlFor="picture">Profile Picture</Label>
                         <div className="flex items-center gap-2">
-                             <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} className="w-full" />
+                             <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} className="w-full" disabled={isSaving} />
                              <Button variant="outline" size="icon" asChild>
-                                 <label htmlFor="picture" className="cursor-pointer">
+                                 <label htmlFor="picture" className={`cursor-pointer ${isSaving ? 'pointer-events-none opacity-50' : ''}`}>
                                      <Upload />
                                  </label>
                              </Button>
                         </div>
+                         {isSaving && uploadProgress > 0 && (
+                            <div className="space-y-1">
+                                <Progress value={uploadProgress} className="h-2" />
+                                <p className="text-xs text-muted-foreground text-center">Uploading... {Math.round(uploadProgress)}%</p>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" value={settings?.name || ''} onChange={handleInputChange} />
+                        <Input id="name" value={settings?.name || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolName">School Name</Label>
-                        <Input id="schoolName" value={settings?.schoolName || ''} onChange={handleInputChange} />
+                        <Input id="schoolName" value={settings?.schoolName || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolMotto">School Motto</Label>
-                        <Input id="schoolMotto" value={settings?.schoolMotto || ''} onChange={handleInputChange} />
+                        <Input id="schoolMotto" value={settings?.schoolMotto || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolAddress">School Address</Label>
-                        <Input id="schoolAddress" value={settings?.schoolAddress || ''} onChange={handleInputChange} />
+                        <Input id="schoolAddress" value={settings?.schoolAddress || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
@@ -238,9 +298,9 @@ export default function SettingsPage() {
                 </div>
             </CardContent>
             <CardFooter>
-            <Button onClick={handleSaveChanges} disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save Profile
+            <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isSaving ? 'Saving...' : 'Save Profile'}
             </Button>
             </CardFooter>
         </Card>
@@ -253,7 +313,7 @@ export default function SettingsPage() {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="current-term">Current Term</Label>
-            <Select value={settings?.currentTerm || ''} onValueChange={(value) => handleSelectChange('currentTerm', value)}>
+            <Select value={settings?.currentTerm || ''} onValueChange={(value) => handleSelectChange('currentTerm', value)} disabled={isSaving}>
               <SelectTrigger id="current-term">
                 <SelectValue />
               </SelectTrigger>
@@ -266,13 +326,13 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="currentSession">Current Session</Label>
-            <Input id="currentSession" value={settings?.currentSession || ''} onChange={handleInputChange} />
+            <Input id="currentSession" value={settings?.currentSession || ''} onChange={handleInputChange} disabled={isSaving}/>
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleSaveChanges} disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Save Academic Settings
+          <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isSaving ? 'Saving...' : 'Save Academic Settings'}
           </Button>
         </CardFooter>
       </Card>
