@@ -66,10 +66,9 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   if (isLoadingClass) {
       return (
           <div className="space-y-8 p-6">
-              <div className="grid md:grid-cols-2 gap-8">
-                  <Skeleton className="h-64 w-full" />
-                  <Skeleton className="h-64 w-full" />
-              </div>
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-20 w-full" />
           </div>
       )
   }
@@ -79,104 +78,101 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   }
 
   return (
-    <>
-      <div className="space-y-8 p-6">
-        <div className="grid md:grid-cols-2 gap-8">
-            <Card>
-            <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                    <CardTitle className="flex items-center">
-                    <Users className="mr-2 h-6 w-6" />
-                    Students ({studentsInClass?.length ?? 0})
-                    </CardTitle>
-                    <CardDescription>Students enrolled in this class.</CardDescription>
-                </div>
-                 <Popover open={isStudentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm">
-                            <UserPlus className="mr-2 h-4 w-4" /> Add Student
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[250px] p-0" align="start">
-                        <Command>
-                            <CommandInput placeholder="Find student..." />
-                            <CommandList>
-                                <CommandEmpty>No unassigned students found.</CommandEmpty>
-                                <CommandGroup>
-                                    {isLoadingUnassigned ? <CommandItem>Loading...</CommandItem> : 
-                                    unassignedStudents?.map(student => (
-                                        <CommandItem
-                                            key={student.id}
-                                            value={student.name}
-                                            onSelect={() => handleAddStudentToClass(student)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                 <Avatar className="h-6 w-6">
-                                                    <AvatarImage src={student.avatarUrl} alt={student.name} />
-                                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <span>{student.name}</span>
-                                            </div>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-            </CardHeader>
-            <CardContent>
-                <Separator className="mb-4" />
-                {isLoadingStudents ? <Skeleton className="h-40 w-full" /> : 
-                    <div className="space-y-1">
-                    {studentsInClass && studentsInClass.length > 0 ? (
-                        studentsInClass.map((student) => (
-                            <div key={student.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={student.avatarUrl} alt={student.name} />
-                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{student.name}</span>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center text-sm text-muted-foreground p-4">
-                            No students have been added to this class yet.
-                        </div>
-                    )}
-                    </div>
-                }
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center">
-                <BookOpen className="mr-2 h-6 w-6" />
-                Subjects ({classDetails.subjects?.length ?? 0})
-                </CardTitle>
-                <CardDescription>Subjects taught in this class.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Separator className="mb-4" />
-                <div className="flex flex-wrap gap-2">
-                {classDetails.subjects && classDetails.subjects.length > 0 ? (
-                    classDetails.subjects?.map((subject: string, index: number) => (
-                    <Badge key={index} variant="secondary" className="text-sm">
-                        <Book className="mr-1.5 h-3 w-3" />
-                        {subject}
-                    </Badge>
-                ))
-                ) : (
-                    <div className="text-center text-sm text-muted-foreground p-4">
-                        No subjects assigned yet. Go to the 'Academics' page to assign them.
-                    </div>
-                )}
-                </div>
-            </CardContent>
-            </Card>
+    <div className="p-6 space-y-8">
+      {/* Students Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center">
+            <Users className="mr-2 h-5 w-5 text-muted-foreground" />
+            Students ({studentsInClass?.length ?? 0})
+          </h3>
+          <Popover open={isStudentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <UserPlus className="mr-2 h-4 w-4" /> Add Student
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[250px] p-0" align="end">
+              <Command>
+                <CommandInput placeholder="Find student..." />
+                <CommandList>
+                  <CommandEmpty>No unassigned students found.</CommandEmpty>
+                  <CommandGroup>
+                    {isLoadingUnassigned ? <CommandItem>Loading...</CommandItem> :
+                      unassignedStudents?.map(student => (
+                        <CommandItem
+                          key={student.id}
+                          value={student.name}
+                          onSelect={() => handleAddStudentToClass(student)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={student.avatarUrl} alt={student.name} />
+                              <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span>{student.name}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
+        <Card>
+          <CardContent className="p-4">
+            {isLoadingStudents ? <Skeleton className="h-40 w-full" /> :
+              <div className="space-y-1">
+                {studentsInClass && studentsInClass.length > 0 ? (
+                  studentsInClass.map((student) => (
+                    <div key={student.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={student.avatarUrl} alt={student.name} />
+                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-sm">{student.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-sm text-muted-foreground py-8">
+                    No students have been added to this class yet.
+                  </div>
+                )}
+              </div>
+            }
+          </CardContent>
+        </Card>
       </div>
-    </>
+
+      <Separator />
+
+      {/* Subjects Section */}
+      <div>
+        <h3 className="text-lg font-semibold flex items-center mb-4">
+          <BookOpen className="mr-2 h-5 w-5 text-muted-foreground" />
+          Subjects ({classDetails.subjects?.length ?? 0})
+        </h3>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-2">
+              {classDetails.subjects && classDetails.subjects.length > 0 ? (
+                classDetails.subjects?.map((subject: string, index: number) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    <Book className="mr-1.5 h-3 w-3" />
+                    {subject}
+                  </Badge>
+                ))
+              ) : (
+                <div className="text-center text-sm text-muted-foreground py-8 w-full">
+                  No subjects assigned. Go to the 'Academics' page to assign them.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 
