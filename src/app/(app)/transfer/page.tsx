@@ -114,16 +114,16 @@ export default function TransferPage() {
   const fetchStudentSubcollections = async (studentIds: string[]) => {
       if (!user || studentIds.length === 0) return {};
       
-      const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds));
-      const attendanceSnap = await getDocs(attendanceQuery);
-      
-      const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', 'in', studentIds));
-      const traitsSnap = await getDocs(traitsQuery);
+      const subcollectionNames: ('grades' | 'attendance' | 'traits')[] = ['grades', 'attendance', 'traits'];
+      const results: { grades: Grade[], attendance: Attendance[], traits: Trait[] } = { grades: [], attendance: [], traits: [] };
 
-      return {
-          attendance: attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance)),
-          traits: traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait)),
+      for (const name of subcollectionNames) {
+        const q = query(collection(firestore, 'users', user.uid, name), where('studentId', 'in', studentIds));
+        const snapshot = await getDocs(q);
+        results[name] = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as any;
       }
+
+      return results;
   }
 
 
@@ -230,11 +230,9 @@ export default function TransferPage() {
     }
   };
 
-  const handleAcceptTransfer = async (transfer: DataTransfer) => {
-    if (!user || !transfer.fromUserId || !transfer.outgoingTransferId) return;
-
+  const processAcceptTransfer = async (transfer: DataTransfer) => {
+     if (!user || !transfer.fromUserId || !transfer.outgoingTransferId) return;
     setProcessingTransferId(transfer.id);
-    setConfirmDialog({ open: false, transfer: null, action: null });
     
     const batch = writeBatch(firestore);
     
@@ -338,7 +336,7 @@ export default function TransferPage() {
         }
         
         // Step 3: Process subcollection data using the studentIdMap
-        const upsertSubcollectionData = async (subcollectionName: 'attendance' | 'traits', dataArray: any[] | undefined) => {
+        const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
           if (!dataArray) return;
           for (const item of dataArray) {
             const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
@@ -350,7 +348,15 @@ export default function TransferPage() {
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
             
             let uniqueQuery;
-            if (subcollectionName === 'attendance') {
+            if (subcollectionName === 'grades') {
+                uniqueQuery = query(subcollectionRef,
+                    where('studentId', '==', newStudentDocId),
+                    where('subject', '==', dataToSave.subject),
+                    where('term', '==', dataToSave.term),
+                    where('session', '==', dataToSave.session),
+                    limit(1)
+                );
+            } else if (subcollectionName === 'attendance') {
               uniqueQuery = query(subcollectionRef, 
                 where('studentId', '==', dataToSave.studentId), 
                 where('date', '==', dataToSave.date), 
@@ -376,6 +382,7 @@ export default function TransferPage() {
           }
         };
 
+        await upsertSubcollectionData('grades', transfer.grades);
         await upsertSubcollectionData('attendance', transfer.attendance);
         await upsertSubcollectionData('traits', transfer.traits);
         
@@ -402,6 +409,45 @@ export default function TransferPage() {
             variant: "destructive",
         });
     } finally {
+        setProcessingTransferId(null);
+    }
+  }
+
+
+  const handleAcceptTransfer = async (transfer: DataTransfer) => {
+    if (!user) return;
+    
+    setProcessingTransferId(transfer.id);
+    setConfirmDialog({ open: false, transfer: null, action: null });
+
+    try {
+        if (transfer.dataType === 'Full Class Data' && transfer.data?.name) {
+            const classesRef = collection(firestore, 'users', user.uid, 'classes');
+            const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
+            const classSnap = await getDocs(q);
+
+            if (!classSnap.empty) {
+                // Class exists, show confirmation dialog
+                setConfirmDialog({
+                    open: true,
+                    transfer: transfer,
+                    action: 'accept',
+                });
+                setProcessingTransferId(null); // Stop spinner while dialog is open
+                return; 
+            }
+        }
+
+        // No conflict found, or not a class transfer, so proceed directly
+        await processAcceptTransfer(transfer);
+
+    } catch(error) {
+        console.error('Pre-accept check error:', error);
+        toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : "An error occurred before accepting the transfer.",
+            variant: "destructive",
+        });
         setProcessingTransferId(null);
     }
   };
@@ -473,7 +519,7 @@ export default function TransferPage() {
 
                 {!isSent && transfer.status === 'pending' && (
                   <div className="flex w-full md:w-auto justify-end gap-2 border-t md:border-none pt-4 md:pt-0">
-                    <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })} disabled={isProcessing}>
+                    <Button size="sm" variant="outline" onClick={() => handleAcceptTransfer(transfer)} disabled={isProcessing}>
                       {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Accept
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })} disabled={isProcessing}>
@@ -592,16 +638,16 @@ export default function TransferPage() {
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDialog.action === 'accept' ? 'Accept Transfer?' : 'Reject Transfer?'}</AlertDialogTitle>
+            <AlertDialogTitle>{confirmDialog.action === 'accept' ? 'Accept & Merge Transfer?' : 'Reject Transfer?'}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div>
                 {confirmDialog.action === 'accept' ? (
                   <>
-                    You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>. This data will be copied to your account.
+                    You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>.
                     {confirmDialog.transfer?.dataType === 'Full Class Data' && (
                       <span className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
                         <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">This will copy the class and all its associated data into your records.</span>
+                        <span className="text-sm">A class with the same name already exists. Accepting will merge the incoming students and their academic records into your existing class. This action cannot be undone.</span>
                       </span>
                     )}
                   </>
@@ -616,12 +662,12 @@ export default function TransferPage() {
             <AlertDialogAction
               onClick={() => {
                 if (!confirmDialog.transfer) return;
-                if (confirmDialog.action === 'accept') handleAcceptTransfer(confirmDialog.transfer);
+                if (confirmDialog.action === 'accept') processAcceptTransfer(confirmDialog.transfer);
                 else handleRejectTransfer(confirmDialog.transfer);
               }}
               className={confirmDialog.action === 'accept' ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
             >
-              {confirmDialog.action === 'accept' ? 'Yes, Accept' : 'Yes, Reject'}
+              {confirmDialog.action === 'accept' ? 'Yes, Accept & Merge' : 'Yes, Reject'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

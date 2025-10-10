@@ -111,6 +111,7 @@ export type DataTransfer = {
   outgoingTransferId?: string;
   data?: any; 
   students?: Student[];
+  grades?: Grade[];
   attendance?: Attendance[];
   traits?: Trait[];
   lessonNote?: LessonNote;
