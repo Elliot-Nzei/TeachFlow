@@ -26,25 +26,8 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         // Allow reading if there's a valid incoming transfer for this class
         allow get: if isAuthenticated() && exists(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-        ) && get(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-        ).data.fromUserId == userId && get(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-        ).data.dataId == classId;
-        
-        // Allow nested subcollections (students in a class, etc.)
-        match /{subcollection}/{docId} {
-          allow read: if isOwner(userId);
-          // Allow reading if there's a valid incoming transfer for the parent class
-          allow get: if isAuthenticated() && exists(
-            /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-          ) && get(
-            /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-          ).data.fromUserId == userId && get(
-            /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-          ).data.dataId == classId;
-        }
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(classId)
+        );
       }
       
       match /students/{studentId} {
@@ -52,12 +35,8 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         // Allow reading if there's a valid incoming transfer for this student
         allow get: if isAuthenticated() && exists(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-        ) && get(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-        ).data.fromUserId == userId && get(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/{transferId}
-        ).data.dataId == studentId;
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(studentId)
+        );
       }
 
       // Rules for managing transfers
@@ -71,20 +50,15 @@ service cloud.firestore {
       }
 
       match /outgoingTransfers/{transferId} {
-        // User can read their own outgoing transfers
-        allow read: if isOwner(userId);
-        // User can create their own outgoing transfers
-        allow create: if isOwner(userId);
-        // CRITICAL: The recipient needs to read the sender's outgoing transfer to get details
-        // Allow reading if the current user is the recipient (toUserId matches)
+        // User can read and write their own outgoing transfers
+        allow read, write: if isOwner(userId);
+        
+        // CRITICAL FIX: Allow the recipient to read a specific outgoing transfer
         allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
-        // Allow listing if there's at least one transfer where the current user is the recipient
-        allow list: if isAuthenticated() && request.auth.uid in resource.data.keys() || 
-                       isOwner(userId);
-        // The recipient of a transfer can update the status of the sender's outgoing record
-        allow update: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
-        // User can delete their own outgoing transfers
-        allow delete: if isOwner(userId);
+        
+        // CRITICAL FIX: Allow the recipient to update the sender's outgoing transfer status
+        allow update: if isAuthenticated() && 
+                         resource.data.toUserId == request.auth.uid;
       }
 
       // Securely grant access to all other subcollections (subjects, grades, etc.)

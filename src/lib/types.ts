@@ -74,6 +74,7 @@ export type DataTransfer = {
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: any; // Firestore server timestamp
   processedAt?: any; // Firestore server timestamp
+  outgoingTransferId?: string;
 };
 
 export type Settings = {

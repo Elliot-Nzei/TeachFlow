@@ -140,7 +140,13 @@ export default function TransferPage() {
       const recipientId = recipient.id;
       const dataName = getItemName(dataItem, dataType);
       
-      const transferRequest = {
+      const batch = writeBatch(firestore);
+
+      // 1. Create a reference for the sender's outgoing transfer to get its ID first
+      const senderTransfersRef = doc(collection(firestore, 'users', user.uid, 'outgoingTransfers'));
+      const outgoingTransferId = senderTransfersRef.id;
+
+      const transferRequestData = {
         fromUserCode: userProfile.userCode,
         fromUserId: user.uid,
         toUserId: recipientId,
@@ -152,15 +158,17 @@ export default function TransferPage() {
         createdAt: serverTimestamp(),
       };
 
-      const batch = writeBatch(firestore);
-
-      // 1. Write to the recipient's incoming transfers
-      const recipientTransfersRef = doc(collection(firestore, 'users', recipientId, 'incomingTransfers'));
-      batch.set(recipientTransfersRef, transferRequest);
+      // 2. Set the outgoing transfer document
+      batch.set(senderTransfersRef, transferRequestData);
       
-      // 2. Write to the sender's outgoing transfers
-      const senderTransfersRef = doc(collection(firestore, 'users', user.uid, 'outgoingTransfers'));
-      batch.set(senderTransfersRef, transferRequest);
+      // 3. Create a reference for the recipient's incoming transfer
+      const recipientTransfersRef = doc(collection(firestore, 'users', recipientId, 'incomingTransfers'));
+      
+      // 4. Set the incoming transfer, adding the outgoingTransferId for the back-reference
+      batch.set(recipientTransfersRef, {
+        ...transferRequestData,
+        outgoingTransferId: outgoingTransferId,
+      });
       
       await batch.commit();
       
@@ -248,7 +256,7 @@ export default function TransferPage() {
   };
 
   const handleAcceptTransfer = async (transfer: DataTransfer) => {
-    if (!user || !transfer.fromUserId) return;
+    if (!user || !transfer.fromUserId || !transfer.outgoingTransferId) return;
 
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
@@ -267,29 +275,13 @@ export default function TransferPage() {
         
         const batch = writeBatch(firestore);
         
+        // Update recipient's incoming transfer
         const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
         batch.update(incomingRef, { status: 'accepted', processedAt: serverTimestamp() });
         
-        const outgoingQuery = query(
-          collection(firestore, 'users', transfer.fromUserId, 'outgoingTransfers'),
-          where('toUserId', '==', user.uid),
-          where('dataId', '==', transfer.dataId),
-          where('status', '==', 'pending')
-        );
-
-        const outgoingSnapshot = await getDocs(outgoingQuery).catch(serverError => {
-            const permError = new FirestorePermissionError({
-                path: `users/${transfer.fromUserId}/outgoingTransfers`,
-                operation: 'list'
-            });
-            errorEmitter.emit('permission-error', permError);
-            throw permError;
-        });
-
-        if (!outgoingSnapshot.empty) {
-            const outgoingRef = outgoingSnapshot.docs[0].ref;
-            batch.update(outgoingRef, { status: 'accepted', processedAt: serverTimestamp() });
-        }
+        // Update sender's outgoing transfer using the stored ID
+        const outgoingRef = doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId);
+        batch.update(outgoingRef, { status: 'accepted', processedAt: serverTimestamp() });
 
         await batch.commit().catch(serverError => {
             const permError = new FirestorePermissionError({
@@ -306,34 +298,20 @@ export default function TransferPage() {
   };
 
   const handleRejectTransfer = async (transfer: DataTransfer) => {
-    if (!user || !transfer.fromUserId) return;
+    if (!user || !transfer.fromUserId || !transfer.outgoingTransferId) return;
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
 
     try {
       const batch = writeBatch(firestore);
 
+      // Update recipient's incoming transfer
       const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
       batch.update(incomingRef, { status: 'rejected', processedAt: serverTimestamp() });
       
-      const outgoingQuery = query(
-        collection(firestore, 'users', transfer.fromUserId, 'outgoingTransfers'),
-        where('toUserId', '==', user.uid),
-        where('dataId', '==', transfer.dataId),
-        where('status', '==', 'pending')
-      );
-      const outgoingSnapshot = await getDocs(outgoingQuery).catch(serverError => {
-        const permError = new FirestorePermissionError({
-            path: `users/${transfer.fromUserId}/outgoingTransfers`,
-            operation: 'list'
-        });
-        errorEmitter.emit('permission-error', permError);
-        throw permError;
-      });
-      if (!outgoingSnapshot.empty) {
-          const outgoingRef = outgoingSnapshot.docs[0].ref;
-          batch.update(outgoingRef, { status: 'rejected', processedAt: serverTimestamp() });
-      }
+      // Update sender's outgoing transfer using the stored ID
+      const outgoingRef = doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId);
+      batch.update(outgoingRef, { status: 'rejected', processedAt: serverTimestamp() });
 
       await batch.commit().catch(serverError => {
         const permError = new FirestorePermissionError({
@@ -535,5 +513,3 @@ export default function TransferPage() {
     </div>
   );
 }
-
-    
