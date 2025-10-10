@@ -526,14 +526,14 @@ export default function LessonGeneratorPage() {
             {generatedNote && !isLoading && !isDownloadingPdf && (
             <div id="print-section">
               <Card>
-                <CardHeader className="flex flex-row justify-between items-center print:hidden">
+                <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 print:hidden">
                     <div>
                         <CardTitle>Generated Lesson Note</CardTitle>
                         <CardDescription>
                             For {formState.classLevel} - {formState.subject}
                         </CardDescription>
                     </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={handleCopy}>
                       {hasCopied ? <Check className="mr-2 h-4 w-4 text-green-500" /> : <Copy className="mr-2 h-4 w-4" />}
                       {hasCopied ? 'Copied!' : 'Copy'}
