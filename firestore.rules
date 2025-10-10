@@ -2,24 +2,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rule for the top-level 'users' collection
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // --- User Data Rules ---
     match /users/{userId} {
-      // Allow any authenticated user to get or list users.
-      // This is necessary for the user search functionality in data transfer.
-      // It does NOT allow reading the content of all documents, only querying them.
-      allow get, list: if request.auth != null;
-    }
+      // Allow users to read their own profile, but not others' profiles directly.
+      allow get: if isOwner(userId);
 
-    // Rule for a user's own documents and subcollections
-    match /users/{userId}/{documents=**} {
-      // A user can read and write to their own data.
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
+      // Allow any authenticated user to query the users collection to find a user by userCode.
+      // This is crucial for the Data Transfer feature.
+      allow list: if request.auth != null && request.query.keys().hasOnly(['where']) && request.query.where[0][0] == 'userCode';
 
-    // Rule to allow creating an incoming transfer request for another user
-    match /users/{recipientId}/incomingTransfers/{transferId} {
-        // An authenticated user can create a transfer document for someone else.
-        allow create: if request.auth != null;
+      // --- Subcollection Rules ---
+
+      // A user can read and write to their own outgoing transfers.
+      match /outgoingTransfers/{transferId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // A user can read their incoming transfers. They can also update the status to accept/reject.
+      // Another user can create a transfer request for them.
+      match /incomingTransfers/{transferId} {
+          allow read, update: if isOwner(userId);
+          allow create: if request.auth != null;
+      }
+
+      // A recipient of a transfer needs to update the sender's outgoingTransfer document.
+      // We check if a corresponding incomingTransfer document exists and belongs to the user making the request.
+      match /users/{senderId}/outgoingTransfers/{transferId} {
+        allow update: if request.auth != null &&
+                      exists(
+                        /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+                      );
+      }
+
+      // A user can read a specific class from another user ONLY IF they are the recipient of an accepted transfer for that class.
+      // Otherwise, they can only access their own classes.
+      match /classes/{classId} {
+        allow read: if isOwner(userId) || (
+          request.auth != null &&
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
+          query.data.dataType == 'Class' &&
+          query.data.dataId == classId &&
+          query.data.status == 'accepted' &&
+          query.data.toUserId == request.auth.uid
+        );
+        allow write: if isOwner(userId);
+      }
+
+      // A user can read students from another user's class ONLY IF they are accepting a transfer for that class.
+      match /students/{studentId} {
+         allow read: if isOwner(userId) || (
+            request.auth != null &&
+            exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
+            query.data.dataType == 'Class' &&
+            get(/databases/$(database)/documents/users/$(userId)/students/$(studentId)).data.classId == query.data.dataId
+         );
+         allow write: if isOwner(userId);
+      }
+      
+      // --- Default catch-all for a user's own data ---
+      // This covers grades, subjects, attendance, traits, etc.
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }
