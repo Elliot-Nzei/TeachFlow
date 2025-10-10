@@ -247,71 +247,75 @@ export default function GradesPage() {
               </div>
             </CardHeader>
             <CardContent>
-                {showGrades && (
-                    Object.keys(gradesBySubject).length > 0 ? (
-                    <Accordion type="multiple" className="w-full">
-                        {Object.entries(gradesBySubject).map(([subject, subjectGrades]) => (
-                        <AccordionItem value={subject} key={subject}>
-                            <AccordionTrigger className="text-lg font-semibold font-headline">
-                            {subject}
-                            </AccordionTrigger>
-                            <AccordionContent>
-                            {/* Mobile Card View */}
-                            <div className="md:hidden space-y-4">
-                                {subjectGrades.map(grade => (
-                                    <Card key={grade.id} className="border-l-4 border-primary">
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-base">{grade.studentName}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="grid grid-cols-3 gap-2 text-sm">
-                                                <div><span className="text-muted-foreground">CA1:</span> {grade.ca1}</div>
-                                                <div><span className="text-muted-foreground">CA2:</span> {grade.ca2}</div>
-                                                <div><span className="text-muted-foreground">Exam:</span> {grade.exam}</div>
-                                                <div className="col-span-2 font-semibold">Total: {grade.total}</div>
-                                                <div className="font-bold text-lg text-right">{grade.grade}</div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+              {showGrades ? (
+                Object.keys(gradesBySubject).length > 0 ? (
+                  <Accordion type="multiple" className="w-full">
+                    {Object.entries(gradesBySubject).map(([subject, subjectGrades]) => (
+                      <AccordionItem value={subject} key={subject}>
+                        <AccordionTrigger className="text-lg font-semibold font-headline">
+                          {subject}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {/* Mobile Card View */}
+                          <div className="md:hidden space-y-4">
+                            {subjectGrades.map(grade => (
+                              <Card key={grade.id} className="border-l-4 border-primary">
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-base">{grade.studentName}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid grid-cols-3 gap-2 text-sm">
+                                    <div><span className="text-muted-foreground">CA1:</span> {grade.ca1}</div>
+                                    <div><span className="text-muted-foreground">CA2:</span> {grade.ca2}</div>
+                                    <div><span className="text-muted-foreground">Exam:</span> {grade.exam}</div>
+                                    <div className="col-span-2 font-semibold">Total: {grade.total}</div>
+                                    <div className="font-bold text-lg text-right">{grade.grade}</div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                          {/* Desktop Table View */}
+                          <div className="w-full overflow-x-auto hidden md:block">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="min-w-[120px]">Student</TableHead>
+                                  <TableHead className="w-[60px] text-center">CA1</TableHead>
+                                  <TableHead className="w-[60px] text-center">CA2</TableHead>
+                                  <TableHead className="w-[60px] text-center">Exam</TableHead>
+                                  <TableHead className="w-[70px] text-center">Total</TableHead>
+                                  <TableHead className="w-[70px] text-right">Grade</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {subjectGrades.map((grade) => (
+                                  <TableRow key={grade.id}>
+                                    <TableCell className="font-medium">{grade.studentName}</TableCell>
+                                    <TableCell className="text-center">{grade.ca1}</TableCell>
+                                    <TableCell className="text-center">{grade.ca2}</TableCell>
+                                    <TableCell className="text-center">{grade.exam}</TableCell>
+                                    <TableCell className="text-center">{grade.total}</TableCell>
+                                    <TableCell className="text-right font-bold">{grade.grade}</TableCell>
+                                  </TableRow>
                                 ))}
-                            </div>
-                            {/* Desktop Table View */}
-                            <div className="w-full overflow-x-auto hidden md:block">
-                                <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                    <TableHead className="min-w-[120px]">Student</TableHead>
-                                    <TableHead className="w-[60px] text-center">CA1</TableHead>
-                                    <TableHead className="w-[60px] text-center">CA2</TableHead>
-                                    <TableHead className="w-[60px] text-center">Exam</TableHead>
-                                    <TableHead className="w-[70px] text-center">Total</TableHead>
-                                    <TableHead className="w-[70px] text-right">Grade</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {subjectGrades.map((grade) => (
-                                    <TableRow key={grade.id}>
-                                        <TableCell className="font-medium">{grade.studentName}</TableCell>
-                                        <TableCell className="text-center">{grade.ca1}</TableCell>
-                                        <TableCell className="text-center">{grade.ca2}</TableCell>
-                                        <TableCell className="text-center">{grade.exam}</TableCell>
-                                        <TableCell className="text-center">{grade.total}</TableCell>
-                                        <TableCell className="text-right font-bold">{grade.grade}</TableCell>
-                                    </TableRow>
-                                    ))}
-                                </TableBody>
-                                </Table>
-                            </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                        ))}
-                    </Accordion>
-                    ) : (
-                    <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
-                        <p>No grades recorded for this class yet. Click 'Add / Edit Grades' to start.</p>
-                    </div>
-                    )
-                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                    <p>No grades recorded for this class yet. Click 'Add / Edit Grades' to start.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                    <p>Click 'View Grades' to see the records for this class.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -323,5 +327,3 @@ export default function GradesPage() {
     </div>
   );
 }
-
-    

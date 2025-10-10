@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useContext, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -111,8 +112,8 @@ export default function TransferPage() {
   }, [classes, students, lessonNotesHistory]);
 
   const handleTransfer = async () => {
-    if (!recipientCode || !dataType || !dataItem || !user || !userProfile || !userProfile.currentSession) {
-      toast({ variant: 'destructive', title: 'Invalid Transfer', description: 'Please fill all fields and ensure session is set.' });
+    if (!recipientCode || !dataType || !dataItem || !user || !userProfile) {
+      toast({ variant: 'destructive', title: 'Invalid Transfer', description: 'Please fill all fields.' });
       return;
     }
     if (recipientCode === userProfile.userCode) {
@@ -136,8 +137,24 @@ export default function TransferPage() {
         let payload: Partial<DataTransfer> = {};
         const dataName = getItemName(dataItem, dataType);
 
-        const session = userProfile.currentSession;
-        const term = userProfile.currentTerm;
+        const fetchStudentSubcollections = async (studentIds: string[]) => {
+            if (studentIds.length === 0) return {};
+            const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIds));
+            const gradesSnap = await getDocs(gradesQuery);
+            
+            const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds));
+            const attendanceSnap = await getDocs(attendanceQuery);
+            
+            const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', 'in', studentIds));
+            const traitsSnap = await getDocs(traitsQuery);
+
+            return {
+                grades: gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade)),
+                attendance: attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance)),
+                traits: traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait)),
+            }
+        }
+
 
         if (dataType === 'Full Class Data') {
             const classRef = doc(firestore, `users/${user.uid}/classes/${dataItem}`);
@@ -148,22 +165,12 @@ export default function TransferPage() {
 
             const studentsInClassQuery = query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', dataItem));
             const studentsSnap = await getDocs(studentsInClassQuery);
-            payload.students = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
+            const studentDocs = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
+            payload.students = studentDocs;
             
-            const studentIds = studentsSnap.docs.map(doc => doc.id);
-            if (studentIds.length > 0) {
-              const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIds), where('session', '==', session));
-              const gradesSnap = await getDocs(gradesQuery);
-              payload.grades = gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade));
-
-              const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds), where('session', '==', session));
-              const attendanceSnap = await getDocs(attendanceQuery);
-              payload.attendance = attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance));
-
-              const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', 'in', studentIds), where('session', '==', session));
-              const traitsSnap = await getDocs(traitsQuery);
-              payload.traits = traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait));
-            }
+            const studentIds = studentDocs.map(s => s.id);
+            const subcollectionData = await fetchStudentSubcollections(studentIds);
+            payload = { ...payload, ...subcollectionData };
 
         } else if (dataType === 'Single Student Record') {
             const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
@@ -171,17 +178,8 @@ export default function TransferPage() {
             if (!studentSnap.exists()) throw new Error('Selected student not found.');
             payload.data = studentSnap.data();
 
-            const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', dataItem), where('session', '==', session));
-            const gradesSnap = await getDocs(gradesQuery);
-            payload.grades = gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade));
-
-            const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', dataItem), where('session', '==', session));
-            const attendanceSnap = await getDocs(attendanceQuery);
-            payload.attendance = attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance));
-
-            const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', '==', dataItem), where('session', '==', session));
-            const traitsSnap = await getDocs(traitsQuery);
-            payload.traits = traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait));
+            const subcollectionData = await fetchStudentSubcollections([dataItem]);
+            payload = { ...payload, ...subcollectionData };
 
         } else if (dataType === 'Lesson Note') {
             const note = lessonNotesHistory.find(n => n.id === dataItem);
@@ -199,7 +197,7 @@ export default function TransferPage() {
             fromUserId: user.uid,
             fromUserCode: userProfile.userCode,
             toUserId: recipient.id,
-            toUserCode: recipient.code,
+toUserCode: recipient.code,
             status: 'pending' as const,
             outgoingTransferId: outgoingTransferId,
             ...payload
@@ -245,7 +243,7 @@ export default function TransferPage() {
         const studentIdsToMerge: string[] = [];
 
         // 1. Process all students first, if they exist in the transfer
-        if (transfer.dataType === 'Full Class Data' && transfer.students) {
+        if (transfer.students && transfer.students.length > 0) {
             for (const student of transfer.students) {
                 const studentsRef = collection(firestore, 'users', user.uid, 'students');
                 const studentQuery = query(studentsRef, where('studentId', '==', student.studentId), limit(1));
