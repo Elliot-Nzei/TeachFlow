@@ -1,61 +1,80 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if a user is the owner of a document
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // --- Core Data Ownership Rules ---
-    // Users can do anything with documents inside their own user folder.
-    match /users/{userId}/{documents=**} {
-      allow read, write: if isOwner(userId);
-    }
-    
-    // --- Data Transfer and User Search Rules ---
-
-    // 1. Allow any authenticated user to search for another user by their userCode.
-    // This is required to initiate a transfer.
+    // --- User Data Rules ---
     match /users/{userId} {
-      allow list: if request.auth != null;
-    }
+      // Allow users to read and update their own profile.
+      allow read, update: if isOwner(userId);
+      
+      // Allow any authenticated user to search for users by their code.
+      // This is required for the data transfer feature.
+      allow list: if request.auth != null && request.query.keys().hasOnly(['where', 'limit']);
 
-    // 2. Allow an authenticated user to CREATE a transfer request in another user's inbox.
-    match /users/{recipientId}/incomingTransfers/{transferId} {
-      allow create: if request.auth != null;
-    }
+      // --- Subcollection Rules ---
 
-    // 3. Allow a recipient to UPDATE the status of a transfer sent TO them in the SENDER's outbox.
-    // This keeps the status in sync for both users.
-    match /users/{senderId}/outgoingTransfers/{transferId} {
-        allow update: if request.auth != null &&
-                      get(/databases/$(database)/documents/users/$(senderId)/outgoingTransfers/$(transferId)).data.toUserId == request.auth.uid;
-    }
-    
-    // 4. Allow a recipient to READ the specific class/student data they are about to accept.
-    // This is the key fix for the error you are seeing.
-    function hasPendingTransferFor(dataId, senderId) {
-      return exists(
-        /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/
-      ) && exists(
-        /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers.where("dataId", "==", dataId).where("fromUserId", "==", senderId)
-      );
-    }
-    
-    match /users/{senderId}/classes/{classId} {
-        allow get: if request.auth != null && hasPendingTransferFor(classId, senderId);
-    }
+      // Allow users full access to their own subcollections (classes, students, grades, etc.)
+      match /classes/{classId} {
+        allow read, write: if isOwner(userId);
 
-    match /users/{senderId}/students/{studentId} {
-        allow get: if request.auth != null && hasPendingTransferFor(studentId, senderId);
-        allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(senderId)/classes/$(request.query.classId)).data.ownerId == senderId;
-    }
-    
-    // Allow the recipient to list students of a class they are about to accept.
-    match /users/{senderId}/students/{studentId} {
-      allow list: if request.auth != null &&
-                   exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
-                   query.get("classId") in get(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers.where("fromUserId", "==", senderId)).data.map(t => t.dataId);
+        // Allow a recipient of a transfer to READ a specific class to accept it.
+        allow get: if request.auth != null && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+        ) && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+        ).data.fromUserId == userId && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+        ).data.dataId == classId;
+      }
+
+      match /students/{studentId} {
+        allow read, write: if isOwner(userId);
+
+        // Allow a recipient of a transfer to READ a specific student to accept it.
+        allow get: if request.auth != null && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+        ) && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+        ).data.fromUserId == userId && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(transferId)
+        ).data.dataId == studentId;
+      }
+      
+      // Generic rule for all other direct subcollections of a user
+      match /subjects/{docId} { allow read, write: if isOwner(userId); }
+      match /grades/{docId} { allow read, write: if isOwner(userId); }
+      match /attendance/{docId} { allow read, write: if isOwner(userId); }
+      match /traits/{docId} { allow read, write: if isOwner(userId); }
+
+
+      // --- Data Transfer Subcollection Rules ---
+      
+      // Incoming transfers:
+      match /incomingTransfers/{transferId} {
+        // User can read and update (accept/reject) their own incoming transfers.
+        allow read, update: if isOwner(userId);
+        
+        // Any authenticated user can create an incoming transfer request FOR this user.
+        allow create: if request.auth != null && request.resource.data.toUserId == userId;
+      }
+
+      // Outgoing transfers:
+      match /outgoingTransfers/{transferId} {
+        // User can read and create their own outgoing transfers.
+        allow read, create: if isOwner(userId);
+
+        // Allow the RECIPIENT to update the status of the sender's outgoing transfer.
+        // This is crucial for keeping the status in sync when they accept/reject.
+        allow update: if request.auth != null && 
+                         exists(/databases/$(database)/documents/users/$(userId)/outgoingTransfers/$(transferId)) &&
+                         get(/databases/$(database)/documents/users/$(userId)/outgoingTransfers/$(transferId)).data.toUserId == request.auth.uid;
+      }
     }
   }
 }
