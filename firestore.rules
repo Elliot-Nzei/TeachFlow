@@ -1,23 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Core rule: Users can read and write all documents and subcollections within their own user document.
-    // This single rule grants ownership and access to all their data (classes, students, grades, etc.).
+    // Users can only read and write their own data.
+    // This rule recursively applies to all subcollections.
     match /users/{userId}/{documents=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Allow any authenticated user to query the users collection to find a user by their userCode.
-    // This is required for the Data Transfer feature to work.
-    // Note: This allows listing documents, but the rule above ensures they can only READ the contents
-    // of their own document, not others. Firestore rules do not filter data, they only check if a query is valid.
+
+    // Allow any authenticated user to look up another user by their userCode.
+    // This is required for the Data Transfer feature.
     match /users/{userId} {
-       allow list: if request.auth != null;
+      allow list: if request.auth != null && request.query.get('where')[0][1] == 'userCode';
     }
-    
+
     // Allow any authenticated user to create an incoming transfer request for another user.
-    // The rules on /users/{userId}/{documents=**} ensure only the recipient can update or delete it later.
     match /users/{userId}/incomingTransfers/{transferId} {
       allow create: if request.auth != null;
     }
