@@ -6,18 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Check, X, AlertCircle } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { useCollection, useFirebase, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useCollection, useFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit } from 'firebase/firestore';
 import type { Class, DataTransfer, Student } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -53,21 +46,21 @@ export default function TransferPage() {
   }>({ open: false, transfer: null, action: null });
 
   // Fetch classes and students
-  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const classesQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const studentsQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   // Fetch incoming transfers
-  const incomingTransfersQuery = useMemoFirebase(
+  const incomingTransfersQuery = useMemo(
     () => user ? query(collection(firestore, 'users', user.uid, 'incomingTransfers'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
   );
   const { data: incomingTransfers, isLoading: isLoadingIncoming } = useCollection<DataTransfer>(incomingTransfersQuery);
   
   // Fetch outgoing transfers
-  const outgoingTransfersQuery = useMemoFirebase(
+  const outgoingTransfersQuery = useMemo(
     () => user ? query(collection(firestore, 'users', user.uid, 'outgoingTransfers'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
   );
@@ -154,23 +147,14 @@ export default function TransferPage() {
             processedAt: null,
             data: dataToTransfer,
             students: studentsToTransfer,
+            outgoingTransferId: outgoingTransferId,
         };
 
-        // Batch write
         const batch = writeBatch(firestore);
         
-        // 1. Set outgoing transfer
-        batch.set(outgoingTransferRef, {
-            ...transferPayload,
-            outgoingTransferId: outgoingTransferId
-        });
-
-        // 2. Set incoming transfer
+        batch.set(outgoingTransferRef, transferPayload);
         const incomingTransferRef = doc(collection(firestore, `users/${recipient.id}/incomingTransfers`));
-        batch.set(incomingTransferRef, {
-            ...transferPayload,
-            outgoingTransferId: outgoingTransferId, // Link to the sender's doc
-        });
+        batch.set(incomingTransferRef, transferPayload);
 
         await batch.commit();
       
@@ -234,11 +218,9 @@ export default function TransferPage() {
         }
         
         const timestamp = serverTimestamp();
-        // Update recipient's incoming transfer
         const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
         batch.update(incomingRef, { status: 'accepted', processedAt: timestamp });
         
-        // Update sender's outgoing transfer
         const outgoingRef = doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId);
         batch.update(outgoingRef, { status: 'accepted', processedAt: timestamp });
 
@@ -270,11 +252,9 @@ export default function TransferPage() {
       const batch = writeBatch(firestore);
       const timestamp = serverTimestamp();
 
-      // Update recipient's incoming transfer
       const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
       batch.update(incomingRef, { status: 'rejected', processedAt: timestamp });
       
-      // Update sender's outgoing transfer
       const outgoingRef = doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId);
       batch.update(outgoingRef, { status: 'rejected', processedAt: timestamp });
 
@@ -294,12 +274,54 @@ export default function TransferPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending': return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">Pending</Badge>;
-      case 'accepted': return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">Accepted</Badge>;
-      case 'rejected': return <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400">Rejected</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
+      case 'pending': return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Pending</Badge>;
+      case 'accepted': return <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Accepted</Badge>;
+      case 'rejected': return <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">Rejected</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
+
+  const TransferHistoryItem = ({ transfer }: { transfer: DataTransfer & {type: 'sent' | 'received'} }) => {
+    const isProcessing = processingTransferId === transfer.id;
+    const isSent = transfer.type === 'sent';
+
+    return (
+        <Card>
+            <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isSent ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-green-100 dark:bg-green-900/50'}`}>
+                        {isSent ? <ArrowUpRight className="h-5 w-5 text-blue-600 dark:text-blue-400" /> : <ArrowDownLeft className="h-5 w-5 text-green-600 dark:text-green-400" />}
+                    </div>
+                    <div className="grid gap-1 flex-1">
+                        <p className="font-semibold">{transfer.dataTransferred}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {isSent ? `To: ${transfer.toUserCode}` : `From: ${transfer.fromUserCode}`} • <span className="font-mono text-xs">{transfer.dataType}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex md:flex-col items-center justify-between md:items-end md:text-right gap-2">
+                    {getStatusBadge(transfer.status)}
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {transfer.createdAt ? formatDistanceToNow(new Date(transfer.createdAt.seconds * 1000), { addSuffix: true }) : '...'}
+                    </div>
+                </div>
+
+                {!isSent && transfer.status === 'pending' && (
+                  <div className="flex w-full md:w-auto justify-end gap-2 border-t md:border-none pt-4 md:pt-0">
+                    <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })} disabled={isProcessing}>
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Accept
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })} disabled={isProcessing}>
+                      <X className="mr-1 h-4 w-4" /> Reject
+                    </Button>
+                  </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -311,9 +333,9 @@ export default function TransferPage() {
       {userProfile?.userCode && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Your User Code</p>
+                <p className="text-sm font-medium text-muted-foreground">Your Unique Transfer Code</p>
                 <p className="text-2xl font-bold font-mono">{userProfile.userCode}</p>
               </div>
               <Button
@@ -321,7 +343,7 @@ export default function TransferPage() {
                 size="sm"
                 onClick={() => {
                   navigator.clipboard.writeText(userProfile.userCode!);
-                  toast({ title: 'Copied!', description: 'User code copied to clipboard.' });
+                  toast({ title: 'Copied!', description: 'Your transfer code has been copied to clipboard.' });
                 }}
               >
                 Copy Code
@@ -331,105 +353,76 @@ export default function TransferPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Initiate a New Transfer</CardTitle>
-          <CardDescription>Enter the recipient's code and select the data you wish to send.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="recipient-code">Recipient's User Code</Label>
-              <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="data-type">Data Type</Label>
-              <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
-                <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Class">Class Data (with students)</SelectItem>
-                  <SelectItem value="Grades" disabled>Student Grades (Coming Soon)</SelectItem>
-                  <SelectItem value="Report Card" disabled>Student Report Card (Coming Soon)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="data-item">Specific Item</Label>
-              <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
-                <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
-                <SelectContent>
-                  {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
-            {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
-          </Button>
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Transfer History</CardTitle>
-          <CardDescription>A log of your recent sent, incoming and processed data transfers.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Direction</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={`skeleton-${i}`}><TableCell colSpan={7}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                ))
-              ) : combinedTransfers.length > 0 ? (
-                combinedTransfers.map((transfer) => {
-                  const isProcessing = processingTransferId === transfer.id;
-                  const isSent = transfer.type === 'sent';
-                  return (
-                    <TableRow key={transfer.id}>
-                      <TableCell><Badge variant={isSent ? 'secondary' : 'default'}>{isSent ? 'Sent' : 'Received'}</Badge></TableCell>
-                      <TableCell className="font-mono">{isSent ? transfer.toUserCode : transfer.fromUserCode}</TableCell>
-                      <TableCell>{transfer.dataType}</TableCell>
-                      <TableCell>{transfer.dataTransferred}</TableCell>
-                      <TableCell>{getStatusBadge(transfer.status)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {transfer.createdAt ? formatDistanceToNow(new Date(transfer.createdAt.seconds * 1000), { addSuffix: true }) : '...'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {!isSent && transfer.status === 'pending' && (
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'accept' })} disabled={isProcessing}>
-                              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Accept
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })} disabled={isProcessing}>
-                              <X className="mr-1 h-4 w-4" /> Reject
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow><TableCell colSpan={7} className="text-center h-24 text-muted-foreground">No transfer history.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <Tabs defaultValue="new-transfer">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="new-transfer">New Transfer</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="new-transfer">
+            <Card>
+                <CardHeader>
+                <CardTitle>Initiate a New Transfer</CardTitle>
+                <CardDescription>Enter the recipient's code and select the data you wish to send.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="recipient-code">Recipient's User Code</Label>
+                    <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="data-type">Data Type</Label>
+                        <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
+                            <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value="Class">Class Data (with students)</SelectItem>
+                            <SelectItem value="Grades" disabled>Student Grades (Coming Soon)</SelectItem>
+                            <SelectItem value="Report Card" disabled>Student Report Card (Coming Soon)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="data-item">Specific Item</Label>
+                        <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
+                            <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
+                            <SelectContent>
+                            {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                </CardContent>
+                <CardFooter>
+                <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
+                    {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
+                </Button>
+                </CardFooter>
+            </Card>
+        </TabsContent>
+        <TabsContent value="history">
+            <Card>
+                <CardHeader>
+                <CardTitle>Transfer History</CardTitle>
+                <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
+                    ))
+                ) : combinedTransfers.length > 0 ? (
+                    combinedTransfers.map((transfer) => (
+                        <TransferHistoryItem key={transfer.id} transfer={transfer} />
+                    ))
+                ) : (
+                    <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                        <p>No transfer history yet.</p>
+                    </div>
+                )}
+                </CardContent>
+            </Card>
+        </TabsContent>
+    </Tabs>
 
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
         <AlertDialogContent>
@@ -461,6 +454,7 @@ export default function TransferPage() {
                 if (confirmDialog.action === 'accept') handleAcceptTransfer(confirmDialog.transfer);
                 else handleRejectTransfer(confirmDialog.transfer);
               }}
+              className={confirmDialog.action === 'accept' ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
             >
               {confirmDialog.action === 'accept' ? 'Yes, Accept' : 'Yes, Reject'}
             </AlertDialogAction>
