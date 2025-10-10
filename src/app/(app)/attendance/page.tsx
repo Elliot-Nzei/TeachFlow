@@ -33,6 +33,18 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   
   const allAttendanceForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: allAttendanceForClass, isLoading: isLoadingAttendance } = useCollection<Attendance>(allAttendanceForClassQuery);
+  
+  const attendanceMap = useMemo(() => {
+    if (!allAttendanceForClass) return new Map<string, any>();
+    
+    const map = new Map<string, any>();
+    for (const record of allAttendanceForClass) {
+        // Create a unique key for each student-date pair
+        const key = `${record.studentId}_${record.date}`;
+        map.set(key, record);
+    }
+    return map;
+  }, [allAttendanceForClass]);
 
 
   useEffect(() => {
@@ -43,27 +55,22 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
 
     const formattedDate = format(date, 'yyyy-MM-dd');
     
-    // Create a map of existing records for the selected date for quick lookup
-    const existingRecordsForDate = new Map(
-        (allAttendanceForClass || [])
-            .filter(a => a.date === formattedDate)
-            .map(a => [a.studentId, { ...a, id: a.id }])
-    );
-    
     const newAttendance = students.map(student => {
-        const existing = existingRecordsForDate.get(student.id);
+        const recordKey = `${student.id}_${formattedDate}`;
+        const existingRecord = attendanceMap.get(recordKey);
+
         return {
             studentId: student.id,
             name: student.name,
             avatarUrl: student.avatarUrl,
-            status: existing?.status || 'Present', // Default to 'Present' if no record for this date
-            recordId: existing?.id,
+            status: existingRecord?.status || 'Present', // Default to 'Present' if no record for this date
+            recordId: existingRecord?.id,
         };
     });
 
     setAttendance(newAttendance);
 
-  }, [students, date, allAttendanceForClass]);
+  }, [students, date, attendanceMap]);
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setAttendance(prev => prev.map(rec => rec.studentId === studentId ? { ...rec, status } : rec));
