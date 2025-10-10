@@ -1,110 +1,160 @@
+# 📘 New User Onboarding Guide for PeerPrep
 
-# PeerPrep: Nigerian School Management System
+## 1. Introduction
 
-Welcome to PeerPrep! This is a modern, web-based school management system designed specifically for the Nigerian educational landscape. It empowers educators with a powerful and intuitive suite of tools to manage classes, students, grades, and academic records efficiently. The system leverages AI to streamline administrative tasks like generating comprehensive report cards and detailed lesson notes, allowing teachers to dedicate more time to what they do best: education.
+**Purpose**: Welcome to PeerPrep! This guide explains how PeerPrep simplifies school administration for Nigerian educational institutions. It is a modern, web-based system designed to help you manage classes, students, grades, and academic records efficiently, so you can focus more on teaching.
 
-This guide will walk you through everything PeerPrep has to offer and how you can make the most of it.
+## 2. Getting Started
 
-## How to Use PeerPrep: A Step-by-Step Guide
+**Logging In**: To begin, [register](/register) an account with your email and password. Upon your first login, you’ll land on the main dashboard. We recommend visiting the [Settings](/settings) page first to set up your school’s profile.
 
-Getting started with PeerPrep is simple. Here’s a typical workflow for a new user:
+**Dashboard Overview**: The [Dashboard](/dashboard) is your central hub. It provides an at-a-glance overview of key statistics, including total students, classes, and subjects, as well as a chart of recent grade distributions and a feed of recent activities.
 
-1.  **Register Your Account**: Head to the [Register](/register) page to create your account with your email and password. Upon registration, you are assigned a unique, non-editable **User Code** (e.g., `NSMS-XXXXX`). This code is your identifier for securely sharing data with other PeerPrep users.
+## 3. Class Management
 
-2.  **Set Up Your Profile**: After your first login, go to the [Settings](/settings) page. Here you can:
-    *   Update your school's name, motto, and address.
-    *   Set the **Current Term** and **Current Session** (e.g., "First Term", "2024/2025"). This is crucial as all new records like grades and attendance will use these values.
+**Creating Classes**: Navigate to the [Classes](/classes) page to create your classrooms (e.g., "Primary 3B", "JSS 1A"). Each class must be assigned a level.
 
-3.  **Manage Your Subjects**: Go to the [Academics](/academics) page. This is a two-part process:
-    *   **Master Subject List**: First, create a master list of every subject taught at your school (e.g., Mathematics, English, Basic Science).
-    *   **Assign to Classes**: Once you have classes, you can assign subjects from your master list to them.
+**Class Levels**: The level is a crucial number used for automatic promotions.
+-   Primary 1 = Level 1
+-   Primary 2 = Level 2
+-   ...
+-   Primary 6 = Level 6
+-   JSS 1 = Level 7
+-   And so on.
 
-4.  **Create Your Classes**: Navigate to the [Classes](/classes) page and click "Add New Class" to create your classrooms (e.g., "Primary 3B", "JSS 1A").
+*Note*: If your school structure is different (e.g., your school doesn't have a Primary 6, and students move from Primary 5 to JSS 1), you should adjust the levels accordingly (e.g., Primary 5 = Level 5, JSS 1 = Level 6).
 
-5.  **Enroll Your Students**: On the [Students](/students) page, add your students one by one. A unique Student ID is automatically generated. You can optionally assign them to a class during creation or add them to a class later from the Class Details view.
+## 4. Student Management
 
-6.  **Take Daily Attendance**: Use the [Attendance](/attendance) page to mark daily attendance. Select a class and a date, then mark each student as 'Present', 'Absent', or 'Late'.
+**Adding Students**: Go to the [Students](/students) page to add new students. You can upload a photo, enter their name, and optionally assign them to a class right away. A unique Student ID is generated for you automatically.
 
-7.  **Enter Grades**: On the [Grades](/grades) page, select a class and a subject to enter scores for Continuous Assessments (CAs) and Exams. The system automatically calculates the total and assigns a grade based on a standard Nigerian grading scale.
+**Auto-Level Assignment**: When you assign a student to a class, their academic level is automatically recorded based on the level you set for that class.
 
-8.  **Leverage AI Tools**:
-    *   **AI Lesson Note Generator**: Go to the [Lesson Generator](/lesson-generator) to create detailed, NERDC-compliant lesson notes for any subject and class. Simply provide the topic, and the AI handles the rest.
-    *   **AI Report Card Generator**: On the [Reports](/reports) page, select a class or a single student to generate comprehensive report cards, complete with AI-generated, personalized comments for both the form teacher and the principal.
+## 5. Academic Management
 
-9.  **Share Your Data**: Use the [Data Transfer](/transfer) page to securely send a class roster (including student profiles, attendance, and traits) to another registered user. Simply enter their User Code and choose the data you wish to send.
+**Subject Assignment**: Go to the [Academics](/academics) page. First, create a "Master Subject List" of every subject taught in your school.
 
-## Core Features
+**Class-Subject Mapping**: After creating your subjects, you can assign them to specific classes. This ensures that when you enter grades, only the relevant subjects appear for each class.
 
-- **Authentication**: Secure user registration and login using Firebase Authentication.
-- **Dashboard**: A central hub providing an at-a-glance overview of key school statistics, including total student count, number of classes, and a summary of grade distributions.
-- **Class & Student Management**: Easily create classes, add students with auto-generated IDs, and manage their profiles and class assignments.
-- **Academics & Subjects**: Maintain a master list of all subjects and assign them to specific classes.
-- **Gradebook**: A detailed grade management system for inputting scores for two continuous assessments (CAs) and an exam. The system auto-calculates totals and assigns grades.
-- **Attendance**: A simple interface for marking daily student attendance (Present, Absent, Late).
-- **AI Report Card Generator**: An intelligent tool that generates comprehensive report cards, including AI-driven, personalized comments for teachers and principals based on performance, attendance, and behavioral traits.
-- **AI Lesson Note Generator**: An assistant that creates multi-week, NERDC-compliant lesson notes for any subject and class level, complete with objectives, activities, and evaluations.
-- **Secure Data Transfer**: A unique feature allowing users to securely transfer class data—including student rosters, attendance history, and trait assessments—to another registered user using a system-generated transfer code.
-- **Settings & Profile Management**: A dedicated page for users to manage their personal/school profile and set the application-wide current academic term and session.
+## 6. Attendance Management
 
-## Tech Stack
+**Marking Attendance**: On the [Attendance](/attendance) page, select a class and a date. You can then mark each student as 'Present', 'Absent', or 'Late'.
 
-- **Framework**: Next.js (with App Router)
-- **Language**: TypeScript
-- **Backend & Database**: Firebase (Authentication, Firestore)
-- **Styling**: Tailwind CSS & shadcn/ui for components
-- **Generative AI**: Google's Gemini models via Genkit
-- **State Management**: React Context & Hooks
-- **Deployment**: Firebase App Hosting
+**Viewing Attendance**: The attendance records for each student are visible on their individual profile page, accessible from the [Students](/students) page.
 
-## Folder Structure
+## 7. Grading Management
 
-The project follows a standard Next.js App Router structure.
+**Entering Grades**: On the [Grades](/grades) page, select a class and a subject to enter scores for two Continuous Assessments (CAs) and an Exam. The system automatically calculates the total and assigns a grade.
 
-```
-src
-├── ai
-│   ├── flows/          # Genkit AI flows (e.g., report card generation)
-│   └── genkit.ts       # Genkit initialization
-├── app
-│   ├── (app)/          # Main authenticated app routes
-│   │   ├── academics/
-│   │   ├── attendance/
-│   │   ├── classes/
-│   │   ├── dashboard/
-│   │   ├── grades/
-│   │   ├── layout.tsx  # Main app layout with sidebar and header
-│   │   ├── lesson-generator/
-│   │   ├── reports/
-│   │   ├── settings/
-│   │   ├── students/
-│   │   └── transfer/
-│   ├── (auth)/         # Authentication routes (login, register)
-│   ├── globals.css     # Global styles and Tailwind directives
-│   └── layout.tsx      # Root layout
-├── components
-│   ├── ui/             # Reusable UI components from shadcn/ui
-│   └── *.tsx           # Custom, larger components (e.g., class-details-content)
-├── contexts/         # React Context providers (e.g., SettingsContext)
-├── firebase/
-│   ├── firestore/      # Custom hooks for Firestore (useCollection, useDoc)
-│   └── *.ts            # Firebase initialization, providers, and config
-├── hooks/            # Custom React hooks (e.g., use-toast)
-├── lib/              # Utility functions, type definitions, and placeholder data
-└── ...
-```
+**Viewing and Filtering Grades**: After entering grades, you can click "View Grades" to see the full record. Use the filters to view grades from different terms and sessions.
 
-## Getting Started
+## 8. Report Card Generation
 
-To get started with this project locally:
+**Generating Report Cards**: Navigate to the [Reports](/reports) page. Select a class or an individual student to generate a comprehensive, printable report card.
 
-1.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
+**Customization**: The report card automatically includes your school’s name, motto, and address from your profile settings. The AI uses grade, attendance, and trait data to write personalized comments.
 
-2.  **Run the Development Server**:
-    ```bash
-    npm run dev
-    ```
+## 9. Lesson Generator
 
-    This will start the Next.js application, typically on `http://localhost:9002`.
+**Creating Lesson Notes**: Use the [Lesson Generator](/lesson-generator) to create detailed, NERDC-compliant lesson notes. Select a class level, subject, and the number of weeks you want to generate.
+
+**Customization and History**: You can provide additional context to guide the AI. Your last 20 generated notes are saved in the "History" panel for easy access.
+
+## 10. Data Transfer
+
+**Sending and Receiving Data**: The [Data Transfer](/transfer) page allows you to securely send a class roster (including student profiles and traits) to another registered user. Simply enter their unique User Code and select the data you wish to send.
+
+**Transfer History**: A log of your incoming and outgoing transfers is available on this page. You can accept or reject incoming requests from here.
+
+## 11. Settings and Notifications
+
+**Managing Settings**:
+-   **Profile**: On the [Settings](/settings) page, you can update your name, school name, motto, and profile picture.
+-   **Academics**: Set the **Current Term** and **Current Session**. This is critical, as it determines the period for which new grades and attendance are recorded. All promotions and data resets are tied to these settings.
+
+**Notifications**:
+-   You will receive alerts in the notification bell for new incoming data transfers.
+
+## 12. Promotion & Academic Session Management
+
+This is the core of PeerPrep's yearly cycle, ensuring students transition smoothly.
+
+**When Promotions Happen**:
+-   Promotions are run from the **Class Details** page. This action is only available during the **Third Term**.
+-   The system evaluates all students in the class based on their average score for the Third Term of the current session. Students who meet the pass mark (≥50% average) are promoted to the next class level.
+
+**Data Retained After Promotion**:
+-   Student's personal information (name, ID).
+-   `promotionHistory`: A permanent log of their class progression.
+-   Archived report cards, grades, and attendance from all past sessions.
+
+**Data Reset for the New Session**:
+-   The student's grade and attendance records are reset for the new academic session. They start the new class with a clean slate.
+
+**Post-Promotion Actions**:
+-   The promoted student will now appear in their new class.
+-   They will no longer appear in the roster of their old class. The system does not create duplicates.
+-   The dashboard statistics will update to reflect the new class counts.
+
+## 13. AI Modules (Report Card & Lesson Generator)
+
+**AI Report Card Generator**:
+-   Before promotion, the AI uses the current session's data to generate the final 3rd-term report.
+-   The AI is smart enough to include remarks like “Promoted to Primary 2” or “To Repeat Primary 1” based on the student's final average.
+-   After promotion, the student’s data is ready for the new academic session.
+
+**AI Lesson Note Generator**:
+-   This tool generates lesson plans based on the class level, subject, and topic you provide. It is independent of the promotion cycle but is ready to help you plan for your newly promoted classes.
+-   Old notes remain in your history for review.
+
+## 14. Data Transfer (Post-Promotion Rules)
+
+- **Before Promotions**: You can transfer class rosters or individual student data. If you transfer a class, all its students and their trait records are included.
+- **After Promotions**: A promoted student is now part of their new class. Any new transfer of their old class will not include them. Data transfers always reflect the student's *current* class level.
+
+## 15. Archived Data Access
+
+**Purpose**: PeerPrep keeps all previous academic data safe and accessible without cluttering your current term's view.
+
+**What’s Archived**:
+-   Old grades, attendance records, and trait assessments for each student from previous terms and sessions.
+
+**Access Points**:
+-   On the **Grades** page, you can use the filter to select a past term or session to view historical grades.
+-   On a student's individual profile page, their entire academic and attendance history is available for review.
+-   Archived records are effectively read-only and do not interfere with new records you create for the current term.
+
+## 16. Dashboard Updates After Promotion
+
+Once promotions are complete, the **Dashboard** automatically refreshes to show:
+-   Updated student counts for each class.
+-   Recalculated statistics for the new academic session.
+
+## 17. System-Wide Promotion Validation
+
+To maintain data integrity, the system ensures the following after promotions:
+-   **Students**: Each promoted student is correctly assigned to their new class ID.
+-   **Classes**: Student rosters are updated to reflect who has left and who has joined.
+-   **Grades & Attendance**: Old records are preserved under their original term/session, and new entries are correctly logged under the new term/session.
+-   **Reports**: Old reports are preserved, and new reports are generated using the current session's data.
+
+## 18. Administrative Safeguards
+
+-   **Manual Overrides**: Currently, all promotions are based on the system's automated checks. Manual overrides are a planned future feature.
+-   **Rollback Option**: The "Clear All School Data" option in the Settings page serves as a hard reset. A granular rollback feature is under consideration for future updates.
+-   **Promotion Summary**: The system provides real-time feedback via toasts about how many students were successfully promoted. A formal summary report is a planned feature.
+
+## 19. User Experience Enhancements
+
+-   **Real-Time Sync**: The application uses real-time listeners, so data updates across your dashboard and class lists automatically.
+-   **Progress Notifications**: The system provides clear feedback during data-intensive operations like generating reports or running promotions.
+-   **Visual Indicators**: Badges and clear descriptions on pages like Data Transfer and student profiles help you understand the status of your data.
+
+## 20. Testing & Quality Assurance Plan
+
+Before new features are deployed, we ensure that:
+-   Class lists correctly reflect student rosters after promotions and transfers.
+-   No data duplication occurs during transfers or updates.
+-   Report cards accurately match the final term results and promotion decisions.
+-   Grade and attendance records correctly reset for the new session.
+-   All historical (archived) data remains intact and accessible.
