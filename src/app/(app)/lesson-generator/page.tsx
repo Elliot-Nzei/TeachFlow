@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -499,7 +500,7 @@ export default function LessonGeneratorPage() {
           </Card>
         </div>
         
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 min-w-0">
             {(isLoading || isDownloadingPdf) && (
               <Card className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
