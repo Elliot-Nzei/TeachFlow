@@ -141,9 +141,13 @@ export default function Home() {
                     <div className="grid md:grid-cols-3">
                         <div className="md:col-span-1 bg-secondary/50 p-8 flex flex-col items-center justify-center text-center">
                             <Avatar className="h-32 w-32 border-4 border-primary shadow-lg mb-4">
-                                <AvatarFallback className="text-5xl font-bold">
-                                EN
-                                </AvatarFallback>
+                                <Image 
+                                  src="https://drive.google.com/uc?export=view&id=1kI6Um7t0VE-lMPJI4kNXGTItTvMio3_0" 
+                                  alt="Elliot Ekene Nzei"
+                                  width={128}
+                                  height={128}
+                                  className="object-cover"
+                                />
                             </Avatar>
                             <h3 className="text-2xl font-bold">Elliot Ekene Nzei</h3>
                             <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
