@@ -169,8 +169,10 @@ export default function TransferPage() {
             payload.students = studentDocs;
             
             const studentIds = studentDocs.map(s => s.id);
-            const subcollectionData = await fetchStudentSubcollections(studentIds);
-            payload = { ...payload, ...subcollectionData };
+            if (studentIds.length > 0) {
+              const subcollectionData = await fetchStudentSubcollections(studentIds);
+              payload = { ...payload, ...subcollectionData };
+            }
 
         } else if (dataType === 'Single Student Record') {
             const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
@@ -250,7 +252,7 @@ export default function TransferPage() {
                 const studentQuerySnap = await getDocs(studentQuery);
 
                 let studentDocId: string;
-                const { id, ...studentData } = student;
+                const { id: originalStudentDocId, ...studentData } = student;
 
                 if (studentQuerySnap.empty) {
                     const newStudentRef = doc(studentsRef);
@@ -261,7 +263,7 @@ export default function TransferPage() {
                     batch.update(existingStudentRef, studentData); 
                     studentDocId = existingStudentRef.id;
                 }
-                studentIdMap.set(student.id, studentDocId);
+                studentIdMap.set(originalStudentDocId, studentDocId);
             }
         }
         
@@ -313,11 +315,18 @@ export default function TransferPage() {
              const studentsRef = collection(firestore, 'users', user.uid, 'students');
              const studentQuery = query(studentsRef, where('studentId', '==', transfer.data.studentId), limit(1));
              const studentQuerySnap = await getDocs(studentQuery);
+             const { id: originalStudentDocId, ...studentData } = transfer.data as Student;
+             let studentDocId;
+
              if (studentQuerySnap.empty) {
-                batch.set(doc(studentsRef), { ...transfer.data, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+                const newStudentRef = doc(studentsRef);
+                batch.set(newStudentRef, { ...studentData, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+                studentDocId = newStudentRef.id;
              } else {
-                batch.update(studentQuerySnap.docs[0].ref, { ...transfer.data, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+                studentDocId = studentQuerySnap.docs[0].id;
+                batch.update(studentQuerySnap.docs[0].ref, { ...studentData, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
              }
+             studentIdMap.set(originalStudentDocId, studentDocId);
         
         } else if (transfer.dataType === 'Lesson Note') {
             if (!transfer.lessonNote) throw new Error('Invalid lesson note in transfer.');
@@ -328,21 +337,19 @@ export default function TransferPage() {
                 localStorage.setItem('lessonNotesHistory', JSON.stringify(newHistory));
                 setLessonNotesHistory(newHistory);
             }
-        } else {
-            throw new Error('Invalid transfer data type');
         }
         
         const upsertSubcollectionData = async (subcollectionName: 'grades' | 'attendance' | 'traits', dataArray: any[] | undefined) => {
           if (!dataArray) return;
           for (const item of dataArray) {
-            const newItemStudentId = studentIdMap.get(item.studentId) || item.studentId;
-            const { id, ...itemData } = item;
-            
-            const dataToSave = { ...itemData, studentId: newItemStudentId, transferredFrom: transfer.fromUserId };
+            const { id: originalDocId, ...itemData } = item;
+            const newStudentDocId = studentIdMap.get(itemData.studentId);
+            if (!newStudentDocId) continue; // Skip if student mapping not found
 
+            const dataToSave = { ...itemData, studentId: newStudentDocId, transferredFrom: transfer.fromUserId };
             const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
-            let uniqueQuery;
             
+            let uniqueQuery;
             if (subcollectionName === 'grades') {
               uniqueQuery = query(subcollectionRef, 
                 where('studentId', '==', dataToSave.studentId), 
@@ -365,12 +372,11 @@ export default function TransferPage() {
                 limit(1)
               );
             }
-            
+
             if (uniqueQuery) {
               const snap = await getDocs(uniqueQuery);
               if (snap.empty) {
-                const newDocRef = doc(subcollectionRef);
-                batch.set(newDocRef, dataToSave);
+                batch.set(doc(subcollectionRef), dataToSave);
               } else {
                 batch.update(snap.docs[0].ref, dataToSave);
               }
@@ -630,3 +636,4 @@ export default function TransferPage() {
     </div>
   );
 }
+
