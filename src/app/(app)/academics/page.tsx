@@ -9,9 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useCollection, useFirebase, useUser, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, where, query } from 'firebase/firestore';
+import { useCollection, useFirebase, useUser, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, doc, query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function AcademicsPage() {
   const { firestore } = useFirebase();
@@ -48,6 +59,10 @@ export default function AcademicsPage() {
     if (user) {
       const subjectDoc = doc(firestore, 'users', user.uid, 'subjects', subjectId);
       deleteDocumentNonBlocking(subjectDoc);
+      toast({
+        title: 'Subject Removed',
+        description: 'The subject has been removed from the master list.',
+      });
     }
   };
 
@@ -93,9 +108,27 @@ export default function AcademicsPage() {
                 subjects.map(subject => (
                   <div key={subject.id} className="flex items-center justify-between p-2 bg-secondary rounded-md">
                     <span className="text-sm font-medium">{subject.name}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveSubject(subject.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the subject "<strong>{subject.name}</strong>" from your master list. It will not remove it from classes that already have it assigned.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleRemoveSubject(subject.id)} className="bg-destructive hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 ))}
               </div>
@@ -115,9 +148,9 @@ export default function AcademicsPage() {
                             <h3 className="font-bold text-lg font-headline mb-3">{cls.name}</h3>
                             <div className="flex flex-wrap gap-2 mb-4 min-h-[24px]">
                                 {cls.subjects?.length > 0 ? cls.subjects.map((subjectName: string) => (
-                                    <Badge key={subjectName} variant="default" className="flex items-center gap-1.5">
+                                    <Badge key={subjectName} variant="default" className="flex items-center gap-1">
                                         {subjectName}
-                                        <button onClick={() => handleToggleSubjectForClass(cls.id, subjectName)}>
+                                        <button onClick={() => handleToggleSubjectForClass(cls.id, subjectName)} className="rounded-full hover:bg-primary-foreground/20 p-0.5">
                                             <X className="h-3 w-3" />
                                         </button>
                                     </Badge>
