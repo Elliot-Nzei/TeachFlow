@@ -10,7 +10,7 @@ export type User = {
 };
 
 export type Student = {
-  id: string;
+  id:string;
   studentId: string;
   name: string;
   className: string;
@@ -49,6 +49,32 @@ export type Grade = {
   remark?: string;
 };
 
+export type Attendance = {
+    id: string;
+    studentId: string;
+    classId: string;
+    date: string;
+    status: 'Present' | 'Absent' | 'Late';
+    term: string;
+    session: string;
+}
+
+export type Trait = {
+    id: string;
+    studentId: string;
+    classId: string;
+    term: string;
+    session: string;
+    traits: Record<string, number>;
+}
+
+export type LessonNote = {
+    id: string;
+    timestamp: string;
+    formState: any; // Consider creating a specific type for this
+    note: string;
+}
+
 export type ReportCard = {
   id: string;
   studentName: string;
@@ -68,16 +94,21 @@ export type DataTransfer = {
   fromUserId: string;
   toUserCode: string;
   toUserId: string;
-  dataType: 'Class' | 'Grades' | 'Report Card';
+  dataType: 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
   dataId: string;
   dataTransferred?: string;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: any; // Firestore server timestamp
   processedAt?: any; // Firestore server timestamp
+  
+  // Payload fields
   outgoingTransferId?: string;
-  data?: any; // Contains the class or student data
-  students?: any[]; // For class transfers, include student list
-  grades?: any[]; // For grade transfers
+  data?: any; 
+  students?: Student[];
+  grades?: Grade[];
+  attendance?: Attendance[];
+  traits?: Trait[];
+  lessonNote?: LessonNote;
 };
 
 export type Settings = {
@@ -88,8 +119,3 @@ export type Settings = {
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;
 };
-
-    
-
-    
-

@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useContext, useCallback } from 'react';
+import { useState, useMemo, useContext, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit } from 'firebase/firestore';
-import type { Class, DataTransfer, Student, Grade } from '@/lib/types';
+import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-type DataType = 'Class' | 'Grades' | 'Report Card';
+type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
 
 export default function TransferPage() {
   const { firestore, user } = useFirebase();
@@ -44,22 +44,29 @@ export default function TransferPage() {
     transfer: DataTransfer | null; 
     action: 'accept' | 'reject' | null;
   }>({ open: false, transfer: null, action: null });
+  const [lessonNotesHistory, setLessonNotesHistory] = useState<LessonNote[]>([]);
 
-  // Fetch classes and students
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const storedNotes = localStorage.getItem('lessonNotesHistory');
+        if (storedNotes) {
+            setLessonNotesHistory(JSON.parse(storedNotes));
+        }
+    }
+  }, []);
+
   const classesQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
   const studentsQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  // Fetch incoming transfers
   const incomingTransfersQuery = useMemo(
     () => user ? query(collection(firestore, 'users', user.uid, 'incomingTransfers'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
   );
   const { data: incomingTransfers, isLoading: isLoadingIncoming } = useCollection<DataTransfer>(incomingTransfersQuery);
   
-  // Fetch outgoing transfers
   const outgoingTransfersQuery = useMemo(
     () => user ? query(collection(firestore, 'users', user.uid, 'outgoingTransfers'), orderBy('createdAt', 'desc')) : null,
     [firestore, user]
@@ -84,15 +91,20 @@ export default function TransferPage() {
 
   const dataItemOptions = useMemo(() => {
     if (!dataType) return [];
-    if (dataType === 'Class') return (classes || []);
-    if (dataType === 'Grades') return (students || []);
+    if (dataType === 'Full Class Data') return (classes || []);
+    if (dataType === 'Single Student Record') return (students || []);
+    if (dataType === 'Lesson Note') return lessonNotesHistory.map(ln => ({ id: ln.id, name: `${ln.formState.subject} - ${new Date(ln.timestamp).toLocaleDateString()}`}));
     return [];
-  }, [dataType, classes, students]);
+  }, [dataType, classes, students, lessonNotesHistory]);
 
   const getItemName = useCallback((itemId: string, type: DataType): string => {
-    const items = type === 'Class' ? classes : students;
+    let items;
+    if (type === 'Full Class Data') items = classes;
+    else if (type === 'Single Student Record') items = students;
+    else if (type === 'Lesson Note') return lessonNotesHistory.find(ln => ln.id === itemId)?.formState.subject || 'Unknown Lesson';
+    
     return items?.find(item => item.id === itemId)?.name || 'Unknown';
-  }, [classes, students]);
+  }, [classes, students, lessonNotesHistory]);
 
   const handleTransfer = async () => {
     if (!recipientCode || !dataType || !dataItem || !user || !userProfile || !userProfile.currentSession) {
@@ -117,35 +129,60 @@ export default function TransferPage() {
         const recipientDoc = snapshot.docs[0];
         const recipient = { id: recipientDoc.id, code: recipientDoc.data().userCode };
 
-        let dataToTransfer: any = {};
-        let studentsToTransfer: any[] = [];
-        let gradesToTransfer: any[] = [];
+        let payload: Partial<DataTransfer> = {};
         const dataName = getItemName(dataItem, dataType);
 
-        if (dataType === 'Class') {
+        const session = userProfile.currentSession;
+        const term = userProfile.currentTerm;
+
+        if (dataType === 'Full Class Data') {
             const classRef = doc(firestore, `users/${user.uid}/classes/${dataItem}`);
             const classSnap = await getDoc(classRef);
-            if (classSnap.exists()) {
-                dataToTransfer = classSnap.data();
-                
-                const studentsQueryRef = query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', dataItem));
-                const studentsSnap = await getDocs(studentsQueryRef);
-                studentsToTransfer = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            }
-        } else if (dataType === 'Grades') {
-            const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
-            const studentSnap = await getDoc(studentRef);
-            if (studentSnap.exists()) {
-              dataToTransfer = studentSnap.data();
+            if (!classSnap.exists()) throw new Error('Selected class not found.');
+            
+            payload.data = classSnap.data();
+
+            const studentsInClassQuery = query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', dataItem));
+            const studentsSnap = await getDocs(studentsInClassQuery);
+            payload.students = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
+            
+            const studentIds = studentsSnap.docs.map(doc => doc.id);
+            if (studentIds.length > 0) {
+              const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIds), where('session', '==', session));
+              const gradesSnap = await getDocs(gradesQuery);
+              payload.grades = gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade));
+
+              const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIds), where('session', '==', session));
+              const attendanceSnap = await getDocs(attendanceQuery);
+              payload.attendance = attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance));
+
+              const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', 'in', studentIds), where('session', '==', session));
+              const traitsSnap = await getDocs(traitsQuery);
+              payload.traits = traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait));
             }
 
-            const gradesQueryRef = query(
-              collection(firestore, 'users', user.uid, 'grades'),
-              where('studentId', '==', dataItem),
-              where('session', '==', userProfile.currentSession)
-            );
-            const gradesSnap = await getDocs(gradesQueryRef);
-            gradesToTransfer = gradesSnap.docs.map(doc => doc.data());
+        } else if (dataType === 'Single Student Record') {
+            const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
+            const studentSnap = await getDoc(studentRef);
+            if (!studentSnap.exists()) throw new Error('Selected student not found.');
+            payload.data = studentSnap.data();
+
+            const gradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', dataItem), where('session', '==', session));
+            const gradesSnap = await getDocs(gradesQuery);
+            payload.grades = gradesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Grade));
+
+            const attendanceQuery = query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', dataItem), where('session', '==', session));
+            const attendanceSnap = await getDocs(attendanceQuery);
+            payload.attendance = attendanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Attendance));
+
+            const traitsQuery = query(collection(firestore, 'users', user.uid, 'traits'), where('studentId', '==', dataItem), where('session', '==', session));
+            const traitsSnap = await getDocs(traitsQuery);
+            payload.traits = traitsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Trait));
+
+        } else if (dataType === 'Lesson Note') {
+            const note = lessonNotesHistory.find(n => n.id === dataItem);
+            if (!note) throw new Error('Selected lesson note not found.');
+            payload.lessonNote = note;
         }
         
         const outgoingTransferRef = doc(collection(firestore, `users/${user.uid}/outgoingTransfers`));
@@ -161,16 +198,14 @@ export default function TransferPage() {
             toUserCode: recipient.code,
             status: 'pending' as const,
             outgoingTransferId: outgoingTransferId,
-            data: dataToTransfer,
-            students: studentsToTransfer,
-            grades: gradesToTransfer
+            ...payload
         };
 
         const batch = writeBatch(firestore);
         
-        batch.set(outgoingTransferRef, { ...transferPayload, createdAt: serverTimestamp(), processedAt: null });
+        batch.set(outgoingTransferRef, { ...transferPayload, createdAt: serverTimestamp() });
         const incomingTransferRef = doc(collection(firestore, `users/${recipient.id}/incomingTransfers`));
-        batch.set(incomingTransferRef, { ...transferPayload, createdAt: serverTimestamp(), processedAt: null });
+        batch.set(incomingTransferRef, { ...transferPayload, createdAt: serverTimestamp() });
 
         await batch.commit();
       
@@ -203,43 +238,49 @@ export default function TransferPage() {
     try {
         const batch = writeBatch(firestore);
 
-        if (transfer.dataType === 'Class' && transfer.data) {
+        if (transfer.dataType === 'Full Class Data' && transfer.data) {
             const newClassRef = doc(collection(firestore, 'users', user.uid, 'classes'));
             const newStudentIds: string[] = [];
 
-            batch.set(newClassRef, {
-                ...transfer.data,
-                students: [], // Start with empty students array
-                transferredFrom: transfer.fromUserId,
-                transferredAt: serverTimestamp(),
-            });
+            batch.set(newClassRef, { ...transfer.data, students: [], transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
 
-            if (transfer.students && transfer.students.length > 0) {
-                for (const studentData of transfer.students) {
+            if (transfer.students) {
+                for (const student of transfer.students) {
                     const newStudentRef = doc(collection(firestore, 'users', user.uid, 'students'));
-                    batch.set(newStudentRef, {
-                        ...studentData,
-                        classId: newClassRef.id,
-                        className: transfer.data.name,
-                        transferredFrom: transfer.fromUserId,
-                        transferredAt: serverTimestamp(),
-                    });
+                    batch.set(newStudentRef, { ...student, classId: newClassRef.id, className: transfer.data.name });
                     newStudentIds.push(newStudentRef.id);
                 }
             }
             batch.update(newClassRef, { students: newStudentIds });
-        } else if (transfer.dataType === 'Grades' && transfer.grades) {
-          for (const gradeData of transfer.grades) {
+
+        } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
+             const newStudentRef = doc(collection(firestore, 'users', user.uid, 'students'));
+             batch.set(newStudentRef, { ...transfer.data, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+        }
+        
+        if (transfer.grades) {
+          for (const grade of transfer.grades) {
             const newGradeRef = doc(collection(firestore, 'users', user.uid, 'grades'));
-            batch.set(newGradeRef, {
-              ...gradeData,
-              transferredFrom: transfer.fromUserId,
-              transferredAt: serverTimestamp(),
-            });
+            batch.set(newGradeRef, { ...grade, transferredFrom: transfer.fromUserId });
           }
-        } else {
-             toast({ variant: 'destructive', title: 'Invalid Data', description: 'Transfer data is missing or type is not supported.' });
-             throw new Error('Invalid transfer data');
+        }
+        if (transfer.attendance) {
+          for (const att of transfer.attendance) {
+            const newAttRef = doc(collection(firestore, 'users', user.uid, 'attendance'));
+            batch.set(newAttRef, { ...att, transferredFrom: transfer.fromUserId });
+          }
+        }
+        if (transfer.traits) {
+          for (const trait of transfer.traits) {
+            const newTraitRef = doc(collection(firestore, 'users', user.uid, 'traits'));
+            batch.set(newTraitRef, { ...trait, transferredFrom: transfer.fromUserId });
+          }
+        }
+        if (transfer.dataType === 'Lesson Note' && transfer.lessonNote) {
+            const currentHistory = JSON.parse(localStorage.getItem('lessonNotesHistory') || '[]');
+            const newHistory = [transfer.lessonNote, ...currentHistory].slice(0, 20);
+            localStorage.setItem('lessonNotesHistory', JSON.stringify(newHistory));
+            setLessonNotesHistory(newHistory);
         }
         
         const timestamp = serverTimestamp();
@@ -400,9 +441,9 @@ export default function TransferPage() {
                         <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
                             <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
                             <SelectContent>
-                            <SelectItem value="Class">Class Data (with students)</SelectItem>
-                            <SelectItem value="Grades">Student Grades</SelectItem>
-                            <SelectItem value="Report Card" disabled>Student Report Card (Coming Soon)</SelectItem>
+                                <SelectItem value="Full Class Data">Full Class Data</SelectItem>
+                                <SelectItem value="Single Student Record">Single Student Record</SelectItem>
+                                <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -458,10 +499,10 @@ export default function TransferPage() {
                 {confirmDialog.action === 'accept' ? (
                   <>
                     You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>. This data will be copied to your account.
-                    {confirmDialog.transfer?.dataType === 'Class' && (
+                    {confirmDialog.transfer?.dataType === 'Full Class Data' && (
                       <span className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
                         <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">This will copy the class and all its students into your records.</span>
+                        <span className="text-sm">This will copy the class and all its associated data into your records.</span>
                       </span>
                     )}
                   </>
