@@ -13,33 +13,55 @@ service cloud.firestore {
 
     // Rules for the top-level 'users' collection
     match /users/{userId} {
-      // Allow users to read their own document, but not others'
+      // Allow users to read their own document
       allow get: if isOwner(userId);
-      // Allow any authenticated user to search for other users (e.g., by userCode for transfers)
+      // Allow any authenticated user to search for other users by userCode (for transfers)
       allow list: if isAuthenticated();
       // Allow users to create and update their own document
       allow write: if isOwner(userId);
 
-      // Rules for reading data during a transfer
+      // Rules for classes
       match /classes/{classId} {
-        // Owner can read their own classes
-        allow read: if isOwner(userId);
-        // Allow reading if there's a valid incoming transfer for this class
-        allow get: if isAuthenticated() && exists(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(classId)
-        );
+        // Owner has full access to their own classes
+        allow read, write: if isOwner(userId);
+        
+        // Nested students in a class
+        match /students/{studentId} {
+          allow read, write: if isOwner(userId);
+        }
+        
+        // Any other nested collections
+        match /{nested=**} {
+          allow read, write: if isOwner(userId);
+        }
       }
       
+      // Rules for students
       match /students/{studentId} {
-        // Owner can read their own students
-        allow read: if isOwner(userId);
-        // Allow reading if there's a valid incoming transfer for this student
-        allow get: if isAuthenticated() && exists(
-          /databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(studentId)
-        );
+        allow read, write: if isOwner(userId);
       }
 
-      // Rules for managing transfers
+      // Rules for subjects
+      match /subjects/{subjectId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for grades
+      match /grades/{gradeId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for attendance
+      match /attendance/{attendanceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for traits
+      match /traits/{traitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for managing INCOMING transfers
       match /incomingTransfers/{transferId} {
         // User can read their own incoming transfers
         allow read: if isOwner(userId);
@@ -49,19 +71,21 @@ service cloud.firestore {
         allow update, delete: if isOwner(userId);
       }
 
+      // Rules for managing OUTGOING transfers
       match /outgoingTransfers/{transferId} {
         // User can read and write their own outgoing transfers
         allow read, write: if isOwner(userId);
         
-        // CRITICAL FIX: Allow the recipient to read a specific outgoing transfer
+        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
         allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
         
-        // CRITICAL FIX: Allow the recipient to update the sender's outgoing transfer status
+        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
         allow update: if isAuthenticated() && 
-                         resource.data.toUserId == request.auth.uid;
+                         resource.data.toUserId == request.auth.uid &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
       }
 
-      // Securely grant access to all other subcollections (subjects, grades, etc.)
+      // Catch-all for any other subcollections
       match /{subcollection}/{docId} {
         allow read, write: if isOwner(userId);
 

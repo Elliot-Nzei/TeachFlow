@@ -75,6 +75,8 @@ export type DataTransfer = {
   createdAt: any; // Firestore server timestamp
   processedAt?: any; // Firestore server timestamp
   outgoingTransferId?: string;
+  data?: any; // Contains the class or student data
+  students?: any[]; // For class transfers, include student list
 };
 
 export type Settings = {
