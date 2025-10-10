@@ -1,23 +1,22 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow users to query the users collection to find others by userCode for transfers
-    match /users/{userId} {
-      allow list: if request.auth != null;
-    }
-
-    // Allow users full read/write access to their own user document and all subcollections
-    // This single rule covers classes, students, grades, subjects, transfers, etc.
+    // A user can read and write to their own document and all of its subcollections.
+    // This single recursive rule secures all user data (classes, students, grades, etc.)
     match /users/{userId}/{documents=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // As a security measure, explicitly deny all other operations on all other paths.
-    // This is not strictly necessary as rules are deny-by-default, but it makes the intent clear.
-    match /{path=**}/documents {
-        allow read, write: if false;
+    // Allow an authenticated user to query the users collection ONLY if they are
+    // looking for a specific user by their userCode. This is for the Data Transfer feature.
+    match /users/{userId} {
+        allow list: if request.auth != null && request.query.keys().hasAny(['where']) && request.query.where[0][0] == 'userCode';
+
+        // Allow any authenticated user to create an incoming transfer for another user
+        match /incomingTransfers/{transferId} {
+            allow create: if request.auth != null;
+        }
     }
   }
 }
