@@ -241,53 +241,54 @@ export default function TransferPage() {
         if (transfer.dataType === 'Full Class Data') {
             if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
             
-            const classesRef = collection(firestore, 'users', user.uid, 'classes');
-            const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
-            const classQuerySnap = await getDocs(q);
-            
-            let classRef;
             const studentIdsToMerge: string[] = [];
 
-            // Process students first to get their new/existing IDs
+            // 1. Process all students first
             if (transfer.students) {
                 for (const student of transfer.students) {
                     const studentsRef = collection(firestore, 'users', user.uid, 'students');
                     const studentQuery = query(studentsRef, where('studentId', '==', student.studentId), limit(1));
                     const studentQuerySnap = await getDocs(studentQuery);
 
-                    let studentDocRef;
-                    if(studentQuerySnap.empty) {
-                        studentDocRef = doc(studentsRef);
-                        batch.set(studentDocRef, { ...student, classId: '', className: '' }); // Set with placeholder class info first
+                    let studentDocId: string;
+                    if (studentQuerySnap.empty) {
+                        const newStudentRef = doc(studentsRef);
+                        batch.set(newStudentRef, { ...student, classId: '', className: '' }); 
+                        studentDocId = newStudentRef.id;
                     } else {
-                        studentDocRef = studentQuerySnap.docs[0].ref;
-                        batch.update(studentDocRef, { ...student }); // Update existing student data
+                        const existingStudentRef = studentQuerySnap.docs[0].ref;
+                        batch.update(existingStudentRef, student); 
+                        studentDocId = existingStudentRef.id;
                     }
-                    studentIdsToMerge.push(studentDocRef.id);
+                    studentIdsToMerge.push(studentDocId);
                 }
             }
             
+            // 2. Process the class
+            const classesRef = collection(firestore, 'users', user.uid, 'classes');
+            const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
+            const classQuerySnap = await getDocs(q);
+
+            let classRef: DocumentReference;
             if (classQuerySnap.empty) {
-                // Class doesn't exist, create it with all students
                 classRef = doc(classesRef);
                 batch.set(classRef, { ...transfer.data, students: studentIdsToMerge, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
             } else {
-                // Class exists, update it and merge students
                 classRef = classQuerySnap.docs[0].ref;
                 batch.update(classRef, { 
-                    ...transfer.data, // Update class details (like subjects)
-                    students: arrayUnion(...studentIdsToMerge), // Merge student IDs
+                    ...transfer.data,
+                    students: arrayUnion(...studentIdsToMerge),
                     transferredFrom: transfer.fromUserId, 
                     transferredAt: serverTimestamp() 
                 });
             }
 
-            // Now, update all processed students to point to the correct class
+            // 3. Update all processed students to point to the correct class
             for (const studentId of studentIdsToMerge) {
                 const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
                 batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
             }
-
+        
         } else if (transfer.dataType === 'Single Student Record') {
              if (!transfer.data || !transfer.data.studentId) throw new Error('Invalid student data in transfer.');
              const studentsRef = collection(firestore, 'users', user.uid, 'students');
@@ -584,3 +585,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
