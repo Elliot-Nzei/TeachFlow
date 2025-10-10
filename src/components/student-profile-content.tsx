@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,12 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 
 function StudentProfileContent({ studentId }: { studentId: string }) {
@@ -26,12 +26,15 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
   const studentDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId]);
   const { data: student, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
   
-  const classDocQuery = useMemoFirebase(() => (user && student) ? doc(firestore, 'users', user.uid, 'classes', student.classId) : null, [firestore, user, student]);
+  const classDocQuery = useMemoFirebase(() => (user && student?.classId) ? doc(firestore, 'users', user.uid, 'classes', student.classId) : null, [firestore, user, student]);
   const { data: studentClass, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
 
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
   const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
-
+  
+  const attendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
+  const { data: attendanceForStudent, isLoading: isLoadingAttendance } = useCollection<any>(attendanceQuery);
+  
   const handleDeleteStudent = async () => {
     if (!student || !user) return;
     setIsDeleting(true);
@@ -42,14 +45,16 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
         const studentRef = doc(firestore, 'users', user.uid, 'students', studentId);
         batch.delete(studentRef);
 
-        const gradesQuerySnapshot = await getDocs(gradesQuery!);
-        gradesQuerySnapshot.forEach(gradeDoc => {
-            batch.delete(gradeDoc.ref);
-        });
+        const collectionsToDelete = ['grades', 'attendance', 'traits'];
+        for (const coll of collectionsToDelete) {
+            const snapshot = await getDocs(query(collection(firestore, 'users', user.uid, coll), where('studentId', '==', studentId)));
+            snapshot.forEach(docToDelete => {
+                batch.delete(docToDelete.ref);
+            });
+        }
 
         if (student.classId) {
             const classRef = doc(firestore, 'users', user.uid, 'classes', student.classId);
-            // This needs to be an await because batch writes don't apply locally immediately
             await updateDoc(classRef, {
                 students: arrayRemove(studentId)
             });
@@ -62,7 +67,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
             description: `${student.name} has been removed from the system.`,
         });
 
-        router.refresh(); // Refresh the page to update the student list
+        router.push('/students'); // Redirect to student list
 
     } catch (error) {
         console.error("Error deleting student:", error);
@@ -96,6 +101,16 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
   if (!student) {
       return <div className="p-6">Student not found.</div>;
   }
+  
+  const AttendanceIcon = ({ status }: { status: string }) => {
+    switch (status) {
+        case 'Present': return <CheckCircle className="h-5 w-5 text-green-500" />;
+        case 'Absent': return <XCircle className="h-5 w-5 text-red-500" />;
+        case 'Late': return <Clock className="h-5 w-5 text-yellow-500" />;
+        default: return null;
+    }
+  };
+
 
   return (
     <>
@@ -109,7 +124,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 <div>
                     <h2 className="text-2xl font-bold font-headline">{student.name}</h2>
                     <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
-                    <p className="text-muted-foreground">{student.className}</p>
+                    {student.className && <p className="text-muted-foreground">{student.className}</p>}
                 </div>
             </div>
             <AlertDialog>
@@ -122,7 +137,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades.
+                            This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades and attendance.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -151,6 +166,37 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     </CardContent>
                 </Card>
             )}
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <CalendarCheck className="h-5 w-5"/>
+                        Attendance History
+                    </CardTitle>
+                    <CardDescription>Attendance for the current session.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isLoadingAttendance ? <Skeleton className="h-32 w-full" /> : 
+                        attendanceForStudent && attendanceForStudent.length > 0 ? (
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {attendanceForStudent.sort((a,b) => b.date.localeCompare(a.date)).map((att: any) => (
+                                <div key={att.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                    <div className="flex items-center gap-2">
+                                        <AttendanceIcon status={att.status} />
+                                        <span className="text-sm font-medium">{format(new Date(att.date), 'PPP')}</span>
+                                    </div>
+                                    <Badge variant={
+                                        att.status === 'Present' ? 'default' : att.status === 'Absent' ? 'destructive' : 'secondary'
+                                    } className={att.status === 'Present' ? 'bg-green-600' : ''}>{att.status}</Badge>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center text-sm text-muted-foreground py-4">
+                            No attendance records found.
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
 
         <div className="md:col-span-2">
@@ -165,7 +211,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                         <TableRow>
                         <TableHead>Subject</TableHead>
                         <TableHead>Term</TableHead>
-                        <TableHead>Score</TableHead>
+                        <TableHead>Total Score</TableHead>
                         <TableHead className="text-right">Grade</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -177,7 +223,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                                 <TableRow key={grade.id}>
                                     <TableCell className="font-medium">{grade.subject}</TableCell>
                                     <TableCell>{grade.term}</TableCell>
-                                    <TableCell>{grade.score}</TableCell>
+                                    <TableCell>{grade.total}</TableCell>
                                     <TableCell className="text-right font-bold">{grade.grade}</TableCell>
                                 </TableRow>
                             ))

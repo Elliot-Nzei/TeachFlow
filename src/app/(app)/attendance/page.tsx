@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, Save, Users, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Class, Student, User } from '@/lib/types';
+import type { Class, Student } from '@/lib/types';
 import { useCollection, useFirebase, useUser as useAuthUser, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -265,5 +264,3 @@ export default function AttendancePage() {
   
   return <ClassSelector onSelectClass={setSelectedClass} />;
 }
-
-    
