@@ -19,6 +19,7 @@ import DOMPurify from 'dompurify';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { Class, Subject } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 type SavedNote = {
   id: string;
@@ -526,7 +527,7 @@ export default function LessonGeneratorPage() {
             {generatedNote && !isLoading && !isDownloadingPdf && (
             <div id="print-section">
               <Card>
-                <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 print:hidden">
+                 <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 print:hidden">
                     <div>
                         <CardTitle>Generated Lesson Note</CardTitle>
                         <CardDescription>
@@ -548,7 +549,7 @@ export default function LessonGeneratorPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent id="note-content" className="prose prose-slate dark:prose-invert max-w-none">
+                <CardContent id="note-content" className={cn("prose prose-slate dark:prose-invert max-w-full prose-sm overflow-x-auto")}>
                    <ReactMarkdown>{generatedNote}</ReactMarkdown>
                 </CardContent>
               </Card>
@@ -644,3 +645,5 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
+
+    
