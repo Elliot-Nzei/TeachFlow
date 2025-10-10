@@ -102,20 +102,22 @@ export default function TransferPage() {
   const findRecipientIdByUserCode = async (code: string): Promise<{id: string, code: string} | null> => {
     const usersRef = collection(firestore, 'users');
     const q = query(usersRef, where('userCode', '==', code));
-    const querySnapshot = await getDocs(q).catch(serverError => {
+    
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return null;
+        }
+        const recipientDoc = querySnapshot.docs[0];
+        return { id: recipientDoc.id, code: recipientDoc.data().userCode };
+    } catch (serverError) {
         const permError = new FirestorePermissionError({
             path: 'users',
             operation: 'list'
         });
         errorEmitter.emit('permission-error', permError);
-        throw serverError; // re-throw original error
-    });
-
-    if (querySnapshot.empty) {
-      return null;
+        throw permError;
     }
-    const recipientDoc = querySnapshot.docs[0];
-    return { id: recipientDoc.id, code: recipientDoc.data().userCode };
   };
 
   const handleTransfer = async () => {
@@ -172,8 +174,6 @@ export default function TransferPage() {
       setDataItem('');
 
     } catch (error) {
-      console.error("Transfer error:", error);
-      // The permission error is now thrown by the emitter, so we just show a generic message here
       if (!(error instanceof FirestorePermissionError)) {
           toast({
               variant: 'destructive',
@@ -196,7 +196,7 @@ export default function TransferPage() {
             operation: 'get'
         });
         errorEmitter.emit('permission-error', permError);
-        throw serverError;
+        throw permError;
     });
 
     if (!classSnap.exists()) throw new Error('Source class not found');
@@ -211,13 +211,14 @@ export default function TransferPage() {
     });
 
     const studentsQueryRef = query(collection(firestore, 'users', fromUserId, 'students'), where('classId', '==', classId));
+    
     const studentsSnap = await getDocs(studentsQueryRef).catch(serverError => {
         const permError = new FirestorePermissionError({
             path: `users/${fromUserId}/students`,
-            operation: 'list'
+            operation: 'list',
         });
         errorEmitter.emit('permission-error', permError);
-        throw serverError;
+        throw permError;
     });
     
     const newStudentIds: string[] = [];
@@ -235,7 +236,14 @@ export default function TransferPage() {
 
     batch.update(newClassRef, { students: newStudentIds });
 
-    await batch.commit();
+    await batch.commit().catch(serverError => {
+        const permError = new FirestorePermissionError({
+            path: 'batch write (copyClassData)',
+            operation: 'write'
+        });
+        errorEmitter.emit('permission-error', permError);
+        throw permError;
+    });
     return { studentsCount: studentsSnap.size };
   };
 
@@ -244,55 +252,57 @@ export default function TransferPage() {
 
     setProcessingTransferId(transfer.id);
     setConfirmDialog({ open: false, transfer: null, action: null });
+    
+    try {
+        if (transfer.dataType === 'Class') {
+            const { studentsCount } = await copyClassData(transfer.fromUserId, user.uid, transfer.dataId);
+            toast({
+              title: 'Transfer Accepted',
+              description: `Class "${transfer.dataTransferred}" with ${studentsCount} student(s) added to your account.`,
+            });
+        } else {
+            toast({ variant: 'destructive', title: 'Not Implemented', description: `Transfer for ${transfer.dataType} is not yet supported.` });
+            throw new Error('Unsupported data type');
+        }
+        
+        const batch = writeBatch(firestore);
+        
+        const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
+        batch.update(incomingRef, { status: 'accepted', processedAt: serverTimestamp() });
+        
+        const outgoingQuery = query(
+          collection(firestore, 'users', transfer.fromUserId, 'outgoingTransfers'),
+          where('toUserId', '==', user.uid),
+          where('dataId', '==', transfer.dataId),
+          where('status', '==', 'pending')
+        );
 
-    // No try/catch here. Let the error boundary handle it.
-    if (transfer.dataType === 'Class') {
-        const { studentsCount } = await copyClassData(transfer.fromUserId, user.uid, transfer.dataId);
-        toast({
-          title: 'Transfer Accepted',
-          description: `Class "${transfer.dataTransferred}" with ${studentsCount} student(s) added to your account.`,
+        const outgoingSnapshot = await getDocs(outgoingQuery).catch(serverError => {
+            const permError = new FirestorePermissionError({
+                path: `users/${transfer.fromUserId}/outgoingTransfers`,
+                operation: 'list'
+            });
+            errorEmitter.emit('permission-error', permError);
+            throw permError;
         });
-    } else {
-        toast({ variant: 'destructive', title: 'Not Implemented', description: `Transfer for ${transfer.dataType} is not yet supported.` });
-        throw new Error('Unsupported data type');
+
+        if (!outgoingSnapshot.empty) {
+            const outgoingRef = outgoingSnapshot.docs[0].ref;
+            batch.update(outgoingRef, { status: 'accepted', processedAt: serverTimestamp() });
+        }
+
+        await batch.commit().catch(serverError => {
+            const permError = new FirestorePermissionError({
+                path: 'batch write (acceptTransfer)',
+                operation: 'write'
+            });
+            errorEmitter.emit('permission-error', permError);
+            throw permError;
+        });
+
+    } finally {
+        setProcessingTransferId(null);
     }
-    
-    const batch = writeBatch(firestore);
-    
-    const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
-    batch.update(incomingRef, { status: 'accepted', processedAt: serverTimestamp() });
-    
-    const outgoingQuery = query(
-      collection(firestore, 'users', transfer.fromUserId, 'outgoingTransfers'),
-      where('toUserId', '==', user.uid),
-      where('dataId', '==', transfer.dataId),
-      where('status', '==', 'pending')
-    );
-
-    const outgoingSnapshot = await getDocs(outgoingQuery).catch(serverError => {
-        const permError = new FirestorePermissionError({
-            path: `users/${transfer.fromUserId}/outgoingTransfers`,
-            operation: 'list'
-        });
-        errorEmitter.emit('permission-error', permError);
-        throw serverError;
-    });
-
-    if (!outgoingSnapshot.empty) {
-        const outgoingRef = outgoingSnapshot.docs[0].ref;
-        batch.update(outgoingRef, { status: 'accepted', processedAt: serverTimestamp() });
-    }
-
-    await batch.commit().catch(serverError => {
-        const permError = new FirestorePermissionError({
-            path: 'batch write',
-            operation: 'write'
-        });
-        errorEmitter.emit('permission-error', permError);
-        throw serverError;
-    });
-
-    setProcessingTransferId(null);
   };
 
   const handleRejectTransfer = async (transfer: DataTransfer) => {
@@ -312,21 +322,36 @@ export default function TransferPage() {
         where('dataId', '==', transfer.dataId),
         where('status', '==', 'pending')
       );
-      const outgoingSnapshot = await getDocs(outgoingQuery);
+      const outgoingSnapshot = await getDocs(outgoingQuery).catch(serverError => {
+        const permError = new FirestorePermissionError({
+            path: `users/${transfer.fromUserId}/outgoingTransfers`,
+            operation: 'list'
+        });
+        errorEmitter.emit('permission-error', permError);
+        throw permError;
+      });
       if (!outgoingSnapshot.empty) {
           const outgoingRef = outgoingSnapshot.docs[0].ref;
           batch.update(outgoingRef, { status: 'rejected', processedAt: serverTimestamp() });
       }
 
-      await batch.commit();
+      await batch.commit().catch(serverError => {
+        const permError = new FirestorePermissionError({
+            path: 'batch write (rejectTransfer)',
+            operation: 'write'
+        });
+        errorEmitter.emit('permission-error', permError);
+        throw permError;
+      });
 
       toast({
         title: 'Transfer Rejected',
         description: `Transfer from ${transfer.fromUserCode} has been rejected.`,
       });
     } catch (error) {
-      console.error('Error rejecting transfer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to reject transfer.' });
+       if (!(error instanceof FirestorePermissionError)) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to reject transfer.' });
+       }
     } finally {
       setProcessingTransferId(null);
     }
@@ -510,3 +535,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
