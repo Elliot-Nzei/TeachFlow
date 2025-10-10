@@ -15,7 +15,8 @@ import {
   Sun,
   Notebook,
   BookCopy,
-  CalendarCheck
+  CalendarCheck,
+  FileQuestion,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -56,6 +57,7 @@ const menuItems = [
   { href: '/grades', label: 'Grades', icon: BookOpen },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },
+  { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion },
   { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft },
 ];
 
