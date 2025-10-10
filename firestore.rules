@@ -1,205 +1,65 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
+
+    // Helper function to check if the user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
+    // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    function isEmailVerified() {
-      return isAuthenticated() && request.auth.token.email_verified == true;
-    }
-    
-    function hasUserData() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-    
-    // User profile rules
+    // Top-level 'users' collection
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if false;
-      
-      // User's incoming transfers subcollection
+      // Users can read, create, and update their own profile document
+      allow read, create, update: if isOwner(userId);
+      allow delete: if false; // Disallow deleting user profiles
+
+      // Rules for the 'incomingTransfers' subcollection
       match /incomingTransfers/{transferId} {
-        // User can read their own incoming transfers
+        // A user can read their own incoming transfers
         allow read: if isOwner(userId);
         
-        // Any authenticated user can create an incoming transfer for another user
-        allow create: if isAuthenticated() && 
-                        request.resource.data.toUserId == userId &&
-                        request.resource.data.fromUserId == request.auth.uid;
+        // Any authenticated user can create an incoming transfer request for another user
+        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
         
-        // User can update their own incoming transfers (to accept/reject)
+        // The owner can update the status of their incoming transfers (accept/reject)
         allow update: if isOwner(userId) && 
                         resource.data.status == 'pending' &&
                         request.resource.data.status in ['accepted', 'rejected'];
-        
-        // Allow deletion of processed transfers
-        allow delete: if isOwner(userId) && 
-                        resource.data.status in ['accepted', 'rejected', 'cancelled'];
+                        
+        allow delete: if isOwner(userId);
       }
-      
-      // User's outgoing transfers subcollection
+
+      // Rules for the 'outgoingTransfers' subcollection
       match /outgoingTransfers/{transferId} {
-        // User can read their own outgoing transfers
+        // A user can read their own outgoing transfers
         allow read: if isOwner(userId);
         
-        // User can create their own outgoing transfers
-        allow create: if isOwner(userId) && 
-                        request.resource.data.fromUserId == request.auth.uid;
+        // A user can create their own outgoing transfers
+        allow create: if isOwner(userId) && request.resource.data.fromUserId == request.auth.uid;
         
-        // Allow updates to outgoing transfers
-        // This includes status updates from the recipient's actions
-        allow update: if isOwner(userId) || 
-                        (isAuthenticated() && 
-                         resource.data.toUserId == request.auth.uid &&
-                         resource.data.status == 'pending' &&
-                         request.resource.data.status in ['accepted', 'rejected']);
-        
-        // Allow deletion of processed transfers
-        allow delete: if isOwner(userId) && 
-                        resource.data.status in ['accepted', 'rejected', 'cancelled'];
+        // The recipient of a transfer can update the status of the sender's outgoing request
+        allow update: if (isOwner(userId)) || 
+                        (isAuthenticated() && resource.data.toUserId == request.auth.uid);
+                        
+        allow delete: if isOwner(userId);
       }
-      
-      // User's subjects subcollection
-      match /subjects/{subjectId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
-      
-      // User's classes subcollection
-      match /classes/{classId} {
-        allow read: if isOwner(userId) || 
-                       (isAuthenticated() && 
-                        exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
-                        get(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(resource.id)).data.status == 'pending');
-        allow write: if isOwner(userId);
-        
-        // Nested students subcollection
-        match /students/{studentId} {
-          allow read: if isOwner(userId);
-          allow write: if isOwner(userId);
-        }
-      }
-      
-      // User's students subcollection (direct)
-      match /students/{studentId} {
-        allow read: if isOwner(userId) || 
-                       (isAuthenticated() && 
-                        exists(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers) &&
-                        get(/databases/$(database)/documents/users/$(request.auth.uid)/incomingTransfers/$(resource.id)).data.status == 'pending');
-        allow write: if isOwner(userId);
-      }
-      
-      // User's assessments subcollection
-      match /assessments/{assessmentId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
-      
-      // User's gradingSchemes subcollection
-      match /gradingSchemes/{schemeId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
-      
-      // User's academicSessions subcollection
-      match /academicSessions/{sessionId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
-      
-      // Allow any other subcollection under users for extensibility
-      match /{subcollection=**} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
+
+      // Wildcard match for all other subcollections under a user's document
+      // This includes classes, students, subjects, grades, attendance, etc.
+      // It grants full read and write access only to the owner of the parent user document.
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
       }
     }
-    
-    // School rules
-    match /schools/{schoolId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && 
-                     request.resource.data.adminId == request.auth.uid;
-      
-      // School subcollections
-      match /{subcollection=**} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated() &&
-                       get(/databases/$(database)/documents/schools/$(schoolId)).data.adminId == request.auth.uid;
-      }
-    }
-    
-    // Public data collections
-    match /publicData/{document=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    // Templates collection (read-only for authenticated users)
-    match /templates/{templateId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-      
-      match /{subcollection=**} {
-        allow read: if isAuthenticated();
-        allow write: if false;
-      }
-    }
-    
-    // System configuration (admin only)
-    match /config/{configId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && 
-                     request.auth.token.admin == true;
-    }
-    
-    // Shared resources
-    match /shared/{resourceId} {
-      allow read: if isAuthenticated() && (
-        resource.data.ownerId == request.auth.uid ||
-        request.auth.uid in resource.data.sharedWith
-      );
-      allow create: if isAuthenticated() && 
-                      request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAuthenticated() && 
-                      resource.data.ownerId == request.auth.uid;
-      allow delete: if isAuthenticated() && 
-                      resource.data.ownerId == request.auth.uid;
-    }
-    
-    // Activity logs (write-only for users, read for owner)
-    match /activityLogs/{logId} {
-      allow read: if isAuthenticated() && 
-                    resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && 
-                      request.resource.data.userId == request.auth.uid;
-      allow update: if false;
-      allow delete: if false;
-    }
-    
-    // Notifications
-    match /notifications/{userId}/{notificationId} {
-      allow read: if isOwner(userId);
-      allow create: if isAuthenticated();
-      allow update: if isOwner(userId) && 
-                      request.resource.data.keys().hasAll(['read']) &&
-                      request.resource.data.read is bool;
-      allow delete: if isOwner(userId);
-    }
-    
-    // Default deny for everything else
-    match /{document=**} {
-      allow read: if false;
-      allow write: if false;
+
+    // Allow authenticated users to query the users collection to find a user by their code
+    match /users/{userId} {
+        allow list: if isAuthenticated();
     }
   }
 }
