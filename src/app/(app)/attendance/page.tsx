@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, Save, Users, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Class, Student } from '@/lib/types';
+import type { Class, Student, Attendance } from '@/lib/types';
 import { useCollection, useFirebase, useUser as useAuthUser, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,10 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
+  const allAttendanceForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const { data: allAttendanceForClass, isLoading: isLoadingAttendance } = useCollection<Attendance>(allAttendanceForClassQuery);
+
+
   useEffect(() => {
     if (!students || !date) {
       setAttendance([]);
@@ -37,34 +42,28 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
     };
 
     const formattedDate = format(date, 'yyyy-MM-dd');
-    const fetchAttendance = async () => {
-        if(!user || !selectedClass) return;
+    
+    // Create a map of existing records for the selected date for quick lookup
+    const existingRecordsForDate = new Map(
+        (allAttendanceForClass || [])
+            .filter(a => a.date === formattedDate)
+            .map(a => [a.studentId, { ...a, id: a.id }])
+    );
+    
+    const newAttendance = students.map(student => {
+        const existing = existingRecordsForDate.get(student.id);
+        return {
+            studentId: student.id,
+            name: student.name,
+            avatarUrl: student.avatarUrl,
+            status: existing?.status || 'Present', // Default to 'Present' if no record for this date
+            recordId: existing?.id,
+        };
+    });
 
-        const attendanceQuery = query(
-            collection(firestore, 'users', user.uid, 'attendance'),
-            where('classId', '==', selectedClass.id),
-            where('date', '==', formattedDate)
-        );
-        const querySnapshot = await getDocs(attendanceQuery);
-        const existingRecords = new Map(querySnapshot.docs.map(d => [d.data().studentId, { ...d.data(), id: d.id }]));
-        
-        const newAttendance = students.map(student => {
-            const existing = existingRecords.get(student.id);
-            return {
-                studentId: student.id,
-                name: student.name,
-                avatarUrl: student.avatarUrl,
-                status: existing?.status || 'Present',
-                recordId: existing?.id,
-            };
-        });
+    setAttendance(newAttendance);
 
-        setAttendance(newAttendance);
-    };
-
-    fetchAttendance();
-
-  }, [students, date, user, firestore, selectedClass]);
+  }, [students, date, allAttendanceForClass]);
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setAttendance(prev => prev.map(rec => rec.studentId === studentId ? { ...rec, status } : rec));
@@ -138,7 +137,7 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
     )
   };
   
-  const isLoading = isLoadingStudents || isLoadingProfile;
+  const isLoading = isLoadingStudents || isLoadingProfile || isLoadingAttendance;
 
   return (
     <Card className="h-full">
