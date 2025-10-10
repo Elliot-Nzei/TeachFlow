@@ -1,9 +1,9 @@
 
 'use client';
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, BookOpen, ClipboardList, UserPlus, Home } from 'lucide-react';
+import { Users, BookOpen, ClipboardList, UserPlus, Home, CalendarClock } from 'lucide-react';
 import {
   ChartConfig,
   ChartContainer,
@@ -17,10 +17,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { SettingsContext } from '@/contexts/settings-context';
 
 export default function DashboardPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const { settings, isLoading: isLoadingSettings } = useContext(SettingsContext);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
@@ -70,7 +72,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -84,6 +86,17 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Current Session</CardTitle>
+              <CalendarClock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingSettings ? <Skeleton className="h-8 w-3/4 mt-1" /> : (
+                <div className="text-xl font-bold">{settings?.currentTerm || 'N/A'}, {settings?.currentSession || 'N/A'}</div>
+              )}
+            </CardContent>
+          </Card>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
