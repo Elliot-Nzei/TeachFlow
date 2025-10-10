@@ -494,26 +494,26 @@ export default function TransferPage() {
       </div>
 
       {userProfile?.userCode && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Your Unique Transfer Code</p>
-                <p className="text-2xl font-bold font-mono">{userProfile.userCode}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(userProfile.userCode!);
-                  toast({ title: 'Copied!', description: 'Your transfer code has been copied to clipboard.' });
-                }}
-              >
-                Copy Code
-              </Button>
+        <div className="rounded-lg border bg-card p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className='flex-1'>
+                    <span className="text-sm text-muted-foreground mr-2">Your Code:</span>
+                    <span className="font-mono font-bold text-primary">{userProfile.userCode}</span>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                        if(userProfile.userCode) {
+                            navigator.clipboard.writeText(userProfile.userCode);
+                            toast({ title: 'Copied!', description: 'Your transfer code is copied to clipboard.' });
+                        }
+                    }}
+                >
+                    Copy
+                </Button>
             </div>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
     <Tabs defaultValue="new-transfer">
@@ -627,3 +627,5 @@ export default function TransferPage() {
     </div>
   );
 }
+
+    
