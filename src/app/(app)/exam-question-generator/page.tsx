@@ -12,6 +12,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -97,6 +99,7 @@ export default function ExamQuestionGeneratorPage() {
 
   const handleQuestionCountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    // Allow empty string to clear input, but validate number range
     if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 1 && parseInt(val) <= 50)) {
         setQuestionCount(val);
     }
@@ -203,48 +206,65 @@ export default function ExamQuestionGeneratorPage() {
 
     setLoadingState('downloading');
 
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20; // 20mm margin
+    const contentWidth = pdfWidth - margin * 2;
+    
+    // Create a hidden div to render the HTML with specific styles
+    const renderContainer = document.createElement('div');
+    renderContainer.style.position = 'absolute';
+    renderContainer.style.left = '-9999px';
+    renderContainer.style.width = `${contentWidth}mm`;
+    renderContainer.style.fontFamily = 'Arial, sans-serif';
+    renderContainer.style.fontSize = '12pt';
+    renderContainer.style.lineHeight = '1.15';
+    renderContainer.style.textAlign = 'justify';
+    renderContainer.style.color = 'black';
+    renderContainer.innerHTML = contentElement.innerHTML;
+    document.body.appendChild(renderContainer);
+
     try {
-      const canvas = await html2canvas(contentElement, {
-        scale: 2,
+      const canvas = await html2canvas(renderContainer, {
+        scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
-        width: contentElement.scrollWidth,
-        height: contentElement.scrollHeight,
+        width: renderContainer.scrollWidth,
+        height: renderContainer.scrollHeight,
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
       const imgProps = pdf.getImageProperties(imgData);
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      let heightLeft = pdfHeight;
+      const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+      
+      let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
+      heightLeft -= (pdfHeight - margin * 2);
 
       while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
+        position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pdf.internal.pageSize.getHeight();
+        pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
+        heightLeft -= (pdfHeight - margin * 2);
       }
-
+      
       if (includeAnswers && answerKey && answerKey.length > 0) {
         pdf.addPage();
         pdf.setFontSize(16);
-        pdf.text("Answer Key - Objective Questions", 10, 20);
-        pdf.setFontSize(11);
+        pdf.text("Answer Key - Objective Questions", margin, margin);
+        pdf.setFontSize(12);
         
-        let yPos = 35;
+        let yPos = margin + 15;
         answerKey.forEach((answer, index) => {
-          if (yPos > 280) {
+          if (yPos > pdfHeight - margin) {
             pdf.addPage();
-            yPos = 20;
+            yPos = margin + 15;
           }
-          pdf.text(`${index + 1}. ${answer}`, 15, yPos);
-          yPos += 7;
+          pdf.text(`${index + 1}. ${answer}`, margin + 5, yPos);
+          yPos += 7; // Adjust line spacing for answer key
         });
       }
 
@@ -263,6 +283,7 @@ export default function ExamQuestionGeneratorPage() {
         description: 'Could not generate PDF. Please try again.',
       });
     } finally {
+      document.body.removeChild(renderContainer);
       setLoadingState('idle');
     }
   };
