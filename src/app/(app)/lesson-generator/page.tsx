@@ -54,136 +54,136 @@ export default function LessonGeneratorPage() {
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
   /**
- * Fixed and cleaner text-based PDF generation using jsPDF.
- * - Auto-detects week or step headings and starts a new page for them.
- * - Prevents text from overlapping across pages.
- * - Preserves paragraph spacing and Markdown structure.
- */
-const handleDownloadPdf = useCallback(async () => {
-  if (!generatedNote) {
-    toast({
-      variant: 'destructive',
-      title: 'Nothing to Download',
-      description: 'No generated note to export.',
-    });
-    return;
-  }
-
-  setIsDownloadingPdf(true);
-  setGenerationProgress('Preparing PDF...');
-
-  try {
-    // Convert markdown -> sanitized HTML -> plain text (retain paragraph breaks)
-    const rawHtml = await marked.parse(generatedNote || '');
-    const cleanHtml = DOMPurify.sanitize(rawHtml);
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = cleanHtml;
-
-    let fullText = tempDiv.textContent || '';
-    fullText = fullText
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/\n\s*\n\s*\n+/g, '\n\n')
-      .trim();
-
-    // Initialize jsPDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 15;
-    const usableWidth = pdfWidth - margin * 2;
-    const fontSizePt = 11;
-
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(fontSizePt);
-
-    const ptToMm = 0.3527777778;
-    const lineHeightMm = fontSizePt * 1.25 * ptToMm;
-
-    // Header on first page
-    const title = `Lesson Note${formState.subject ? ' — ' + formState.subject : ''}`;
-    const meta = `Class: ${formState.classLevel || '—'}    Topic: ${formState.schemeOfWork || '—'}`;
-    let cursorY = margin;
-
-    pdf.setFontSize(13);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(title, margin, cursorY);
-    cursorY += lineHeightMm * 1.2;
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(meta, margin, cursorY);
-    cursorY += lineHeightMm * 1.5;
-
-    pdf.setLineWidth(0.2);
-    pdf.line(margin, cursorY - (lineHeightMm * 0.5), pdfWidth - margin, cursorY - (lineHeightMm * 0.5));
-    cursorY += lineHeightMm * 0.5;
-
-    pdf.setFontSize(fontSizePt);
-
-    // Split into paragraphs and wrap them
-    const paragraphs = fullText.split(/\n\s*\n/);
-    for (let i = 0; i < paragraphs.length; i++) {
-      const para = paragraphs[i].trim();
-      if (!para) {
-        cursorY += lineHeightMm;
-        continue;
-      }
-
-      // If the line looks like a new week or section heading, start a new page
-      const isHeading = /^(\s*(week|step|lesson|topic)\s*\d*)[:\-.]/i.test(para);
-      if (isHeading && i !== 0) {
-        pdf.addPage();
-        cursorY = margin + 5;
-
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(para, margin, cursorY);
-        cursorY += lineHeightMm * 2;
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(fontSizePt);
-        continue;
-      }
-
-      const wrappedLines = pdf.splitTextToSize(para, usableWidth);
-      for (const line of wrappedLines) {
-        if (cursorY + lineHeightMm > pdfHeight - margin) {
+   * Fixed and cleaner text-based PDF generation using jsPDF.
+   * - Auto-detects week or step headings and starts a new page for them.
+   * - Prevents text from overlapping across pages.
+   * - Preserves paragraph spacing and Markdown structure.
+   */
+  const handleDownloadPdf = useCallback(async () => {
+    if (!generatedNote) {
+      toast({
+        variant: 'destructive',
+        title: 'Nothing to Download',
+        description: 'No generated note to export.',
+      });
+      return;
+    }
+  
+    setIsDownloadingPdf(true);
+    setGenerationProgress('Preparing PDF...');
+  
+    try {
+      // Convert markdown -> sanitized HTML -> plain text (retain paragraph breaks)
+      const rawHtml = await marked.parse(generatedNote || '');
+      const cleanHtml = DOMPurify.sanitize(rawHtml);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cleanHtml;
+  
+      let fullText = tempDiv.textContent || '';
+      fullText = fullText
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\n\s*\n\s*\n+/g, '\n\n')
+        .trim();
+  
+      // Initialize jsPDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      const usableWidth = pdfWidth - margin * 2;
+      const fontSizePt = 11;
+  
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(fontSizePt);
+  
+      const ptToMm = 0.3527777778;
+      const lineHeightMm = fontSizePt * 1.4 * ptToMm;
+  
+      // Header on first page
+      const title = `Lesson Note${formState.subject ? ' — ' + formState.subject : ''}`;
+      const meta = `Class: ${formState.classLevel || '—'}    Topic: ${formState.schemeOfWork || '—'}`;
+      let cursorY = margin;
+  
+      pdf.setFontSize(13);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(title, margin, cursorY);
+      cursorY += lineHeightMm * 1.2;
+  
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(meta, margin, cursorY);
+      cursorY += lineHeightMm * 2.2;
+  
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, cursorY - (lineHeightMm * 0.5), pdfWidth - margin, cursorY - (lineHeightMm * 0.5));
+      cursorY += lineHeightMm * 0.5;
+  
+      pdf.setFontSize(fontSizePt);
+  
+      // Split into paragraphs and wrap them
+      const paragraphs = fullText.split(/\n\s*\n/);
+      for (let i = 0; i < paragraphs.length; i++) {
+        const para = paragraphs[i].trim();
+        if (!para) {
+          cursorY += lineHeightMm;
+          continue;
+        }
+  
+        // If the line looks like a new week or section heading, start a new page
+        const isHeading = /^(\s*(week|step|lesson|topic)\s*\d*)[:\-.]/i.test(para);
+        if (isHeading && i !== 0) {
           pdf.addPage();
           cursorY = margin;
+  
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(para, margin, cursorY);
+          cursorY += lineHeightMm * 2;
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(fontSizePt);
+          continue;
         }
-        pdf.text(line, margin, cursorY, { maxWidth: usableWidth });
-        cursorY += lineHeightMm;
+  
+        const wrappedLines = pdf.splitTextToSize(para, usableWidth);
+        for (const line of wrappedLines) {
+          if (cursorY + lineHeightMm > pdfHeight - margin) {
+            pdf.addPage();
+            cursorY = margin;
+          }
+          pdf.text(line, margin, cursorY, { maxWidth: usableWidth });
+          cursorY += lineHeightMm;
+        }
+        cursorY += lineHeightMm * 0.5;
       }
-      cursorY += lineHeightMm * 0.5;
+  
+      // Save PDF
+      const subjectSlug = (formState.subject || 'lesson-note')
+        .replace(/[^a-z0-9_-]/gi, '_')
+        .toLowerCase();
+      const fileName = `lesson-note-${subjectSlug}-${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:T]/g, '-')}.pdf`;
+  
+      pdf.save(fileName);
+  
+      toast({
+        title: 'PDF ready',
+        description: `Downloaded ${fileName}`,
+      });
+    } catch (err) {
+      console.error('PDF generation error', err);
+      toast({
+        variant: 'destructive',
+        title: 'PDF Generation Failed',
+        description: (err instanceof Error) ? err.message : String(err),
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+      setGenerationProgress('');
     }
-
-    // Save PDF
-    const subjectSlug = (formState.subject || 'lesson-note')
-      .replace(/[^a-z0-9_-]/gi, '_')
-      .toLowerCase();
-    const fileName = `lesson-note-${subjectSlug}-${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:T]/g, '-')}.pdf`;
-
-    pdf.save(fileName);
-
-    toast({
-      title: 'PDF ready',
-      description: `Downloaded ${fileName}`,
-    });
-  } catch (err) {
-    console.error('PDF generation error', err);
-    toast({
-      variant: 'destructive',
-      title: 'PDF Generation Failed',
-      description: (err instanceof Error) ? err.message : String(err),
-    });
-  } finally {
-    setIsDownloadingPdf(false);
-    setGenerationProgress('');
-  }
-}, [generatedNote, formState, toast]);
+  }, [generatedNote, formState, toast]);
 
   useEffect(() => {
     try {
@@ -554,3 +554,5 @@ const handleDownloadPdf = useCallback(async () => {
     </>
   );
 }
+
+    
