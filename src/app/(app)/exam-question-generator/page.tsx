@@ -12,8 +12,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -571,33 +569,33 @@ export default function ExamQuestionGeneratorPage() {
                 )}
 
                 {generatedExam && !isGenerating && (
-                  <div className="exam-paper space-y-6">
-                    <div className="text-center border-b-2 border-black pb-4 mb-6">
-                      <h1 className="text-2xl font-bold uppercase mb-2">
+                  <div className="exam-paper space-y-4">
+                    <div className="text-center border-b border-black pb-2 mb-4">
+                      <h1 className="text-xl font-bold uppercase">
                         {settings?.schoolName || 'School Name'}
                       </h1>
-                      <h2 className="text-xl font-semibold mb-1">
+                      <h2 className="text-base font-semibold">
                         {formValidation.finalInput.subject} - {formValidation.finalInput.classLevel}
                       </h2>
-                      <p className="text-sm">
+                      <p className="text-xs">
                          {settings?.currentTerm}, {settings?.currentSession}
                       </p>
                     </div>
 
                     {generatedExam.objectiveQuestions && generatedExam.objectiveQuestions.length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="font-bold text-lg mb-4 pb-2 border-b border-gray-300">
+                      <div className="mb-6">
+                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
                           Section A: Objective Questions
                         </h3>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {generatedExam.objectiveQuestions.map((q, idx) => (
                             <div key={idx} className="question">
-                              <p className="font-medium mb-2">
+                              <p className="font-medium mb-1 text-sm">
                                 {idx + 1}. {q.question}
                               </p>
-                              <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1">
+                              <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                 {q.options.map((opt, optIdx) => (
-                                  <div key={optIdx} className="option text-sm">
+                                  <div key={optIdx} className="option">
                                     {String.fromCharCode(65 + optIdx)}. {opt}
                                   </div>
                                 ))}
@@ -609,14 +607,14 @@ export default function ExamQuestionGeneratorPage() {
                     )}
 
                     {generatedExam.essayQuestions && generatedExam.essayQuestions.length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="font-bold text-lg mb-4 pb-2 border-b border-gray-300">
+                      <div>
+                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
                           {generatedExam.objectiveQuestions ? 'Section B: Essay Questions' : 'Essay Questions'}
                         </h3>
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                           {generatedExam.essayQuestions.map((q, idx) => (
                             <div key={idx} className="question">
-                              <p className="font-medium mb-2">
+                              <p className="font-medium mb-2 text-sm">
                                 {idx + 1}. {q.question}
                               </p>
                             </div>
@@ -625,7 +623,7 @@ export default function ExamQuestionGeneratorPage() {
                       </div>
                     )}
 
-                    <div className="text-center text-sm text-gray-500 mt-8 pt-4 border-t border-gray-300">
+                    <div className="text-center text-xs text-gray-500 mt-6 pt-2 border-t border-gray-300">
                       <p>End of Examination</p>
                     </div>
                   </div>
@@ -639,33 +637,33 @@ export default function ExamQuestionGeneratorPage() {
        <div className="hidden print:block">
            <div id="print-content" className="exam-paper-print">
                {generatedExam && (
-                  <div className="exam-paper space-y-6">
-                    <div className="text-center border-b-2 border-black pb-4 mb-6">
-                      <h1 className="text-2xl font-bold uppercase mb-2">
+                  <div className="exam-paper space-y-4">
+                    <div className="text-center border-b-2 border-black pb-2 mb-4">
+                      <h1 className="text-xl font-bold uppercase">
                         {settings?.schoolName || 'School Name'}
                       </h1>
-                      <h2 className="text-xl font-semibold mb-1">
+                      <h2 className="text-base font-semibold">
                         {formValidation.finalInput.subject} - {formValidation.finalInput.classLevel}
                       </h2>
-                      <p className="text-sm">
+                      <p className="text-xs">
                          {settings?.currentTerm}, {settings?.currentSession}
                       </p>
                     </div>
 
                     {generatedExam.objectiveQuestions && generatedExam.objectiveQuestions.length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="font-bold text-lg mb-4 pb-2 border-b border-gray-300">
+                      <div className="mb-6">
+                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
                           Section A: Objective Questions
                         </h3>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {generatedExam.objectiveQuestions.map((q, idx) => (
                             <div key={idx} className="question">
-                              <p className="font-medium mb-2">
+                              <p className="font-medium mb-1 text-sm">
                                 {idx + 1}. {q.question}
                               </p>
-                              <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1">
+                              <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                 {q.options.map((opt, optIdx) => (
-                                  <div key={optIdx} className="option text-sm">
+                                  <div key={optIdx} className="option">
                                     {String.fromCharCode(65 + optIdx)}. {opt}
                                   </div>
                                 ))}
@@ -677,14 +675,14 @@ export default function ExamQuestionGeneratorPage() {
                     )}
 
                     {generatedExam.essayQuestions && generatedExam.essayQuestions.length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="font-bold text-lg mb-4 pb-2 border-b border-gray-300">
+                      <div>
+                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
                           {generatedExam.objectiveQuestions ? 'Section B: Essay Questions' : 'Essay Questions'}
                         </h3>
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                           {generatedExam.essayQuestions.map((q, idx) => (
                             <div key={idx} className="question">
-                              <p className="font-medium mb-2">
+                              <p className="font-medium mb-2 text-sm">
                                 {idx + 1}. {q.question}
                               </p>
                             </div>
@@ -692,7 +690,7 @@ export default function ExamQuestionGeneratorPage() {
                         </div>
                       </div>
                     )}
-                    <div className="text-center text-sm text-gray-500 mt-8 pt-4 border-t border-gray-300">
+                    <div className="text-center text-xs text-gray-500 mt-6 pt-2 border-t border-gray-300">
                       <p>End of Examination</p>
                     </div>
                   </div>
@@ -712,6 +710,12 @@ export default function ExamQuestionGeneratorPage() {
                 left: 0;
                 top: 0;
                 width: 100%;
+            }
+            .exam-paper-print {
+                font-family: Arial, sans-serif !important;
+                font-size: 12pt !important;
+                line-height: 1.15 !important;
+                text-align: justify !important;
             }
         }
         @page {
