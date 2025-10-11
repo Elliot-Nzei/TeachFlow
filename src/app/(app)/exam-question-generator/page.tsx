@@ -196,46 +196,40 @@ export default function ExamQuestionGeneratorPage() {
       toast({ title: 'Error', description: 'Preview content not found.', variant: 'destructive' });
       return;
     }
-
+  
     setLoadingState('downloading');
-    
-    // Create a new jsPDF instance for an A4 page
+  
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const margin = 20; // 20mm margin
-    
-    // Calculate the usable width and height for the content on the PDF page
-    const contentWidth = pdfWidth - margin * 2;
-    const pageContentHeight = pdfHeight - margin * 2;
-
+    const contentWidth = pdfWidth - (margin * 2);
+    const contentHeight = pdfHeight - (margin * 2);
+  
     try {
-      // Render the entire HTML content to a single canvas
       const canvas = await html2canvas(contentElement, {
-        scale: 2, // Use a higher scale for better resolution
+        scale: 2,
         useCORS: true,
       });
-
+  
       const imgData = canvas.toDataURL('image/png');
       const imgProps = pdf.getImageProperties(imgData);
-      
-      // Calculate the height of the rendered image in PDF units
       const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
       
       let heightLeft = imgHeight;
       let position = 0;
-
+  
       // Add the first page
-      pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
-      heightLeft -= pageContentHeight;
-
+      pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight);
+      heightLeft -= contentHeight;
+  
       // Add subsequent pages if the content is too tall
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position -= contentHeight;
         pdf.addPage();
         // The y-position for addImage needs to be negative to show the next "slice"
         pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
-        heightLeft -= pageContentHeight;
+        heightLeft -= contentHeight;
       }
       
       // Add the answer key on a new page if requested
@@ -249,21 +243,20 @@ export default function ExamQuestionGeneratorPage() {
         
         let yPos = margin + 15;
         answerKey.forEach((answer, index) => {
-          // Add a new page for the answer key if it gets too long
           if (yPos > pdfHeight - margin) {
             pdf.addPage();
             yPos = margin;
           }
           pdf.text(`${index + 1}. ${answer}`, margin + 5, yPos);
-          yPos += 8; // Spacing for answer key lines
+          yPos += 8;
         });
       }
-
+  
       const filename = `${formState.subject.replace(/\s+/g, '_')}_${formState.classLevel.replace(/\s+/g, '_')}_Exam${includeAnswers ? '_with_Answers' : ''}.pdf`;
       pdf.save(filename);
-
+  
       toast({ title: 'Download Complete', description: `${filename} has been downloaded.` });
-
+  
     } catch (error) {
       console.error('PDF generation error:', error);
       toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate PDF.' });
@@ -271,7 +264,7 @@ export default function ExamQuestionGeneratorPage() {
       setLoadingState('idle');
     }
   };
-  
+
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
@@ -532,7 +525,7 @@ export default function ExamQuestionGeneratorPage() {
             <CardContent>
               <div
                 id="pdf-container"
-                className="bg-gray-100 p-4 rounded-md overflow-auto max-h-[70vh]"
+                className="bg-gray-100 dark:bg-gray-900 p-4 rounded-md overflow-auto max-h-[70vh]"
               >
                 <div id="pdf-preview-content" className="a4-page-preview">
                     {isGenerating && (
@@ -554,8 +547,8 @@ export default function ExamQuestionGeneratorPage() {
                     {generatedExam && !isGenerating && (
                     <div className="exam-paper space-y-4">
                         <div className="text-center border-b-2 border-black pb-2 mb-4">
-                            <h1 className="text-xl font-bold uppercase">{settings?.schoolName || 'School Name'}</h1>
-                            <h2 className="text-base font-semibold">{formState.subject} - {formState.classLevel}</h2>
+                            <h1 className="text-base font-bold uppercase">{settings?.schoolName || 'School Name'}</h1>
+                            <h2 className="text-sm font-semibold">{formState.subject} - {formState.classLevel}</h2>
                             <p className="text-xs">{settings?.currentTerm}, {settings?.currentSession}</p>
                         </div>
 
@@ -625,7 +618,7 @@ export default function ExamQuestionGeneratorPage() {
             body, html {
                 background: white;
             }
-            .print\:hidden {
+            .print\\:hidden {
                 display: none;
             }
             #pdf-container {
