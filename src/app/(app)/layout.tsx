@@ -17,6 +17,7 @@ import {
   BookCopy,
   CalendarCheck,
   FileQuestion,
+  DollarSign,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -55,6 +56,7 @@ const menuItems = [
   { href: '/academics', label: 'Academics', icon: BookCopy },
   { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { href: '/grades', label: 'Grades', icon: BookOpen },
+  { href: '/payments', label: 'Payments', icon: DollarSign },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion },

@@ -87,6 +87,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "feeAmount": {
+          "type": "number",
+          "description": "The school fee amount for this class for a term."
         }
       },
       "required": [
@@ -269,6 +273,26 @@
         "traits"
       ]
     },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a student's school fee payment record for a term.",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "term": { "type": "string" },
+        "session": { "type": "string" },
+        "amountDue": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "balance": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Owing"] },
+        "lastPaymentDate": { "type": "string", "format": "date" },
+        "paymentMethod": { "type": "string", "enum": ["Cash", "Bank Transfer", "POS", "Other"] },
+        "remarks": { "type": "string" }
+      },
+      "required": [ "studentId", "classId", "term", "session", "amountDue", "amountPaid", "balance", "status" ]
+    },
     "Transfer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transfer",
@@ -351,6 +375,10 @@
     "/users/{userId}/outgoingTransfers/{transferId}": {
       "schema": { "$ref": "#/entities/Transfer" },
       "description": "Stores a log of outgoing data transfers initiated by a user."
+    },
+    "/users/{userId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Stores student payment records for a term."
     }
   }
 }

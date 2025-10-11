@@ -31,6 +31,7 @@ export type Class = {
   students: string[];
   subjects: string[];
   createdAt?: any;
+  feeAmount?: number;
 };
 
 export type Subject = {
@@ -54,6 +55,21 @@ export type Grade = {
   grade: "A" | "B" | "C" | "D" | "E" | "F";
   remark?: string;
 };
+
+export type Payment = {
+    id: string;
+    studentId: string;
+    classId: string;
+    term: string;
+    session: string;
+    amountDue: number;
+    amountPaid: number;
+    balance: number;
+    status: 'Paid' | 'Partially Paid' | 'Owing';
+    lastPaymentDate?: string;
+    paymentMethod?: 'Cash' | 'Bank Transfer' | 'POS' | 'Other';
+    remarks?: string;
+}
 
 export type Attendance = {
     id: string;
