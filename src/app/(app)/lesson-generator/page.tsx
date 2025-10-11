@@ -78,7 +78,7 @@ export default function LessonGeneratorPage() {
 
       // Convert block-level elements to newlines, then strip remaining tags
       const textWithNewlines = cleanHtml
-        .replace(/<\/p>|<\/li>|<\/h[1-6]>|<br\/?>/gi, '\n')
+        .replace(/<p>|<\/p>|<li>|<\/li>|<h1>|<\/h1>|<h2>|<\/h2>|<h3>|<\/h3>|<h4>|<\/h4>|<h5>|<\/h5>|<h6>|<\/h6>|<br>|<br\/>/gi, '\n')
         .replace(/<hr\/?>/gi, '\n---\n');
       
       const tempDiv = document.createElement('div');
