@@ -32,10 +32,6 @@
           "type": "string",
           "description": "The school's motto or slogan."
         },
-        "profilePicture": {
-          "type": "string",
-          "description": "URL of the user's profile picture."
-        },
         "schoolLogo": {
           "type": "string",
           "description": "URL of the school's logo."

@@ -6,7 +6,6 @@ export type User = {
   email: string;
   userCode: string;
   schoolName: string;
-  profilePicture: string;
 };
 
 export type Student = {
@@ -136,8 +135,9 @@ export type DataTransfer = {
 export type Settings = {
   name: string;
   schoolName: string;
+  schoolMotto: string;
+  schoolAddress: string;
   email: string;
-  profilePicture: string;
   schoolLogo: string;
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;

@@ -7,21 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clipboard, User as UserIcon, Upload, Loader2, AlertTriangle, School } from 'lucide-react';
+import { Clipboard, Loader2, AlertTriangle, School } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useFirebase } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, UploadTask } from "firebase/storage";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 export default function SettingsPage() {
     const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
     const { firestore, storage, user } = useFirebase();
     
-    const [previewImage, setPreviewImage] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
     const [previewLogo, setPreviewLogo] = useState('');
     const [logoFile, setLogoFile] = useState<File | null>(null);
 
@@ -34,29 +32,16 @@ export default function SettingsPage() {
     const CONFIRMATION_PHRASE = 'DELETE';
 
     useEffect(() => {
-        if (settings?.profilePicture) {
-            setPreviewImage(settings.profilePicture);
-        }
         if (settings?.schoolLogo) {
             setPreviewLogo(settings.schoolLogo);
         }
-    }, [settings?.profilePicture, settings?.schoolLogo]);
+    }, [settings?.schoolLogo]);
     
     useEffect(() => {
         if (!isAlertOpen) {
             setConfirmationText('');
         }
     }, [isAlertOpen]);
-
-
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
-            const file = event.target.files[0];
-            setImageFile(file);
-            const imageUrl = URL.createObjectURL(file);
-            setPreviewImage(imageUrl);
-        }
-    };
     
     const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
@@ -126,15 +111,6 @@ export default function SettingsPage() {
         try {
             const updates = { ...settings };
             const uploadPromises: Promise<void>[] = [];
-
-            if (imageFile) {
-                const profilePicPath = `profile-pictures/${user.uid}/${imageFile.name}`;
-                uploadPromises.push(
-                    uploadFile(imageFile, profilePicPath).then(url => {
-                        updates.profilePicture = url;
-                    })
-                );
-            }
             
             if (logoFile) {
                 const logoPath = `school-logos/${user.uid}/${logoFile.name}`;
@@ -161,7 +137,6 @@ export default function SettingsPage() {
             console.error("Error saving settings:", error);
         } finally {
             setIsSaving(false);
-            setImageFile(null);
             setLogoFile(null);
         }
     }
@@ -236,12 +211,12 @@ export default function SettingsPage() {
                 </div>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Personal Information</CardTitle>
-                        <CardDescription>Update your name, school, and profile picture.</CardDescription>
+                        <CardTitle>School Information</CardTitle>
+                        <CardDescription>Update your school's details and logo.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                          <div className="flex items-center gap-6">
-                            <Skeleton className="h-24 w-24 rounded-full" />
+                            <Skeleton className="h-24 w-24 rounded-md" />
                             <div className="w-full max-w-sm space-y-2">
                                 <Skeleton className="h-4 w-1/4" />
                                 <Skeleton className="h-10 w-full" />
@@ -273,20 +248,6 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-8 items-start">
-                    <div>
-                        <Label>Profile Picture</Label>
-                        <div className="flex items-center gap-4 mt-2">
-                            <Avatar className="h-24 w-24">
-                                <AvatarImage src={previewImage} />
-                                <AvatarFallback>
-                                    <UserIcon className="h-10 w-10 text-muted-foreground" />
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} className="w-full" disabled={isSaving} />
-                            </div>
-                        </div>
-                    </div>
                      <div>
                         <Label>School Logo</Label>
                         <div className="flex items-center gap-4 mt-2">
@@ -432,5 +393,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
