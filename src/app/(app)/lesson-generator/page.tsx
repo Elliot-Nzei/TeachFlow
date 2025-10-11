@@ -73,18 +73,20 @@ export default function LessonGeneratorPage() {
     setGenerationProgress('Preparing PDF...');
   
     try {
-      // Convert markdown -> sanitized HTML -> plain text (retain paragraph breaks)
       const rawHtml = await marked.parse(generatedNote || '');
-      const cleanHtml = DOMPurify.sanitize(rawHtml);
+      const cleanHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+
+      // Convert block-level elements to newlines, then strip remaining tags
+      const textWithNewlines = cleanHtml
+        .replace(/<\/p>|<\/li>|<\/h[1-6]>|<br\/?>/gi, '\n')
+        .replace(/<hr\/?>/gi, '\n---\n');
+      
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = cleanHtml;
-  
-      let fullText = tempDiv.textContent || '';
-      fullText = fullText
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .replace(/\n\s*\n\s*\n+/g, '\n\n')
-        .trim();
+      tempDiv.innerHTML = textWithNewlines;
+      let fullText = (tempDiv.textContent || '').trim();
+
+      // Consolidate multiple newlines
+      fullText = fullText.replace(/\n\s*\n+/g, '\n\n');
   
       // Initialize jsPDF
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -126,20 +128,24 @@ export default function LessonGeneratorPage() {
       for (let i = 0; i < paragraphs.length; i++) {
         const para = paragraphs[i].trim();
         if (!para) {
-          cursorY += lineHeightMm;
+          cursorY += lineHeightMm * 0.5; // smaller space for empty lines
           continue;
         }
   
         // If the line looks like a new week or section heading, start a new page
         const isHeading = /^(\s*(week|step|lesson|topic)\s*\d*)[:\-.]/i.test(para);
         if (isHeading && i !== 0) {
-          pdf.addPage();
-          cursorY = margin;
-  
+            if (cursorY + (lineHeightMm * 3) > pdfHeight - margin) { // Check if there's enough space for the heading
+                pdf.addPage();
+                cursorY = margin;
+            } else {
+                cursorY += lineHeightMm; // Add some space before the new section
+            }
+        
           pdf.setFontSize(12);
           pdf.setFont('helvetica', 'bold');
           pdf.text(para, margin, cursorY);
-          cursorY += lineHeightMm * 2;
+          cursorY += lineHeightMm * 1.5;
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(fontSizePt);
           continue;
@@ -554,5 +560,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
