@@ -1,7 +1,7 @@
 
 [
   {
-    "origin": ["https://*.cloudworkstations.dev"],
+    "origin": ["https://*.cloudworkstations.dev", "http://localhost:9002"],
     "method": ["GET", "PUT", "POST", "DELETE", "OPTIONS"],
     "responseHeader": [
       "Content-Type",
