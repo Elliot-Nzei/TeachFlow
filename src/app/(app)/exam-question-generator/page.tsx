@@ -97,8 +97,7 @@ export default function ExamQuestionGeneratorPage() {
 
   const handleQuestionCountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Allow empty string to clear input, but validate number range
-    if (val === '' || (/^\d+$/.test(val) && parseInt(val) >= 1 && parseInt(val) <= 50)) {
+    if (val === '' || (/^\d+$/.test(val) && parseInt(val, 10) >= 1 && parseInt(val, 10) <= 50)) {
         setQuestionCount(val);
     }
   }, []);
@@ -194,94 +193,81 @@ export default function ExamQuestionGeneratorPage() {
   const handleDownloadPdf = async (includeAnswers: boolean) => {
     const contentElement = document.getElementById('pdf-preview-content');
     if (!contentElement) {
-      toast({ 
-        title: 'Error', 
-        description: 'Preview content not found.', 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Error', description: 'Preview content not found.', variant: 'destructive' });
       return;
     }
 
     setLoadingState('downloading');
-
+    
+    // Create a new jsPDF instance for an A4 page
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const margin = 20; // 20mm margin
-    const contentWidth = pdfWidth - margin * 2;
     
-    // Create a hidden div to render the HTML with specific styles
-    const renderContainer = document.createElement('div');
-    renderContainer.style.position = 'absolute';
-    renderContainer.style.left = '-9999px';
-    renderContainer.style.width = `${contentWidth}mm`;
-    renderContainer.style.fontFamily = 'Arial, sans-serif';
-    renderContainer.style.fontSize = '12pt';
-    renderContainer.style.lineHeight = '1.15';
-    renderContainer.style.textAlign = 'justify';
-    renderContainer.style.color = 'black';
-    renderContainer.innerHTML = contentElement.innerHTML;
-    document.body.appendChild(renderContainer);
+    // Calculate the usable width and height for the content on the PDF page
+    const contentWidth = pdfWidth - margin * 2;
+    const pageContentHeight = pdfHeight - margin * 2;
 
     try {
-      const canvas = await html2canvas(renderContainer, {
-        scale: 2, // Higher scale for better quality
+      // Render the entire HTML content to a single canvas
+      const canvas = await html2canvas(contentElement, {
+        scale: 2, // Use a higher scale for better resolution
         useCORS: true,
-        logging: false,
-        width: renderContainer.scrollWidth,
-        height: renderContainer.scrollHeight,
       });
 
       const imgData = canvas.toDataURL('image/png');
       const imgProps = pdf.getImageProperties(imgData);
+      
+      // Calculate the height of the rendered image in PDF units
       const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
       
       let heightLeft = imgHeight;
       let position = 0;
 
+      // Add the first page
       pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
-      heightLeft -= (pdfHeight - margin * 2);
+      heightLeft -= pageContentHeight;
 
-      while (heightLeft >= 0) {
+      // Add subsequent pages if the content is too tall
+      while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
+        // The y-position for addImage needs to be negative to show the next "slice"
         pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
-        heightLeft -= (pdfHeight - margin * 2);
+        heightLeft -= pageContentHeight;
       }
       
+      // Add the answer key on a new page if requested
       if (includeAnswers && answerKey && answerKey.length > 0) {
         pdf.addPage();
-        pdf.setFontSize(16);
+        pdf.setFontSize(14);
+        pdf.setFont('Arial', 'bold');
         pdf.text("Answer Key - Objective Questions", margin, margin);
         pdf.setFontSize(12);
+        pdf.setFont('Arial', 'normal');
         
         let yPos = margin + 15;
         answerKey.forEach((answer, index) => {
+          // Add a new page for the answer key if it gets too long
           if (yPos > pdfHeight - margin) {
             pdf.addPage();
-            yPos = margin + 15;
+            yPos = margin;
           }
           pdf.text(`${index + 1}. ${answer}`, margin + 5, yPos);
-          yPos += 7; // Adjust line spacing for answer key
+          yPos += 8; // Spacing for answer key lines
         });
       }
 
       const filename = `${formState.subject.replace(/\s+/g, '_')}_${formState.classLevel.replace(/\s+/g, '_')}_Exam${includeAnswers ? '_with_Answers' : ''}.pdf`;
       pdf.save(filename);
 
-      toast({
-        title: 'Download Complete',
-        description: `${filename} has been downloaded.`,
-      });
+      toast({ title: 'Download Complete', description: `${filename} has been downloaded.` });
+
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Download Failed',
-        description: 'Could not generate PDF. Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate PDF.' });
     } finally {
-      document.body.removeChild(renderContainer);
       setLoadingState('idle');
     }
   };
@@ -545,182 +531,117 @@ export default function ExamQuestionGeneratorPage() {
 
             <CardContent>
               <div
-                id="pdf-preview-content"
-                className="p-8 border rounded-md bg-white text-black min-h-[500px]"
+                id="pdf-container"
+                className="bg-gray-100 p-4 rounded-md overflow-auto max-h-[70vh]"
               >
-                {isGenerating && (
-                  <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <p className="text-lg font-semibold">Generating questions...</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      This may take a few moments
-                    </p>
-                  </div>
-                )}
-
-                {!isGenerating && !generatedExam && (
-                  <div className="flex flex-col items-center justify-center min-h-[400px] text-center text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mb-4 opacity-50" />
-                    <p className="text-lg">Ready to generate exam questions</p>
-                    <p className="text-sm mt-2">
-                      Fill in the form and click "Generate Questions" to begin
-                    </p>
-                  </div>
-                )}
-
-                {generatedExam && !isGenerating && (
-                  <div className="exam-paper space-y-4">
-                    <div className="text-center border-b border-black pb-2 mb-4">
-                      <h1 className="text-xl font-bold uppercase">
-                        {settings?.schoolName || 'School Name'}
-                      </h1>
-                      <h2 className="text-base font-semibold">
-                        {formValidation.finalInput.subject} - {formValidation.finalInput.classLevel}
-                      </h2>
-                      <p className="text-xs">
-                         {settings?.currentTerm}, {settings?.currentSession}
-                      </p>
+                <div id="pdf-preview-content" className="a4-page-preview">
+                    {isGenerating && (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+                        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+                        <p className="text-lg font-semibold">Generating questions...</p>
+                        <p className="text-sm text-muted-foreground mt-2">This may take a few moments</p>
                     </div>
-
-                    {generatedExam.objectiveQuestions && generatedExam.objectiveQuestions.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
-                          Section A: Objective Questions
-                        </h3>
-                        <div className="space-y-3">
-                          {generatedExam.objectiveQuestions.map((q, idx) => (
-                            <div key={idx} className="question">
-                              <p className="font-medium mb-1 text-sm">
-                                {idx + 1}. {q.question}
-                              </p>
-                              <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                                {q.options.map((opt, optIdx) => (
-                                  <div key={optIdx} className="option">
-                                    {String.fromCharCode(65 + optIdx)}. {opt}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     )}
 
-                    {generatedExam.essayQuestions && generatedExam.essayQuestions.length > 0 && (
-                      <div>
-                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
-                          {generatedExam.objectiveQuestions ? 'Section B: Essay Questions' : 'Essay Questions'}
-                        </h3>
-                        <div className="space-y-4">
-                          {generatedExam.essayQuestions.map((q, idx) => (
-                            <div key={idx} className="question">
-                              <p className="font-medium mb-2 text-sm">
-                                {idx + 1}. {q.question}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {!isGenerating && !generatedExam && (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center text-muted-foreground">
+                        <Sparkles className="h-12 w-12 mb-4 opacity-50" />
+                        <p className="text-lg">Ready to generate exam questions</p>
+                        <p className="text-sm mt-2">Fill in the form and click "Generate Questions" to begin</p>
+                    </div>
                     )}
 
-                    <div className="text-center text-xs text-gray-500 mt-6 pt-2 border-t border-gray-300">
-                      <p>End of Examination</p>
+                    {generatedExam && !isGenerating && (
+                    <div className="exam-paper space-y-4">
+                        <div className="text-center border-b-2 border-black pb-2 mb-4">
+                            <h1 className="text-xl font-bold uppercase">{settings?.schoolName || 'School Name'}</h1>
+                            <h2 className="text-base font-semibold">{formState.subject} - {formState.classLevel}</h2>
+                            <p className="text-xs">{settings?.currentTerm}, {settings?.currentSession}</p>
+                        </div>
+
+                        {generatedExam.objectiveQuestions && generatedExam.objectiveQuestions.length > 0 && (
+                        <div className="mb-6">
+                            <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">Section A: Objective Questions</h3>
+                            <div className="space-y-3">
+                            {generatedExam.objectiveQuestions.map((q, idx) => (
+                                <div key={idx} className="question">
+                                <p className="font-medium mb-1 text-sm">{idx + 1}. {q.question}</p>
+                                <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    {q.options.map((opt, optIdx) => (
+                                    <div key={optIdx} className="option">{String.fromCharCode(65 + optIdx)}. {opt}</div>
+                                    ))}
+                                </div>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                        )}
+
+                        {generatedExam.essayQuestions && generatedExam.essayQuestions.length > 0 && (
+                        <div>
+                            <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">{generatedExam.objectiveQuestions ? 'Section B: Essay Questions' : 'Essay Questions'}</h3>
+                            <div className="space-y-4">
+                            {generatedExam.essayQuestions.map((q, idx) => (
+                                <div key={idx} className="question">
+                                <p className="font-medium mb-2 text-sm">{idx + 1}. {q.question}</p>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                        )}
+
+                        <div className="text-center text-xs text-gray-500 mt-6 pt-2 border-t border-gray-300">
+                        <p>End of Examination</p>
+                        </div>
                     </div>
-                  </div>
-                )}
+                    )}
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-
-       <div className="hidden print:block">
-           <div id="print-content" className="exam-paper-print">
-               {generatedExam && (
-                  <div className="exam-paper space-y-4">
-                    <div className="text-center border-b-2 border-black pb-2 mb-4">
-                      <h1 className="text-xl font-bold uppercase">
-                        {settings?.schoolName || 'School Name'}
-                      </h1>
-                      <h2 className="text-base font-semibold">
-                        {formValidation.finalInput.subject} - {formValidation.finalInput.classLevel}
-                      </h2>
-                      <p className="text-xs">
-                         {settings?.currentTerm}, {settings?.currentSession}
-                      </p>
-                    </div>
-
-                    {generatedExam.objectiveQuestions && generatedExam.objectiveQuestions.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
-                          Section A: Objective Questions
-                        </h3>
-                        <div className="space-y-3">
-                          {generatedExam.objectiveQuestions.map((q, idx) => (
-                            <div key={idx} className="question">
-                              <p className="font-medium mb-1 text-sm">
-                                {idx + 1}. {q.question}
-                              </p>
-                              <div className="ml-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                                {q.options.map((opt, optIdx) => (
-                                  <div key={optIdx} className="option">
-                                    {String.fromCharCode(65 + optIdx)}. {opt}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {generatedExam.essayQuestions && generatedExam.essayQuestions.length > 0 && (
-                      <div>
-                        <h3 className="font-bold text-sm mb-2 pb-1 border-b border-gray-300">
-                          {generatedExam.objectiveQuestions ? 'Section B: Essay Questions' : 'Essay Questions'}
-                        </h3>
-                        <div className="space-y-4">
-                          {generatedExam.essayQuestions.map((q, idx) => (
-                            <div key={idx} className="question">
-                              <p className="font-medium mb-2 text-sm">
-                                {idx + 1}. {q.question}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="text-center text-xs text-gray-500 mt-6 pt-2 border-t border-gray-300">
-                      <p>End of Examination</p>
-                    </div>
-                  </div>
-                )}
-           </div>
-       </div>
+      
        <style jsx global>{`
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-content, #print-content * {
-                visibility: visible;
-            }
-            #print-content {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-            .exam-paper-print {
-                font-family: Arial, sans-serif !important;
-                font-size: 12pt !important;
-                line-height: 1.15 !important;
-                text-align: justify !important;
-            }
+        .a4-page-preview {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: auto;
+            color: black;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        @page {
-            size: A4;
-            margin: 20mm;
+        .exam-paper {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.15;
+            text-align: justify;
+        }
+        .exam-paper h1 { font-size: 16pt; }
+        .exam-paper h2 { font-size: 14pt; }
+        .exam-paper h3 { font-size: 12pt; }
+        @media print {
+            body, html {
+                background: white;
+            }
+            .print\:hidden {
+                display: none;
+            }
+            #pdf-container {
+                display: none;
+            }
+            .a4-page-preview {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: auto;
+            }
+            @page {
+                size: A4;
+                margin: 20mm;
+            }
         }
        `}</style>
     </>

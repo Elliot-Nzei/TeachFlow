@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -55,226 +54,91 @@ export default function LessonGeneratorPage() {
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
   const handleDownloadPdf = useCallback(async () => {
-    if (!generatedNote) {
-      toast({
-        variant: 'destructive',
-        title: 'Nothing to Download',
-        description: 'Please generate a lesson note first.',
-      });
-      return;
+    const contentElement = document.getElementById('note-content');
+    if (!contentElement) {
+        toast({
+            variant: 'destructive',
+            title: 'Nothing to Download',
+            description: 'Could not find content to generate PDF.',
+        });
+        return;
     }
 
     setIsDownloadingPdf(true);
     setGenerationProgress('Preparing PDF...');
 
-    // Split by week separators
-    const parts: string[] = [];
-    if (generatedNote.includes('---')) {
-      generatedNote.split(/\n-{3,}\n/).forEach(p => { if (p.trim()) parts.push(p.trim()); });
-    } else {
-      parts.push(generatedNote);
-    }
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15; // 15mm margin
 
-    if (parts.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'No content found',
-        description: 'Could not determine content to render into PDF.'
-      });
-      setIsDownloadingPdf(false);
-      setGenerationProgress('');
-      return;
-    }
-
-    // Create jsPDF for A4
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    const pdfWidthMm = pdf.internal.pageSize.getWidth();
-    const pdfHeightMm = pdf.internal.pageSize.getHeight();
-    const marginMm = 15;
-    const contentWidthMm = pdfWidthMm - marginMm * 2;
-    const contentHeightMm = pdfHeightMm - marginMm * 2;
-
-    // Use a fixed scale for consistent rendering
-    const scale = 2;
-    const pxPerMm = 3.7795275591;
-    const contentWidthPx = Math.round(contentWidthMm * pxPerMm * scale);
+    const contentWidth = pdfWidth - margin * 2;
+    const pageContentHeight = pdfHeight - margin * 2;
 
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '0';
-    tempContainer.style.width = `${contentWidthPx / scale}px`;
-    tempContainer.style.padding = '20px';
-    tempContainer.style.boxSizing = 'border-box';
-    tempContainer.style.background = '#ffffff';
-    tempContainer.style.color = '#000000';
+    tempContainer.style.width = `${contentWidth}mm`;
+    tempContainer.style.background = '#fff';
+    tempContainer.style.color = '#000';
     tempContainer.style.fontFamily = 'Arial, sans-serif';
-    tempContainer.style.fontSize = '12px';
-    tempContainer.style.lineHeight = '1.6';
-    tempContainer.style.wordBreak = 'break-word';
-    tempContainer.style.overflowWrap = 'break-word';
+    tempContainer.style.fontSize = '12pt';
+    tempContainer.style.lineHeight = '1.15';
+    tempContainer.style.textAlign = 'justify';
+    
     document.body.appendChild(tempContainer);
+    
+    // Use the innerHTML of the rendered markdown content
+    tempContainer.innerHTML = contentElement.innerHTML;
 
     try {
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        setGenerationProgress(`Rendering part ${i + 1} of ${parts.length}...`);
-
-        const html = marked.parse(part);
-        let cleanHtml = html;
-        if (typeof window !== 'undefined') {
-            cleanHtml = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
-        }
-
-        tempContainer.innerHTML = '';
-        const wrapper = document.createElement('div');
-        wrapper.style.fontFamily = 'Arial, sans-serif';
-        wrapper.style.fontSize = '12px';
-        wrapper.style.lineHeight = '1.6';
-        wrapper.style.color = '#000000';
-
-        const header = document.createElement('div');
-        header.style.marginBottom = '15px';
-        header.style.fontSize = '14px';
-        header.style.fontWeight = 'bold';
-        header.style.borderBottom = '2px solid #333';
-        header.style.paddingBottom = '8px';
-        header.innerHTML = `${formState.subject ? `${formState.subject}` : ''}${formState.classLevel ? ` - ${formState.classLevel}` : ''}`;
-        wrapper.appendChild(header);
-
-        const contentDiv = document.createElement('div');
-        contentDiv.innerHTML = cleanHtml;
-        
-        // Style all elements properly
-        const allElements = contentDiv.querySelectorAll('*');
-        allElements.forEach(el => {
-          const element = el as HTMLElement;
-          element.style.fontFamily = 'Arial, sans-serif';
-          element.style.fontSize = '12px';
-          element.style.lineHeight = '1.6';
-          element.style.color = '#000000';
-          element.style.wordBreak = 'break-word';
-          element.style.overflowWrap = 'break-word';
-        });
-
-        // Style headings
-        const headings = contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
-        headings.forEach(h => {
-          const heading = h as HTMLElement;
-          heading.style.fontWeight = 'bold';
-          heading.style.marginTop = '12px';
-          heading.style.marginBottom = '8px';
-          if (h.tagName === 'H1') heading.style.fontSize = '18px';
-          else if (h.tagName === 'H2') heading.style.fontSize = '16px';
-          else if (h.tagName === 'H3') heading.style.fontSize = '14px';
-          else heading.style.fontSize = '12px';
-        });
-
-        // Style paragraphs and lists
-        const paragraphs = contentDiv.querySelectorAll('p, li');
-        paragraphs.forEach(p => {
-          const para = p as HTMLElement;
-          para.style.marginBottom = '8px';
-          para.style.fontSize = '12px';
-        });
-
-        const lists = contentDiv.querySelectorAll('ul, ol');
-        lists.forEach(list => {
-          const l = list as HTMLElement;
-          l.style.marginLeft = '20px';
-          l.style.marginBottom = '8px';
-        });
-
-        const imgs = contentDiv.querySelectorAll('img');
-        imgs.forEach(img => {
-          (img as HTMLImageElement).style.maxWidth = '100%';
-          (img as HTMLImageElement).style.height = 'auto';
-        });
-
-        wrapper.appendChild(contentDiv);
-        tempContainer.appendChild(wrapper);
-
-        await new Promise(res => setTimeout(res, 100));
-
         const canvas = await html2canvas(tempContainer, {
-          scale: scale,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          windowWidth: tempContainer.scrollWidth,
-          windowHeight: tempContainer.scrollHeight,
+            scale: 2,
+            useCORS: true,
+            width: tempContainer.scrollWidth,
+            height: tempContainer.scrollHeight
         });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+        
+        let heightLeft = imgHeight;
+        let position = 0;
 
-        if (i > 0) {
-          pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
+        heightLeft -= pageContentHeight;
+
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', margin, position + margin, contentWidth, imgHeight);
+            heightLeft -= pageContentHeight;
         }
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        const canvasPxWidth = canvas.width;
-        const canvasPxHeight = canvas.height;
+        const subjectSlug = (formState.subject || 'lesson-note').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+        const fileName = `lesson-note-${subjectSlug}-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
+        pdf.save(fileName);
 
-        const canvasMmWidth = canvasPxWidth / (pxPerMm * scale);
-        const canvasMmHeight = canvasPxHeight / (pxPerMm * scale);
-
-        const renderWidthMm = contentWidthMm;
-        const renderHeightMm = (canvasMmHeight * renderWidthMm) / canvasMmWidth;
-
-        if (renderHeightMm <= contentHeightMm + 0.01) {
-          pdf.addImage(imgData, 'PNG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
-        } else {
-          const sliceHeightPx = Math.floor(contentHeightMm * pxPerMm * scale);
-          let y = 0;
-          let pageIndex = 0;
-          while (y < canvasPxHeight) {
-            const h = Math.min(sliceHeightPx, canvasPxHeight - y);
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = canvasPxWidth;
-            sliceCanvas.height = h;
-            const ctx = sliceCanvas.getContext('2d');
-            if (!ctx) throw new Error('2D context unavailable');
-
-            ctx.drawImage(canvas, 0, y, canvasPxWidth, h, 0, 0, canvasPxWidth, h);
-            const sliceData = sliceCanvas.toDataURL('image/png', 1.0);
-            const sliceMmHeight = h / (pxPerMm * scale);
-
-            if (pageIndex > 0) {
-              pdf.addPage();
-            }
-            pdf.addImage(sliceData, 'PNG', marginMm, marginMm, renderWidthMm, sliceMmHeight, undefined, 'FAST');
-
-            y += h;
-            pageIndex++;
-          }
-        }
-      }
-
-      const subjectSlug = (formState.subject || 'lesson-note').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
-      const fileName = `lesson-note-${subjectSlug}-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
-      pdf.save(fileName);
-
-      toast({
-        title: 'PDF ready',
-        description: `Downloaded ${fileName}`,
-      });
+        toast({
+            title: 'PDF ready',
+            description: `Downloaded ${fileName}`,
+        });
 
     } catch (err) {
-      console.error('PDF generation error', err);
-      toast({
-        variant: 'destructive',
-        title: 'PDF Generation Failed',
-        description: (err instanceof Error) ? err.message : String(err),
-      });
+        console.error('PDF generation error', err);
+        toast({
+            variant: 'destructive',
+            title: 'PDF Generation Failed',
+            description: (err instanceof Error) ? err.message : String(err),
+        });
     } finally {
-      try { document.body.removeChild(tempContainer); } catch (e) { /* ignore */ }
-      setIsDownloadingPdf(false);
-      setGenerationProgress('');
+        document.body.removeChild(tempContainer);
+        setIsDownloadingPdf(false);
+        setGenerationProgress('');
     }
-  }, [generatedNote, formState.subject, formState.classLevel, toast]);
+}, [generatedNote, formState.subject, formState.classLevel, toast]);
+
 
   useEffect(() => {
     try {
@@ -645,5 +509,3 @@ export default function LessonGeneratorPage() {
     </>
   );
 }
-
-    
