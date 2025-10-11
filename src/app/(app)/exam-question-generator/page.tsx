@@ -138,7 +138,18 @@ export default function ExamQuestionGeneratorPage() {
     try {
       const result = await generateExamQuestions(finalInput);
       setGeneratedExam(result);
-      if (result.objectiveQuestions?.length) setAnswerKey(result.objectiveQuestions.map(q => q.answer));
+      if (result.objectiveQuestions?.length) {
+        setAnswerKey(result.objectiveQuestions.map(q => {
+             // Find the option that matches the answer text
+            const matchingOption = q.options.find(opt => opt === q.answer);
+            if(matchingOption) {
+                const optionIndex = q.options.indexOf(matchingOption);
+                const optionLetter = String.fromCharCode(65 + optionIndex);
+                return `${optionLetter}. ${q.answer}`;
+            }
+            return q.answer; // fallback
+        }));
+      }
       toast({ title: 'Success!', description: `Generated ${(result.objectiveQuestions?.length || 0) + (result.essayQuestions?.length || 0)} questions.` });
       // scroll to preview
       setTimeout(() => {
@@ -173,32 +184,30 @@ export default function ExamQuestionGeneratorPage() {
       const usableWidth = pageWidth - margin * 2;
       const usableHeight = pageHeight - margin * 2 - footerHeight;
 
-      const titleFontSize = 14;
-      const subFontSize = 12;
-      const bodyFontSize = 11;
+      const fontSize = 12;
       const lineHeightMultiplier = 1.15;
       const ptToMm = 0.3527777778;
-      const bodyLineHeight = bodyFontSize * ptToMm * lineHeightMultiplier;
+      const bodyLineHeight = fontSize * ptToMm * lineHeightMultiplier;
 
       let currentY = margin;
       let pageNum = 1;
-
+      
       const renderHeader = () => {
         currentY = margin;
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(titleFontSize);
+        doc.setFontSize(fontSize);
         const schoolName = settings?.schoolName || 'School Name';
         doc.text(schoolName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-        currentY += titleFontSize * ptToMm * lineHeightMultiplier * 0.8;
+        currentY += fontSize * ptToMm * lineHeightMultiplier * 0.8;
 
-        doc.setFontSize(subFontSize);
+        doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'normal');
         const examLine = `${formState.subject} — ${formState.classLevel}`;
         doc.text(examLine, pageWidth / 2, currentY, { align: 'center' });
-        currentY += subFontSize * ptToMm * lineHeightMultiplier * 0.8;
+        currentY += fontSize * ptToMm * lineHeightMultiplier * 0.8;
         
         const termSession = `${settings?.currentTerm || ''} ${settings?.currentSession || ''}`.trim();
-        doc.setFontSize(10);
+        doc.setFontSize(fontSize);
         doc.text(termSession, pageWidth / 2, currentY, { align: 'center' });
         currentY += 10 * ptToMm * lineHeightMultiplier * 0.8;
 
@@ -209,7 +218,7 @@ export default function ExamQuestionGeneratorPage() {
       
       const renderFooter = (pageNumber: number) => {
         const footerY = pageHeight - margin + 5;
-        doc.setFontSize(9);
+        doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'normal');
         doc.text(`Page ${pageNumber}`, pageWidth - margin, footerY, { align: 'right' });
       };
@@ -226,7 +235,7 @@ export default function ExamQuestionGeneratorPage() {
       doc.setFont('helvetica', 'normal');
 
       if (generatedExam.objectiveQuestions && generatedExam.objectiveQuestions.length > 0) {
-        doc.setFontSize(subFontSize);
+        doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'bold');
         const sectionTitle = 'Section A: Objective Questions';
         const sectionTitleHeight = bodyLineHeight * 1.5;
@@ -235,7 +244,7 @@ export default function ExamQuestionGeneratorPage() {
         currentY += sectionTitleHeight;
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(bodyFontSize);
+        doc.setFontSize(fontSize);
 
         generatedExam.objectiveQuestions.forEach((q, qIndex) => {
           const qNumber = qIndex + 1;
@@ -251,7 +260,7 @@ export default function ExamQuestionGeneratorPage() {
             addNewPage();
           }
 
-          doc.text(lines, margin, currentY);
+          doc.text(lines, margin, currentY, {align: 'justify'});
           currentY += questionHeight;
 
           optWrapped.forEach((optLine) => {
@@ -267,7 +276,7 @@ export default function ExamQuestionGeneratorPage() {
         if (currentY + bodyLineHeight * 2.5 > pageHeight - margin - footerHeight) addNewPage();
         else currentY += bodyLineHeight;
 
-        doc.setFontSize(subFontSize);
+        doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'bold');
         const sectionTitle = generatedExam.objectiveQuestions?.length ? 'Section B: Essay Questions' : 'Essay Questions';
         const sectionTitleHeight = bodyLineHeight * 1.5;
@@ -276,7 +285,7 @@ export default function ExamQuestionGeneratorPage() {
         currentY += sectionTitleHeight;
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(bodyFontSize);
+        doc.setFontSize(fontSize);
 
         generatedExam.essayQuestions.forEach((q, idx) => {
           const qNumber = idx + 1;
@@ -289,13 +298,13 @@ export default function ExamQuestionGeneratorPage() {
             addNewPage();
           }
 
-          doc.text(lines, margin, currentY);
+          doc.text(lines, margin, currentY, {align: 'justify'});
           currentY += questionHeight + answerSpaceHeight;
         });
       }
 
       if (currentY + bodyLineHeight * 2 > pageHeight - margin - footerHeight) addNewPage();
-      doc.setFontSize(10);
+      doc.setFontSize(fontSize);
       doc.setFont('helvetica', 'normal');
       doc.text('End of Examination', pageWidth / 2, currentY + 6, { align: 'center' });
 
@@ -304,12 +313,12 @@ export default function ExamQuestionGeneratorPage() {
       if (includeAnswers && answerKey && answerKey.length > 0) {
         addNewPage(); // Add a new page for the answer key
         currentY = margin; // Reset Y
-        doc.setFontSize(subFontSize);
+        doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'bold');
         doc.text('Answer Key - Objective Questions', margin, currentY);
         currentY += bodyLineHeight * 1.8;
 
-        doc.setFontSize(bodyFontSize);
+        doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'normal');
 
         answerKey.forEach((ans, i) => {
@@ -558,13 +567,11 @@ export default function ExamQuestionGeneratorPage() {
             line-height: 1.15;
             text-align: justify;
         }
-        .exam-paper h1 { font-size: 14pt; }
-        .exam-paper h2 { font-size: 12pt; }
-        .exam-paper h3 { font-size: 12pt; }
+        .exam-paper h1, .exam-paper h2, .exam-paper h3, .exam-paper p, .exam-paper div { font-size: 12pt !important; }
         @media print {
             body, html { background: white; }
             .print\\:hidden { display: none; }
-            .a4-page-preview { 
+            #pdf-preview-content {
                 box-shadow: none; 
                 margin: 0; 
                 padding: 0;
@@ -577,3 +584,5 @@ export default function ExamQuestionGeneratorPage() {
     </>
   );
 }
+
+    
