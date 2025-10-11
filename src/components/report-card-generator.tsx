@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown } from 'lucide-react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from 'cmd-k';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -40,6 +40,7 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   schoolName?: string;
   schoolMotto?: string;
   schoolAddress?: string;
+  schoolLogo?: string;
   position: number;
   totalStudents: number;
 };
@@ -99,8 +100,8 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                  {/* Header */}
                 <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center">
-                            <span className="text-3xl font-black text-white">{(report.schoolName || 'S').charAt(0)}</span>
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center p-1">
+                            {report.schoolLogo ? <img src={report.schoolLogo} alt="School Logo" className="object-contain h-full w-full" /> : <School className="h-8 w-8 text-gray-400" />}
                         </div>
                         <div>
                             <h1 className="text-xl font-extrabold text-gray-800 uppercase">{report.schoolName || 'Your School Name'}</h1>
@@ -416,6 +417,7 @@ export default function ReportCardGenerator() {
                   schoolName: settings!.schoolName,
                   schoolMotto: settings!.schoolMotto,
                   schoolAddress: settings!.schoolAddress,
+                  schoolLogo: settings!.schoolLogo,
                   attendance: { totalDays, presentDays, absentDays },
                   traits: input.traits,
                   formTeacherComment: result.formTeacherComment,
@@ -835,5 +837,3 @@ export default function ReportCardGenerator() {
     </>
   );
 }
-
-    

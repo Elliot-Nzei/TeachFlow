@@ -11,6 +11,7 @@ type Settings = {
     schoolAddress: string;
     email: string;
     profilePicture: string;
+    schoolLogo: string;
     currentTerm: 'First Term' | 'Second Term' | 'Third Term';
     currentSession: string;
     userCode: string;
@@ -59,5 +60,3 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         </SettingsContext.Provider>
     );
 };
-
-    

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clipboard, User as UserIcon, Upload, Loader2, AlertTriangle } from 'lucide-react';
+import { Clipboard, User as UserIcon, Upload, Loader2, AlertTriangle, School } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,8 +19,12 @@ import { Progress } from '@/components/ui/progress';
 export default function SettingsPage() {
     const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
     const { firestore, storage, user } = useFirebase();
+    
     const [previewImage, setPreviewImage] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
+    const [previewLogo, setPreviewLogo] = useState('');
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+
     const [isSaving, setIsSaving] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isClearing, setIsClearing] = useState(false);
@@ -34,7 +38,10 @@ export default function SettingsPage() {
         if (settings?.profilePicture) {
             setPreviewImage(settings.profilePicture);
         }
-    }, [settings?.profilePicture]);
+        if (settings?.schoolLogo) {
+            setPreviewLogo(settings.schoolLogo);
+        }
+    }, [settings?.profilePicture, settings?.schoolLogo]);
     
     useEffect(() => {
         if (!isAlertOpen) {
@@ -51,6 +58,16 @@ export default function SettingsPage() {
             setPreviewImage(imageUrl);
         }
     };
+    
+    const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+            const file = event.target.files[0];
+            setLogoFile(file);
+            const logoUrl = URL.createObjectURL(file);
+            setPreviewLogo(logoUrl);
+        }
+    };
+
 
     const handleCopyCode = () => {
         if (settings?.userCode) {
@@ -78,6 +95,17 @@ export default function SettingsPage() {
         setUploadProgress(0);
 
         const updates = { ...settings };
+        let totalUploads = 0;
+        let completedUploads = 0;
+
+        if (imageFile) totalUploads++;
+        if (logoFile) totalUploads++;
+        
+        const updateProgress = () => {
+            if (totalUploads === 0) return;
+            const progress = (completedUploads / totalUploads) * 100;
+            setUploadProgress(progress);
+        }
         
         try {
             // If there's a new image file, upload it first
@@ -88,8 +116,8 @@ export default function SettingsPage() {
                 await new Promise<void>((resolve, reject) => {
                     uploadTask.on('state_changed',
                         (snapshot) => {
-                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            setUploadProgress(progress);
+                           // This progress is for a single file, not the total.
+                           // We will use a simpler completion-based progress.
                         },
                         (error) => {
                             console.error("Upload failed:", error);
@@ -103,11 +131,41 @@ export default function SettingsPage() {
                         async () => {
                             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                             updates.profilePicture = downloadURL;
+                            completedUploads++;
+                            updateProgress();
                             resolve();
                         }
                     );
                 });
             }
+            
+             if (logoFile) {
+                const storageRef = ref(storage, `school-logos/${user.uid}/${logoFile.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, logoFile);
+
+                await new Promise<void>((resolve, reject) => {
+                    uploadTask.on('state_changed',
+                        (snapshot) => {},
+                        (error) => {
+                            console.error("Logo upload failed:", error);
+                            toast({
+                                variant: "destructive",
+                                title: "Logo Upload Failed",
+                                description: "Could not upload the school logo. Please try again.",
+                            });
+                            reject(error);
+                        },
+                        async () => {
+                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                            updates.schoolLogo = downloadURL;
+                            completedUploads++;
+                            updateProgress();
+                            resolve();
+                        }
+                    );
+                });
+            }
+
 
             // Update Firestore with new settings (including new profile pic URL if any)
             const userRef = doc(firestore, 'users', user.uid);
@@ -128,6 +186,7 @@ export default function SettingsPage() {
             setIsSaving(false);
             setUploadProgress(0);
             setImageFile(null); // Clear the file after upload
+            setLogoFile(null);
         }
     }
 
@@ -236,35 +295,51 @@ export default function SettingsPage() {
 
         <Card>
             <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Update your name, school, and profile picture.</CardDescription>
+            <CardTitle>Profile & School Information</CardTitle>
+            <CardDescription>Update your personal and school details.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="flex items-center gap-6">
-                    <Avatar className="h-24 w-24">
-                        <AvatarImage src={previewImage} />
-                        <AvatarFallback>
-                            <UserIcon className="h-10 w-10 text-muted-foreground" />
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="grid w-full max-w-sm items-center gap-1.5">
-                        <Label htmlFor="picture">Profile Picture</Label>
-                        <div className="flex items-center gap-2">
-                             <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} className="w-full" disabled={isSaving} />
-                             <Button variant="outline" size="icon" asChild>
-                                 <label htmlFor="picture" className={`cursor-pointer ${isSaving ? 'pointer-events-none opacity-50' : ''}`}>
-                                     <Upload />
-                                 </label>
-                             </Button>
-                        </div>
-                         {isSaving && uploadProgress > 0 && (
-                            <div className="space-y-1">
-                                <Progress value={uploadProgress} className="h-2" />
-                                <p className="text-xs text-muted-foreground text-center">Uploading... {Math.round(uploadProgress)}%</p>
+            <CardContent className="space-y-8">
+                <div className="grid md:grid-cols-2 gap-8 items-start">
+                    <div>
+                        <Label>Profile Picture</Label>
+                        <div className="flex items-center gap-4 mt-2">
+                            <Avatar className="h-24 w-24">
+                                <AvatarImage src={previewImage} />
+                                <AvatarFallback>
+                                    <UserIcon className="h-10 w-10 text-muted-foreground" />
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="grid w-full max-w-sm items-center gap-1.5">
+                                <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} className="w-full" disabled={isSaving} />
+                                 {isSaving && imageFile && (
+                                    <div className="space-y-1">
+                                        <Progress value={uploadProgress} className="h-2" />
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
+                    </div>
+                     <div>
+                        <Label>School Logo</Label>
+                        <div className="flex items-center gap-4 mt-2">
+                            <Avatar className="h-24 w-24 rounded-md">
+                                <AvatarImage src={previewLogo} className="object-contain"/>
+                                <AvatarFallback className="rounded-md">
+                                    <School className="h-10 w-10 text-muted-foreground" />
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="grid w-full max-w-sm items-center gap-1.5">
+                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoUpload} className="w-full" disabled={isSaving} />
+                                 {isSaving && logoFile && (
+                                    <div className="space-y-1">
+                                        <Progress value={uploadProgress} className="h-2" />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>

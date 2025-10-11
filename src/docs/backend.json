@@ -1,0 +1,388 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the Nigerian School Management System.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "userCode": {
+          "type": "string",
+          "description": "Unique system-generated code for the user."
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "The name of the school the user is associated with."
+        },
+        "schoolAddress": {
+          "type": "string",
+          "description": "The physical address of the school."
+        },
+        "schoolMotto": {
+          "type": "string",
+          "description": "The school's motto or slogan."
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "URL of the user's profile picture."
+        },
+        "schoolLogo": {
+          "type": "string",
+          "description": "URL of the school's logo."
+        },
+        "currentTerm": {
+          "type": "string",
+          "enum": [
+            "First Term",
+            "Second Term",
+            "Third Term"
+          ]
+        },
+        "currentSession": {
+          "type": "string",
+          "description": "e.g. 2023/2024"
+        },
+        "studentCounter": {
+          "type": "number",
+          "description": "A counter to generate unique student IDs."
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "userCode",
+        "schoolName"
+      ]
+    },
+    "Class": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Class",
+      "type": "object",
+      "description": "Represents a class within the school.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the class (e.g., Primary 3A)."
+        },
+        "level": {
+          "type": "number",
+          "description": "The academic level of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
+        },
+        "subjects": {
+          "type": "array",
+          "description": "List of subject names offered in this class.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "students": {
+          "type": "array",
+          "description": "List of student document IDs in this class.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "feeAmount": {
+          "type": "number",
+          "description": "The school fee amount for this class for a term."
+        }
+      },
+      "required": [
+        "name",
+        "level"
+      ]
+    },
+    "Student": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Student",
+      "type": "object",
+      "description": "Represents a student in a class.",
+      "properties": {
+        "studentId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "string"
+        },
+        "className": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "promotionHistory": {
+          "type": "array",
+          "description": "A log of the student's promotions.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "date": { "type": "string", "format": "date-time" },
+              "session": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": [
+        "studentId",
+        "name"
+      ]
+    },
+    "Subject": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subject",
+      "type": "object",
+      "description": "Represents a subject offered by the school.",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "Grade": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Grade",
+      "type": "object",
+      "description": "Represents a student's grade for a specific subject and term.",
+      "properties": {
+        "studentId": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "term": {
+          "type": "string"
+        },
+        "session": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "studentName": {
+          "type": "string"
+        },
+        "className": {
+          "type": "string"
+        },
+        "grade": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D", "E", "F"]
+        }
+      },
+      "required": [
+        "studentId",
+        "classId",
+        "subject",
+        "term",
+        "session",
+        "score",
+        "studentName",
+        "className",
+        "grade"
+      ]
+    },
+    "Attendance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Attendance",
+      "type": "object",
+      "description": "Represents a student's attendance record for a specific day.",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Late"] },
+        "term": { "type": "string" },
+        "session": { "type": "string" }
+      },
+      "required": ["studentId", "classId", "date", "status", "term", "session"]
+    },
+    "Trait": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Trait",
+      "type": "object",
+      "description": "Represents behavioral traits and ratings for a student.",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "The student's ID"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "The student's name"
+        },
+        "classId": {
+          "type": "string",
+          "description": "The class ID"
+        },
+        "className": {
+          "type": "string",
+          "description": "The class name"
+        },
+        "term": {
+          "type": "string",
+          "enum": ["First Term", "Second Term", "Third Term"],
+          "description": "The academic term"
+        },
+        "session": {
+          "type": "string",
+          "description": "The academic session (e.g., 2024/2025)"
+        },
+        "traits": {
+          "type": "object",
+          "description": "Object containing trait ratings where keys are trait names and values are ratings (1-5)",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "examples": [{
+            "Punctuality": 4,
+            "Neatness": 5,
+            "Honesty": 5,
+            "Cooperation": 3,
+            "Attentiveness": 4
+          }]
+        }
+      },
+      "required": [
+        "studentId",
+        "studentName",
+        "classId",
+        "className",
+        "term",
+        "session",
+        "traits"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a student's school fee payment record for a term.",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "term": { "type": "string" },
+        "session": { "type": "string" },
+        "amountDue": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "balance": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Owing"] },
+        "lastPaymentDate": { "type": "string", "format": "date" },
+        "paymentMethod": { "type": "string", "enum": ["Cash", "Bank Transfer", "POS", "Other"] },
+        "remarks": { "type": "string" }
+      },
+      "required": [ "studentId", "classId", "term", "session", "amountDue", "amountPaid", "balance", "status" ]
+    },
+    "Transfer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transfer",
+      "type": "object",
+      "description": "Represents a data transfer request between two users.",
+      "properties": {
+        "fromUserCode": {
+          "type": "string",
+          "description": "The user code of the sender."
+        },
+        "fromUserId": {
+          "type": "string",
+          "description": "The UID of the sender."
+        },
+        "toUserCode": {
+          "type": "string",
+          "description": "The user code of the recipient."
+        },
+        "toUserId": {
+          "type": "string",
+          "description": "The UID of the recipient."
+        },
+        "dataType": {
+          "type": "string",
+          "enum": ["Class", "Grades", "Report Card"]
+        },
+        "dataId": {
+            "type": "string",
+            "description": "The ID of the document being transferred (e.g., classId, studentId)."
+        },
+        "dataTransferred": {
+            "type": "string",
+            "description": "A human-readable name for the data being transferred (e.g., 'Primary 3B' or 'Ada Okoro')."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["pending", "accepted", "rejected"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the transfer was created."
+        },
+        "processedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the transfer was accepted or rejected."
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/Trait"
+          }
+        }
+      },
+      "required": [
+        "fromUserCode",
+        "fromUserId",
+        "toUserId",
+        "toUserCode",
+        "dataType",
+        "dataId",
+        "dataTransferred",
+        "status",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}/incomingTransfers/{transferId}": {
+      "schema": { "$ref": "#/entities/Transfer" },
+      "description": "Stores incoming data transfer requests for a user."
+    },
+    "/users/{userId}/outgoingTransfers/{transferId}": {
+      "schema": { "$ref": "#/entities/Transfer" },
+      "description": "Stores a log of outgoing data transfers initiated by a user."
+    },
+    "/users/{userId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Stores student payment records for a term."
+    }
+  }
+}

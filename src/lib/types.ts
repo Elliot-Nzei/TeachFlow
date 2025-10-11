@@ -138,6 +138,7 @@ export type Settings = {
   schoolName: string;
   email: string;
   profilePicture: string;
+  schoolLogo: string;
   currentTerm: 'First Term' | 'Second Term' | 'Third Term';
   currentSession: string;
   userCode: string;
