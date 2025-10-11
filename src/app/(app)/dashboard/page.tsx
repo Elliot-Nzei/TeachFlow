@@ -79,8 +79,6 @@ export default function DashboardPage() {
     let totalCollected = 0;
     let totalOutstanding = 0;
 
-    const studentPaymentStatus: Record<string, 'paid' | 'partially' | 'owing'> = {};
-
     students.forEach(student => {
       const studentClass = classes?.find(c => c.id === student.classId);
       const feeDue = studentClass?.feeAmount || 0;
@@ -121,6 +119,7 @@ export default function DashboardPage() {
   const stats = [
     { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Total Classes', value: classes?.length, isLoading: isLoadingClasses, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Total Collected', value: `₦${paymentSummary.totalCollected.toLocaleString()}`, isLoading: isLoadingPayments, icon: <DollarSign className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Total Subjects', value: subjects?.length, isLoading: isLoadingSubjects, icon: <BookOpen className="h-4 w-4 text-muted-foreground" /> },
   ];
 
@@ -134,23 +133,12 @@ export default function DashboardPage() {
               {stat.icon}
             </CardHeader>
             <CardContent>
-              {stat.isLoading ? <Skeleton className="h-8 w-1/4 mt-1" /> : (
+              {stat.isLoading ? <Skeleton className="h-8 w-1/2 mt-1" /> : (
                 <div className="text-2xl font-bold">{stat.value ?? 0}</div>
               )}
             </CardContent>
           </Card>
         ))}
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Current Session</CardTitle>
-              <CalendarClock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isLoadingSettings ? <Skeleton className="h-8 w-3/4 mt-1" /> : (
-                <div className="text-xl font-bold">{settings?.currentTerm || 'N/A'}, {settings?.currentSession || 'N/A'}</div>
-              )}
-            </CardContent>
-          </Card>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
@@ -202,7 +190,7 @@ export default function DashboardPage() {
             <Card>
             <CardHeader>
                 <CardTitle className="flex items-center"><DollarSign className="mr-2 h-5 w-5" />Payment Summary</CardTitle>
-                <CardDescription>Overview of fee payments for the current term.</CardDescription>
+                <CardDescription>Overview of fee payments for {settings?.currentTerm}, {settings?.currentSession}.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoadingPayments || isLoadingStudents ? <Skeleton className="h-[250px] w-full" /> : (
@@ -216,15 +204,9 @@ export default function DashboardPage() {
                             <Bar dataKey="count" radius={8} />
                         </BarChart>
                     </ChartContainer>
-                    <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                        <div className="p-3 bg-secondary rounded-lg">
-                            <p className="text-muted-foreground">Total Collected</p>
-                            <p className="font-bold text-lg text-green-600">₦{paymentSummary.totalCollected.toLocaleString()}</p>
-                        </div>
-                        <div className="p-3 bg-secondary rounded-lg">
-                            <p className="text-muted-foreground">Total Outstanding</p>
-                            <p className="font-bold text-lg text-red-600">₦{paymentSummary.totalOutstanding.toLocaleString()}</p>
-                        </div>
+                    <div className="mt-4 text-center">
+                        <p className="text-sm text-muted-foreground">Total Outstanding</p>
+                        <p className="font-bold text-2xl text-red-600">₦{paymentSummary.totalOutstanding.toLocaleString()}</p>
                     </div>
                 </>
                 )}
