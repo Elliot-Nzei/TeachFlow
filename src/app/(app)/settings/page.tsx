@@ -1,5 +1,6 @@
+
 'use client';
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,8 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useFirebase } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { Progress } from '@/components/ui/progress';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, UploadTask } from "firebase/storage";
 
 export default function SettingsPage() {
     const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
@@ -26,7 +26,6 @@ export default function SettingsPage() {
     const [logoFile, setLogoFile] = useState<File | null>(null);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     const [isClearing, setIsClearing] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
@@ -87,91 +86,70 @@ export default function SettingsPage() {
     const handleSelectChange = (id: string, value: string) => {
         setSettings({[id]: value});
     };
+
+    const uploadFile = useCallback((file: File, path: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            if (!storage) {
+                return reject(new Error("Firebase Storage is not available."));
+            }
+            const storageRef = ref(storage, path);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed',
+                null,
+                (error) => {
+                    console.error("Upload failed:", error);
+                    toast({
+                        variant: "destructive",
+                        title: "File Upload Failed",
+                        description: `Could not upload ${file.name}. Please try again.`,
+                    });
+                    reject(error);
+                },
+                async () => {
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve(downloadURL);
+                    } catch (error) {
+                        reject(error);
+                    }
+                }
+            );
+        });
+    }, [storage, toast]);
     
     const handleSaveChanges = async () => {
         if (!user || !settings) return;
 
         setIsSaving(true);
-        setUploadProgress(0);
-
-        const updates = { ...settings };
-        let totalUploads = 0;
-        let completedUploads = 0;
-
-        if (imageFile) totalUploads++;
-        if (logoFile) totalUploads++;
-        
-        const updateProgress = () => {
-            if (totalUploads === 0) return;
-            const progress = (completedUploads / totalUploads) * 100;
-            setUploadProgress(progress);
-        }
         
         try {
-            // If there's a new image file, upload it first
-            if (imageFile) {
-                const storageRef = ref(storage, `profile-pictures/${user.uid}/${imageFile.name}`);
-                const uploadTask = uploadBytesResumable(storageRef, imageFile);
+            const updates = { ...settings };
+            const uploadPromises: Promise<void>[] = [];
 
-                await new Promise<void>((resolve, reject) => {
-                    uploadTask.on('state_changed',
-                        (snapshot) => {
-                           // This progress is for a single file, not the total.
-                           // We will use a simpler completion-based progress.
-                        },
-                        (error) => {
-                            console.error("Upload failed:", error);
-                            toast({
-                                variant: "destructive",
-                                title: "Image Upload Failed",
-                                description: "Could not upload the new profile picture. Please try again.",
-                            });
-                            reject(error);
-                        },
-                        async () => {
-                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                            updates.profilePicture = downloadURL;
-                            completedUploads++;
-                            updateProgress();
-                            resolve();
-                        }
-                    );
-                });
+            if (imageFile) {
+                const profilePicPath = `profile-pictures/${user.uid}/${imageFile.name}`;
+                uploadPromises.push(
+                    uploadFile(imageFile, profilePicPath).then(url => {
+                        updates.profilePicture = url;
+                    })
+                );
             }
             
-             if (logoFile) {
-                const storageRef = ref(storage, `school-logos/${user.uid}/${logoFile.name}`);
-                const uploadTask = uploadBytesResumable(storageRef, logoFile);
-
-                await new Promise<void>((resolve, reject) => {
-                    uploadTask.on('state_changed',
-                        (snapshot) => {},
-                        (error) => {
-                            console.error("Logo upload failed:", error);
-                            toast({
-                                variant: "destructive",
-                                title: "Logo Upload Failed",
-                                description: "Could not upload the school logo. Please try again.",
-                            });
-                            reject(error);
-                        },
-                        async () => {
-                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                            updates.schoolLogo = downloadURL;
-                            completedUploads++;
-                            updateProgress();
-                            resolve();
-                        }
-                    );
-                });
+            if (logoFile) {
+                const logoPath = `school-logos/${user.uid}/${logoFile.name}`;
+                uploadPromises.push(
+                    uploadFile(logoFile, logoPath).then(url => {
+                        updates.schoolLogo = url;
+                    })
+                );
             }
 
+            await Promise.all(uploadPromises);
 
-            // Update Firestore with new settings (including new profile pic URL if any)
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, updates);
             
-            // Update local context
             setSettings(updates);
 
             toast({
@@ -181,11 +159,9 @@ export default function SettingsPage() {
 
         } catch (error) {
             console.error("Error saving settings:", error);
-            // Error is already toasted inside the upload listener
         } finally {
             setIsSaving(false);
-            setUploadProgress(0);
-            setImageFile(null); // Clear the file after upload
+            setImageFile(null);
             setLogoFile(null);
         }
     }
@@ -220,13 +196,11 @@ export default function SettingsPage() {
                 });
             }
             
-            // Also reset the student counter in the main user document
             const userRef = doc(firestore, 'users', user.uid);
             batch.update(userRef, { studentCounter: 0 });
 
             await batch.commit();
 
-            // Also clear local storage for things like lesson note history
             localStorage.removeItem('lessonNotesHistory');
             
             setSettings({ studentCounter: 0 });
@@ -236,7 +210,6 @@ export default function SettingsPage() {
                 description: 'All your school data has been successfully deleted.',
             });
 
-            // Consider reloading the page or redirecting to reflect the cleared state
             window.location.reload();
 
         } catch (error) {
@@ -311,11 +284,6 @@ export default function SettingsPage() {
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
                                 <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} className="w-full" disabled={isSaving} />
-                                 {isSaving && imageFile && (
-                                    <div className="space-y-1">
-                                        <Progress value={uploadProgress} className="h-2" />
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -330,11 +298,6 @@ export default function SettingsPage() {
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
                                 <Input id="logo" type="file" accept="image/*" onChange={handleLogoUpload} className="w-full" disabled={isSaving} />
-                                 {isSaving && logoFile && (
-                                    <div className="space-y-1">
-                                        <Progress value={uploadProgress} className="h-2" />
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -469,3 +432,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
