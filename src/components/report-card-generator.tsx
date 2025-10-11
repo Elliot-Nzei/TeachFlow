@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School } from 'lucide-react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from 'cmd-k';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
