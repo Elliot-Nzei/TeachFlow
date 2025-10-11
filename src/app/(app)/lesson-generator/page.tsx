@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -53,143 +54,136 @@ export default function LessonGeneratorPage() {
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
   /**
-   * Text-based PDF generation using jsPDF (no html2canvas).
-   * - Convert markdown -> sanitized HTML -> plain text (preserve paragraph breaks)
-   * - Use jsPDF.splitTextToSize to wrap to width
-   * - Paginate by tracking y position
-   */
-  const handleDownloadPdf = useCallback(async () => {
-    if (!generatedNote) {
-      toast({
-        variant: 'destructive',
-        title: 'Nothing to Download',
-        description: 'No generated note to export.',
-      });
-      return;
-    }
+ * Fixed and cleaner text-based PDF generation using jsPDF.
+ * - Auto-detects week or step headings and starts a new page for them.
+ * - Prevents text from overlapping across pages.
+ * - Preserves paragraph spacing and Markdown structure.
+ */
+const handleDownloadPdf = useCallback(async () => {
+  if (!generatedNote) {
+    toast({
+      variant: 'destructive',
+      title: 'Nothing to Download',
+      description: 'No generated note to export.',
+    });
+    return;
+  }
 
-    setIsDownloadingPdf(true);
-    setGenerationProgress('Preparing PDF...');
+  setIsDownloadingPdf(true);
+  setGenerationProgress('Preparing PDF...');
 
-    try {
-      // convert markdown -> sanitized HTML -> text content (retain paragraph spacing)
-      const rawHtml = await marked.parse(generatedNote || '');
-      const cleanHtml = DOMPurify.sanitize(rawHtml);
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = cleanHtml;
+  try {
+    // Convert markdown -> sanitized HTML -> plain text (retain paragraph breaks)
+    const rawHtml = await marked.parse(generatedNote || '');
+    const cleanHtml = DOMPurify.sanitize(rawHtml);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = cleanHtml;
 
-      // Replace multiple consecutive newlines in textContent to exactly two newlines to preserve paragraphs
-      let fullText = tempDiv.textContent || '';
-      // Normalize whitespace and preserve paragraphs: convert sequences of newline+space to \n, ensure double breaks between paragraphs
-      fullText = fullText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      // Some markdown -> HTML -> textContent may produce single newlines between lines inside paragraphs.
-      // We can collapse repeated newlines to two to ensure clear paragraph spacing.
-      fullText = fullText.replace(/\n\s*\n\s*\n+/g, '\n\n'); // collapse >2 newlines to 2
-      // Trim stray leading/trailing whitespace
-      fullText = fullText.trim();
+    let fullText = tempDiv.textContent || '';
+    fullText = fullText
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n\s*\n\s*\n+/g, '\n\n')
+      .trim();
 
-      // Prepare jsPDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+    // Initialize jsPDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const usableWidth = pdfWidth - margin * 2;
+    const fontSizePt = 11;
 
-      const margin = 15; // mm
-      const usableWidth = pdfWidth - margin * 2;
-      const usableHeight = pdfHeight - margin * 2;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(fontSizePt);
 
-      // Font settings
-      const fontSizePt = 11; // points
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(fontSizePt);
+    const ptToMm = 0.3527777778;
+    const lineHeightMm = fontSizePt * 1.25 * ptToMm;
 
-      // convert pt to mm for line height: 1 pt = 0.352778 mm
-      const ptToMm = 0.3527777778;
-      const lineHeightMm = fontSizePt * 1.25 * ptToMm; // 1.25 line-height
+    // Header on first page
+    const title = `Lesson Note${formState.subject ? ' — ' + formState.subject : ''}`;
+    const meta = `Class: ${formState.classLevel || '—'}    Topic: ${formState.schemeOfWork || '—'}`;
+    let cursorY = margin;
 
-      // Header text (first page)
-      const title = `Lesson Note${formState.subject ? ' — ' + formState.subject : ''}`;
-      const meta = `Class: ${formState.classLevel || '—'}    Topic: ${formState.schemeOfWork || '—'}`;
+    pdf.setFontSize(13);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(title, margin, cursorY);
+    cursorY += lineHeightMm * 1.2;
 
-      // Split the long text into wrapped lines for the usable width
-      // jsPDF.splitTextToSize expects the maxlen in units of the PDF (mm)
-      // It returns an array of lines already wrapped
-      // But splitTextToSize doesn't preserve paragraph blank lines, so we split the text into paragraphs and wrap each paragraph separately
-      const paragraphs = fullText.split(/\n\s*\n/); // paragraphs separated by blank line(s)
-      const wrappedLines: string[] = [];
-      paragraphs.forEach((para, idx) => {
-        const trimmed = para.trim();
-        if (!trimmed) {
-          // keep a blank line for paragraph separation
-          wrappedLines.push('');
-          return;
-        }
-        const lines = pdf.splitTextToSize(trimmed, usableWidth);
-        wrappedLines.push(...lines);
-        // After each paragraph (except last) add a blank line to create paragraph spacing
-        if (idx < paragraphs.length - 1) wrappedLines.push('');
-      });
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(meta, margin, cursorY);
+    cursorY += lineHeightMm * 1.5;
 
-      // Start writing to PDF with pagination
-      let cursorY = margin;
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, cursorY - (lineHeightMm * 0.5), pdfWidth - margin, cursorY - (lineHeightMm * 0.5));
+    cursorY += lineHeightMm * 0.5;
 
-      // Add header on first page
-      pdf.setFontSize(13);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(title, margin, cursorY);
-      cursorY += lineHeightMm * 1.2;
+    pdf.setFontSize(fontSizePt);
 
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(meta, margin, cursorY);
-      cursorY += lineHeightMm * 1.5;
+    // Split into paragraphs and wrap them
+    const paragraphs = fullText.split(/\n\s*\n/);
+    for (let i = 0; i < paragraphs.length; i++) {
+      const para = paragraphs[i].trim();
+      if (!para) {
+        cursorY += lineHeightMm;
+        continue;
+      }
 
-      // Add a small separator line and some space
-      pdf.setLineWidth(0.2);
-      pdf.line(margin, cursorY - (lineHeightMm * 0.5), pdfWidth - margin, cursorY - (lineHeightMm * 0.5));
-      cursorY += lineHeightMm * 0.5;
+      // If the line looks like a new week or section heading, start a new page
+      const isHeading = /^(\s*(week|step|lesson|topic)\s*\d*)[:\-.]/i.test(para);
+      if (isHeading && i !== 0) {
+        pdf.addPage();
+        cursorY = margin + 5;
 
-      // Now draw the wrapped lines
-      pdf.setFontSize(fontSizePt);
-      pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(para, margin, cursorY);
+        cursorY += lineHeightMm * 2;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(fontSizePt);
+        continue;
+      }
 
-      for (let i = 0; i < wrappedLines.length; i++) {
-        const line = wrappedLines[i];
-        // If this line won't fit, add a new page and reset cursor
+      const wrappedLines = pdf.splitTextToSize(para, usableWidth);
+      for (const line of wrappedLines) {
         if (cursorY + lineHeightMm > pdfHeight - margin) {
           pdf.addPage();
           cursorY = margin;
         }
-        // For blank lines, advance cursor
-        if (line.trim() === '') {
-          cursorY += lineHeightMm;
-          continue;
-        }
         pdf.text(line, margin, cursorY, { maxWidth: usableWidth });
         cursorY += lineHeightMm;
       }
-
-      // File name
-      const subjectSlug = (formState.subject || 'lesson-note').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
-      const fileName = `lesson-note-${subjectSlug}-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
-
-      pdf.save(fileName);
-
-      toast({
-        title: 'PDF ready',
-        description: `Downloaded ${fileName}`,
-      });
-    } catch (err) {
-      console.error('PDF generation error', err);
-      toast({
-        variant: 'destructive',
-        title: 'PDF Generation Failed',
-        description: (err instanceof Error) ? err.message : String(err),
-      });
-    } finally {
-      setIsDownloadingPdf(false);
-      setGenerationProgress('');
+      cursorY += lineHeightMm * 0.5;
     }
-  }, [generatedNote, formState, toast]);
+
+    // Save PDF
+    const subjectSlug = (formState.subject || 'lesson-note')
+      .replace(/[^a-z0-9_-]/gi, '_')
+      .toLowerCase();
+    const fileName = `lesson-note-${subjectSlug}-${new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[:T]/g, '-')}.pdf`;
+
+    pdf.save(fileName);
+
+    toast({
+      title: 'PDF ready',
+      description: `Downloaded ${fileName}`,
+    });
+  } catch (err) {
+    console.error('PDF generation error', err);
+    toast({
+      variant: 'destructive',
+      title: 'PDF Generation Failed',
+      description: (err instanceof Error) ? err.message : String(err),
+    });
+  } finally {
+    setIsDownloadingPdf(false);
+    setGenerationProgress('');
+  }
+}, [generatedNote, formState, toast]);
 
   useEffect(() => {
     try {
