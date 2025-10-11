@@ -12,9 +12,8 @@ Before you dive in, it's crucial to configure your school's details. All reports
 
 **Go to [Settings](/settings)**
 
-1.  **Profile Information**:
+1.  **School Information**:
     *   Fill in your `Full Name`, `School Name`, `School Motto`, and `School Address`.
-    *   Upload a `Profile Picture` for personalization.
     *   Your unique `User Code` is displayed here. You will need this to receive data from other PeerPrep users.
 
 2.  **Academic Settings (Very Important!)**:
@@ -162,7 +161,7 @@ This feature allows you to securely share data with another teacher or administr
 2.  **Manage Transfers**:
     *   **History**: This tab shows a log of your sent and received transfers.
     *   **Accepting**: When you receive a transfer, you can **Accept** it to merge the data into your own account. If a class with the same name already exists, the incoming students will be added to your existing class.
-    *   **Rejecting**: You can also **Reject** incoming transfers.
+    -   **Rejecting**: You can also **Reject** incoming transfers.
 
 ---
 
