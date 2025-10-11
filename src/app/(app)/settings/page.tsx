@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useFirebase } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
     const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
@@ -110,18 +111,12 @@ export default function SettingsPage() {
         
         try {
             const updates = { ...settings };
-            const uploadPromises: Promise<void>[] = [];
             
             if (logoFile) {
                 const logoPath = `school-logos/${user.uid}/${logoFile.name}`;
-                uploadPromises.push(
-                    uploadFile(logoFile, logoPath).then(url => {
-                        updates.schoolLogo = url;
-                    })
-                );
+                const url = await uploadFile(logoFile, logoPath);
+                updates.schoolLogo = url;
             }
-
-            await Promise.all(uploadPromises);
 
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, updates);
@@ -249,8 +244,11 @@ export default function SettingsPage() {
             <CardContent className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-8 items-start">
                      <div>
-                        <Label>School Logo</Label>
-                        <div className="flex items-center gap-4 mt-2">
+                        <div className="flex items-center gap-2 mb-2">
+                           <Label>School Logo</Label>
+                           <Badge variant="outline">Coming Soon</Badge>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2 opacity-50 cursor-not-allowed">
                             <Avatar className="h-24 w-24 rounded-md">
                                 <AvatarImage src={previewLogo} className="object-contain"/>
                                 <AvatarFallback className="rounded-md">
@@ -258,7 +256,8 @@ export default function SettingsPage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoUpload} className="w-full" disabled={isSaving} />
+                                <Input id="logo" type="file" accept="image/*" className="w-full" disabled />
+                                <p className="text-xs text-muted-foreground">This feature is not yet available.</p>
                             </div>
                         </div>
                     </div>
