@@ -270,3 +270,5 @@ export default function AttendancePage() {
   
   return <ClassSelector onSelectClass={setSelectedClass} />;
 }
+
+    

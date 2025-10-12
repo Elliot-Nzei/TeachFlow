@@ -47,11 +47,11 @@ function ClassDetailsContent({ classId }: { classId: string }) {
   const allClassQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'users', user.uid, 'classes')) : null), [firestore, user]);
   const { data: allClasses, isLoading: isLoadingAllClasses } = useCollection<Class>(allClassQuery);
 
-  const studentsInClassQuery = useMemoFirebase(() => (user && classId) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', classId)) : null, [firestore, user, classId]);
+  const studentsInClassQuery = useMemoFirebase(() => (user && classId) ? query(collection(firestore, 'students'), where('classId', '==', classId), where('userId', '==', user.uid)) : null, [firestore, user, classId]);
   const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<Student>(studentsInClassQuery);
 
   // Query for students NOT in any class, to make them available for adding
-  const unassignedStudentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', '')) : null, [firestore, user]);
+  const unassignedStudentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'students'), where('classId', '==', ''), where('userId', '==', user.uid)) : null, [firestore, user]);
   const { data: unassignedStudents, isLoading: isLoadingUnassigned } = useCollection<Student>(unassignedStudentsQuery);
 
   const filteredStudents = useMemo(() => {
@@ -67,7 +67,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
       const batch = writeBatch(firestore);
 
       // 1. Update the Student document with the new classId and className
-      const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+      const studentRef = doc(firestore, 'students', student.id);
       batch.update(studentRef, { classId: classId, className: classDetails.name });
 
       // 2. Update the Class document to include the student's ID in its list
@@ -131,7 +131,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
         const nextClass = allClasses.find(c => c.name === nextClassName);
 
         if (nextClass) {
-          const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+          const studentRef = doc(firestore, 'students', student.id);
           const promotionRecord = {
             from: classDetails.name,
             to: nextClass.name,
