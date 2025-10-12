@@ -264,6 +264,7 @@ export default function TransferPage() {
                 batch.set(newStudentRef, {
                   ...studentData,
                   studentId: newStudentId,
+                  parentId: student.parentId, // Explicitly carry over the parentId
                   transferredFrom: transfer.fromUserId,
                   transferredAt: serverTimestamp(),
                 });
@@ -667,3 +668,5 @@ export default function TransferPage() {
     </>
   );
 }
+
+    
