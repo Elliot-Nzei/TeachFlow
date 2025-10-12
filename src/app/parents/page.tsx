@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/logo';
-import { useFirebase } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useFirebase, useDoc } from '@/firebase';
+import { collection, query, where, getDocs, doc } from 'firebase/firestore';
 import type { Student, Grade, Trait, Attendance } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Search, BarChart2, Download, UserCircle, AlertTriangle } from 'lucide-react';
@@ -51,45 +51,89 @@ export default function ParentPortalPage() {
     setStudentData(null);
 
     try {
-      const studentsRef = collection(firestore, 'students');
-      const q = query(studentsRef, where('parentId', '==', parentId.trim()));
-      const studentSnap = await getDocs(q);
+      const studentsQuery = query(collection(firestore, "students"), where('parentId', '==', parentId.trim()));
+      const studentQuerySnapshot = await getDocs(studentsQuery);
 
-      if (studentSnap.empty) {
-        throw new Error('No student found with this Parent ID. Please check the ID and try again.');
-      }
+      if (studentQuerySnapshot.empty) {
+        // Fallback: search across all users' students subcollections
+        const usersSnapshot = await getDocs(collection(firestore, "users"));
+        let found = false;
+        for (const userDoc of usersSnapshot.docs) {
+          const studentSubcollectionQuery = query(collection(userDoc.ref, "students"), where('parentId', '==', parentId.trim()));
+          const studentSubcollectionSnapshot = await getDocs(studentSubcollectionQuery);
+          if (!studentSubcollectionSnapshot.empty) {
+            const studentDoc = studentSubcollectionSnapshot.docs[0];
+            const student = { id: studentDoc.id, ...studentDoc.data() } as Student;
+            
+            const userRef = userDoc.ref;
+            const userSnap = await getDocs(query(collection(firestore, "users"), where("uid", "==", userRef.id)));
+             if (userSnap.empty) {
+                throw new Error('Could not retrieve school information.');
+            }
+            const userData = userSnap.docs[0].data();
+            const { currentTerm, currentSession } = userData;
 
-      const studentDoc = studentSnap.docs[0];
-      const student = { id: studentDoc.id, ...studentDoc.data() } as Student;
-      
-      const userRef = doc(firestore, 'users', studentDoc.ref.parent.parent!.id);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        throw new Error('Could not retrieve school information.');
-      }
-      const userData = userSnap.data();
-      const { currentTerm, currentSession } = userData;
-      
-      const subcollections = ['grades', 'traits', 'attendance'];
-      const [gradesSnap, traitsSnap, attendanceSnap] = await Promise.all(
-        subcollections.map(sc => getDocs(query(collection(userRef, sc), where('studentId', '==', student.id), where('term', '==', currentTerm), where('session', '==', currentSession))))
-      );
+            const subcollections = ['grades', 'traits', 'attendance'];
+            const [gradesSnap, traitsSnap, attendanceSnap] = await Promise.all(
+                subcollections.map(sc => getDocs(query(collection(userRef, sc), where('studentId', '==', student.id), where('term', '==', currentTerm), where('session', '==', currentSession))))
+            );
 
-      setStudentData({
-        ...student,
-        grades: gradesSnap.docs.map(d => ({id: d.id, ...d.data()}) as Grade),
-        traits: traitsSnap.docs.map(d => ({id: d.id, ...d.data()}) as Trait),
-        attendance: attendanceSnap.docs.map(d => ({id: d.id, ...d.data()}) as Attendance),
-        user: {
-            uid: userSnap.id,
-            schoolName: userData.schoolName,
-            schoolLogo: userData.schoolLogo,
-            schoolAddress: userData.schoolAddress,
-            schoolMotto: userData.schoolMotto,
-            currentTerm: currentTerm,
-            currentSession: currentSession,
+            setStudentData({
+                ...student,
+                grades: gradesSnap.docs.map(d => ({id: d.id, ...d.data()}) as Grade),
+                traits: traitsSnap.docs.map(d => ({id: d.id, ...d.data()}) as Trait),
+                attendance: attendanceSnap.docs.map(d => ({id: d.id, ...d.data()}) as Attendance),
+                user: {
+                    uid: userSnap.docs[0].id,
+                    schoolName: userData.schoolName,
+                    schoolLogo: userData.schoolLogo,
+                    schoolAddress: userData.schoolAddress,
+                    schoolMotto: userData.schoolMotto,
+                    currentTerm: currentTerm,
+                    currentSession: currentSession,
+                }
+            });
+            found = true;
+            break;
+          }
         }
-      });
+        if (!found) {
+            throw new Error('No student found with this Parent ID. Please check the ID and try again.');
+        }
+
+      } else {
+        const studentDoc = studentQuerySnapshot.docs[0];
+        const student = { id: studentDoc.id, ...studentDoc.data() } as Student;
+        
+        const userRef = doc(firestore, 'users', studentDoc.ref.parent.parent!.id);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          throw new Error('Could not retrieve school information.');
+        }
+        const userData = userSnap.data();
+        const { currentTerm, currentSession } = userData;
+        
+        const subcollections = ['grades', 'traits', 'attendance'];
+        const [gradesSnap, traitsSnap, attendanceSnap] = await Promise.all(
+          subcollections.map(sc => getDocs(query(collection(userRef, sc), where('studentId', '==', student.id), where('term', '==', currentTerm), where('session', '==', currentSession))))
+        );
+
+        setStudentData({
+          ...student,
+          grades: gradesSnap.docs.map(d => ({id: d.id, ...d.data()}) as Grade),
+          traits: traitsSnap.docs.map(d => ({id: d.id, ...d.data()}) as Trait),
+          attendance: attendanceSnap.docs.map(d => ({id: d.id, ...d.data()}) as Attendance),
+          user: {
+              uid: userSnap.id,
+              schoolName: userData.schoolName,
+              schoolLogo: userData.schoolLogo,
+              schoolAddress: userData.schoolAddress,
+              schoolMotto: userData.schoolMotto,
+              currentTerm: currentTerm,
+              currentSession: currentSession,
+          }
+        });
+      }
       
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
@@ -132,9 +176,9 @@ export default function ParentPortalPage() {
   return (
     <div className="min-h-screen bg-muted/40">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background border-b">
-        <Link href="/" className="flex-1">
+        <div className="flex-1">
           <Logo />
-        </Link>
+        </div>
         {studentData && (
              <Button variant="outline" onClick={() => { setStudentData(null); setParentId(''); }}>
                 Search for another student
