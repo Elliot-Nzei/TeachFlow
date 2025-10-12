@@ -13,58 +13,39 @@ service cloud.firestore {
 
     // Rules for the top-level 'users' collection
     match /users/{userId} {
-      // Allow users to read their own document
       allow get: if isOwner(userId);
-      // Allow any authenticated user to search for other users by userCode (for transfers)
-      allow list: if isAuthenticated() && request.query.keys.hasAny(['userCode']);
-      // Allow users to create and update their own document
+      allow list: if isAuthenticated(); // For user searches
       allow write: if isOwner(userId);
 
-      // Subcollections within a user's document are only accessible by that user.
-      match /classes/{classId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /subjects/{subjectId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /grades/{gradeId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /traits/{traitId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /payments/{paymentId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /incomingTransfers/{transferId} {
-        allow read: if isOwner(userId);
-        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
-        allow update, delete: if isOwner(userId);
-      }
-      match /outgoingTransfers/{transferId} {
-        allow read, write: if isOwner(userId);
-        allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
-        allow update: if isAuthenticated() &&
-                         resource.data.toUserId == request.auth.uid &&
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
+      // Rules for user-specific subcollections
+      match /{subcollection}/{docId} {
+        allow read, write, delete: if isOwner(userId);
+
+        match /{nested=**} {
+           allow read, write: if isOwner(userId);
+        }
       }
     }
-    
+
     // Rules for the top-level 'students' collection, accessible by teachers and parents
     match /students/{studentId} {
-        // TEACHER ACCESS: Allow a logged-in user to list their own students.
-        // This is the key rule that fixes the /students page permission error.
-        allow list: if isAuthenticated() && request.query.where.userId == request.auth.uid;
-        
-        // TEACHER ACCESS: Allow full read/write access if the user is the owner.
-        allow read, write: if request.auth.uid == resource.data.userId;
+      // TEACHER ACCESS:
+      // Allow read/write if the user's UID matches the student's userId field.
+      // This applies to get, update, delete operations.
+      allow read, write: if request.auth.uid == resource.data.userId;
 
-        // PARENT ACCESS: Also allow public listing ONLY when querying by parentId.
-        // This keeps the parent portal functional and secure.
-        allow list: if request.auth == null && request.query.keys.hasOnly(['parentId']);
+      // Allow a user to create a student document if they are setting the userId to their own UID.
+      allow create: if request.auth.uid == request.resource.data.userId;
+
+      // Allow a user to LIST students only if they are querying for their own students.
+      // This rule is critical for the dashboard and students page to work for logged-in users.
+      allow list: if isAuthenticated() && request.query.where.size() > 0 && request.query.where[0][0] == 'userId' && request.query.where[0][1] == '==' && request.query.where[0][2] == request.auth.uid;
+    }
+
+    // PARENT ACCESS: Anyone can query the students collection if they provide the exact parentId.
+    // This rule is separate to allow unauthenticated access for the parent portal.
+    match /students/{studentId} {
+        allow list: if request.auth == null && request.query.where.size() > 0 && request.query.where[0][0] == 'parentId' && request.query.where[0][1] == '==';
     }
   }
 }

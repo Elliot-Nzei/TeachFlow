@@ -57,7 +57,7 @@ export default function PaymentsPage() {
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-    const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students'), selectedClass ? where('classId', '==', selectedClass.id) : undefined) : null, [firestore, user, selectedClass]);
+    const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'students'), where('classId', '==', selectedClass.id), where('userId', '==', user.uid)) : null, [firestore, user, selectedClass]);
     const { data: studentsInClass, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
     
     const paymentsQuery = useMemoFirebase(() => (user && selectedClass && settings) ? query(collection(firestore, 'users', user.uid, 'payments'), where('classId', '==', selectedClass.id), where('term', '==', settings.currentTerm), where('session', '==', settings.currentSession)) : null, [firestore, user, selectedClass, settings]);
