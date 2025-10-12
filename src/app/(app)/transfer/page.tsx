@@ -27,11 +27,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
@@ -536,24 +538,38 @@ export default function TransferPage() {
     <>
       <div className="flex items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold font-headline">Data Transfer</h1>
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <HelpCircle className="h-5 w-5 text-muted-foreground" />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                    <p className="font-bold mb-2">About Data Transfer</p>
-                    <p className="mb-2">This feature allows you to securely share school data with another registered PeerPrep user.</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li><strong>Full Class Data:</strong> Transfers a class, its subjects, and its full student roster including all their academic records (traits, etc).</li>
-                        <li><strong>Single Student Record:</strong> Transfers an individual student's complete profile.</li>
-                        <li><strong>Lesson Note:</strong> Shares a lesson note from your generation history.</li>
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="font-bold mb-2">About Data Transfer</DialogTitle>
+                    <DialogDescription>
+                        This feature allows you to securely share school data with another registered PeerPrep user.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 text-sm">
+                    <p>You can transfer three types of data:</p>
+                    <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+                        <li>
+                            <strong className="text-foreground">Full Class Data:</strong>
+                             Transfers a class, its subjects, and its full student roster including all their academic records (traits, etc).
+                        </li>
+                        <li>
+                            <strong className="text-foreground">Single Student Record:</strong>
+                             Transfers an individual student's complete profile.
+                        </li>
+                        <li>
+                            <strong className="text-foreground">Lesson Note:</strong>
+                             Shares a lesson note from your generation history.
+                        </li>
                     </ul>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+                </div>
+            </DialogContent>
+        </Dialog>
       </div>
 
       <div className="space-y-8">
