@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { useCollection, useFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useCollection, useFirebase, FirestorePermissionError, errorEmitter, useMemoFirebase } from '@/firebase';
 import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit, type DocumentReference, increment, type WriteBatch } from 'firebase/firestore';
 import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
