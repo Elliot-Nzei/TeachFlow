@@ -11,14 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, doc, arrayUnion, increment, addDoc, updateDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, doc, arrayUnion, increment, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import StudentProfileContent from '@/components/student-profile-content';
 import Image from 'next/image';
 import type { Student } from '@/lib/types';
-import { Separator } from '@/components/ui/separator';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -75,12 +74,9 @@ export default function StudentsPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [studentName, setStudentName] = useState('');
   const [classId, setClassId] = useState('');
-  const [parentName, setParentName] = useState('');
-  const [parentPhone, setParentPhone] = useState('');
-  const [parentEmail, setParentEmail] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
-  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'students'), where('userId', '==', user.uid)) : null, [firestore, user]);
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -107,9 +103,6 @@ export default function StudentsPage() {
       setPreviewImage('');
       setStudentName('');
       setClassId('');
-      setParentName('');
-      setParentPhone('');
-      setParentEmail('');
   }
 
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -127,21 +120,15 @@ export default function StudentsPage() {
 
         const newStudentCount = (settings.studentCounter || 0) + 1;
         const newStudentId = `${schoolAcronym}-${String(newStudentCount).padStart(3, '0')}`;
-        const parentId = `PARENT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
         
         try {
-            const studentsCollection = collection(firestore, 'students');
+            const studentsCollection = collection(firestore, 'users', user.uid, 'students');
             const newStudentDoc = await addDoc(studentsCollection, {
-                userId: user.uid, // Link student to the user
                 studentId: newStudentId,
-                parentId: parentId,
                 name: studentName,
                 className: studentClass?.name || '',
                 classId: studentClass?.id || '',
                 avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
-                parentName,
-                parentPhone,
-                parentEmail,
                 createdAt: serverTimestamp(),
             });
             
@@ -200,7 +187,7 @@ export default function StudentsPage() {
                         <UserPlus className="mr-2 h-4 w-4" /> Add Student
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[480px]">
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Add New Student</DialogTitle>
                         <DialogDescription>
@@ -208,7 +195,7 @@ export default function StudentsPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAddStudent}>
-                        <div className="grid gap-6 py-4">
+                        <div className="grid gap-4 py-4">
                             <div className="flex items-center gap-4">
                                  <Avatar className="h-24 w-24">
                                     {previewImage ? (
@@ -224,7 +211,6 @@ export default function StudentsPage() {
                                     <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} />
                                 </div>
                             </div>
-                             <Separator>Student Details</Separator>
                             <div className="space-y-2">
                                 <Label htmlFor="student-name">Full Name *</Label>
                                 <Input id="student-name" value={studentName} onChange={e => setStudentName(e.target.value)} placeholder="e.g., John Doe" required />
@@ -244,21 +230,6 @@ export default function StudentsPage() {
                                     ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
-                            <Separator>Parent/Guardian Details (Optional)</Separator>
-                            <div className="space-y-2">
-                                <Label htmlFor="parent-name">Full Name</Label>
-                                <Input id="parent-name" value={parentName} onChange={e => setParentName(e.target.value)} placeholder="e.g., Jane Doe" />
-                            </div>
-                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="parent-phone">Phone Number</Label>
-                                    <Input id="parent-phone" type="tel" value={parentPhone} onChange={e => setParentPhone(e.target.value)} placeholder="e.g., 08012345678" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="parent-email">Email Address</Label>
-                                    <Input id="parent-email" type="email" value={parentEmail} onChange={e => setParentEmail(e.target.value)} placeholder="e.g., parent@example.com" />
-                                </div>
                             </div>
                         </div>
                         <DialogFooter>

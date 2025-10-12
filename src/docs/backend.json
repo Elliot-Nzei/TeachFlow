@@ -107,10 +107,6 @@
         "studentId": {
           "type": "string"
         },
-        "parentId": {
-            "type": "string",
-            "description": "A unique, system-generated ID for parents to access student records."
-        },
         "name": {
           "type": "string"
         },
@@ -123,19 +119,6 @@
         "avatarUrl": {
           "type": "string",
           "format": "uri"
-        },
-        "parentName": {
-          "type": "string",
-          "description": "The full name of the student's parent or guardian."
-        },
-        "parentPhone": {
-          "type": "string",
-          "description": "The phone number of the student's parent or guardian."
-        },
-        "parentEmail": {
-          "type": "string",
-          "description": "The email address of the student's parent or guardian.",
-          "format": "email"
         },
         "promotionHistory": {
           "type": "array",
@@ -153,8 +136,7 @@
       },
       "required": [
         "studentId",
-        "name",
-        "parentId"
+        "name"
       ]
     },
     "Subject": {

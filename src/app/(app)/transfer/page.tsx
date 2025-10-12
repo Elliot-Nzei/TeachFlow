@@ -72,7 +72,7 @@ export default function TransferPage() {
   const classesQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemo(() => user ? query(collection(firestore, 'students'), where('userId', '==', user.uid)) : null, [firestore, user]);
+  const studentsQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   const incomingTransfersQuery = useMemo(
@@ -123,8 +123,8 @@ export default function TransferPage() {
   const fetchStudentSubcollections = async (studentIds: string[]) => {
       if (!user || studentIds.length === 0) return {};
       
-      const subcollectionNames: ('traits')[] = ['traits'];
-      const results: { traits: Trait[] } = { traits: [] };
+      const subcollectionNames: ('grades' | 'attendance' | 'traits')[] = ['grades', 'attendance', 'traits'];
+      const results: { grades: Grade[], attendance: Attendance[], traits: Trait[] } = { grades: [], attendance: [], traits: [] };
 
       for (const name of subcollectionNames) {
         const q = query(collection(firestore, 'users', user.uid, name), where('studentId', 'in', studentIds));
@@ -169,7 +169,7 @@ export default function TransferPage() {
             
             payload.data = classSnap.data();
 
-            const studentsInClassQuery = query(collection(firestore, 'students'), where('classId', '==', dataItem), where('userId', '==', user.uid));
+            const studentsInClassQuery = query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', dataItem));
             const studentsSnap = await getDocs(studentsInClassQuery);
             const studentDocs = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
             payload.students = studentDocs;
@@ -181,7 +181,7 @@ export default function TransferPage() {
             }
 
         } else if (dataType === 'Single Student Record') {
-            const studentRef = doc(firestore, `students/${dataItem}`);
+            const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
             const studentSnap = await getDoc(studentRef);
             if (!studentSnap.exists()) throw new Error('Selected student not found.');
             payload.data = { ...studentSnap.data(), id: studentSnap.id } as Student;
@@ -248,7 +248,7 @@ export default function TransferPage() {
     
     try {
         const studentIdMap = new Map<string, string>(); // Maps original student ID to new/existing student doc ID
-        const recipientStudentsRef = collection(firestore, 'students');
+        const recipientStudentsRef = collection(firestore, 'users', user.uid, 'students');
 
         const processStudent = async (student: Student) => {
             const { id: originalStudentDocId, ...studentData } = student;
@@ -273,10 +273,8 @@ export default function TransferPage() {
                 batch.set(newStudentRef, {
                   ...studentData,
                   studentId: newStudentId,
-                  parentId: student.parentId, // Explicitly carry over the parentId
                   transferredFrom: transfer.fromUserId,
                   transferredAt: serverTimestamp(),
-                  userId: user.uid, // Set the userId to the recipient's UID
                 });
                 finalStudentDocId = newStudentRef.id;
             }
@@ -318,7 +316,7 @@ export default function TransferPage() {
             }
 
             for (const studentId of studentDocIdsToMerge) {
-                const studentRefToUpdate = doc(firestore, 'students', studentId);
+                const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
                 batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
             }
             
@@ -347,7 +345,7 @@ export default function TransferPage() {
         
         const upsertSubcollectionData = async (
           batch: WriteBatch,
-          subcollectionName: 'traits',
+          subcollectionName: 'grades' | 'attendance' | 'traits',
           dataArray: any[] | undefined
         ) => {
             if (!dataArray || !user) return;
@@ -359,7 +357,19 @@ export default function TransferPage() {
                 if (!newStudentDocId) continue;
 
                 let uniquenessQuery;
-                if (subcollectionName === 'traits') { // traits
+                if (subcollectionName === 'grades') {
+                    uniquenessQuery = query(subcollectionRef,
+                        where('studentId', '==', newStudentDocId),
+                        where('subject', '==', item.subject),
+                        where('term', '==', item.term),
+                        where('session', '==', item.session)
+                    );
+                } else if (subcollectionName === 'attendance') {
+                    uniquenessQuery = query(subcollectionRef,
+                        where('studentId', '==', newStudentDocId),
+                        where('date', '==', item.date)
+                    );
+                } else { // traits
                     uniquenessQuery = query(subcollectionRef,
                         where('studentId', '==', newStudentDocId),
                         where('term', '==', item.term),
@@ -381,6 +391,8 @@ export default function TransferPage() {
             }
         };
 
+        await upsertSubcollectionData(batch, 'grades', transfer.data?.grades);
+        await upsertSubcollectionData(batch, 'attendance', transfer.data?.attendance);
         await upsertSubcollectionData(batch, 'traits', transfer.traits);
         
         const timestamp = serverTimestamp();
@@ -557,11 +569,11 @@ export default function TransferPage() {
                     <ul className="list-disc list-inside space-y-2 text-muted-foreground">
                         <li>
                             <strong className="text-foreground">Full Class Data:</strong>
-                             Transfers a class, its subjects, and its full student roster including all their academic records (traits, etc).
+                             Transfers a class, its subjects, and its full student roster including all their academic records (grades, attendance, traits).
                         </li>
                         <li>
                             <strong className="text-foreground">Single Student Record:</strong>
-                             Transfers an individual student's complete profile.
+                             Transfers an individual student's complete profile and academic records.
                         </li>
                         <li>
                             <strong className="text-foreground">Lesson Note:</strong>

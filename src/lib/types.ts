@@ -10,22 +10,15 @@ export type User = {
 
 export type Student = {
   id:string;
-  userId: string; // The ID of the user (teacher/admin) this student belongs to
   studentId: string;
-  parentId: string;
   name: string;
   className: string;
   classId: string;
   avatarUrl: string;
   age?: number;
   gender?: 'Male' | 'Female';
-  parentName?: string;
-  parentPhone?: string;
-  parentEmail?: string;
   createdAt?: any;
   promotionHistory?: { from: string; to: string; date: string; session: string; }[];
-  transferredFrom?: string;
-  transferredAt?: any;
 };
 
 export type Class = {

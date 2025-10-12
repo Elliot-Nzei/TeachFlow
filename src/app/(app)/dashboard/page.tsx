@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const { settings, isLoading: isLoadingSettings } = useContext(SettingsContext);
 
-  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'students'), where('userId', '==', user.uid)) : null, [firestore, user]);
+  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
 
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: grades, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
   
-  const recentStudentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'students'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(3)) : null, [firestore, user]);
+  const recentStudentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students'), orderBy('createdAt', 'desc'), limit(3)) : null, [firestore, user]);
   const { data: recentStudents, isLoading: isLoadingRecentStudents } = useCollection<any>(recentStudentsQuery);
   
   const recentClassesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes'), orderBy('createdAt', 'desc'), limit(2)) : null, [firestore, user]);
@@ -244,5 +244,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

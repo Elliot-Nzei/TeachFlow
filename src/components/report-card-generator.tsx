@@ -249,7 +249,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
   const allStudentsQuery = useMemoFirebase(() => {
     if (!user) return null; // Do not query if user is not logged in
-    return query(collection(firestore, 'students'), where('userId', '==', user.uid));
+    return query(collection(firestore, 'users', user.uid, 'students'));
   }, [firestore, user]);
   const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(allStudentsQuery);
   

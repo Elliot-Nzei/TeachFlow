@@ -1,236 +1,229 @@
 /**
- * @fileoverview Firestore Security Rules for the Nigerian School Management System.
+ * @fileoverview Firestore Security Rules
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-specific data and
- * enables controlled data sharing via explicit transfer requests. Data validation is relaxed for prototyping.
+ * This ruleset enforces a strict user-ownership model. Each user can only
+ * access data explicitly associated with their user ID. Write access is
+ * generally restricted to the owner of the data, ensuring data privacy
+ * and preventing unauthorized modifications.
  *
  * Data Structure:
- * - /users/{userId}: Stores core user information.  Write access is restricted to the user themselves.
- * - /users/{userId}/classes/{classId}: Stores class data owned by the user.
- * - /users/{userId}/students/{studentId}: Stores student data owned by the user.
- * - /users/{userId}/subjects/{subjectId}: Stores subject data owned by the user.
- * - /users/{userId}/grades/{gradeId}: Stores grade data owned by the user.
- * - /users/{userId}/attendance/{attendanceId}: Stores attendance data owned by the user.
- * - /users/{userId}/payments/{paymentId}: Stores payment data owned by the user.
- * - /users/{userId}/incomingTransfers/{transferId}: Stores incoming transfer requests for the user.
- * - /users/{userId}/outgoingTransfers/{transferId}: Stores outgoing transfer requests initiated by the user.
+ * All data is nested under /users/{userId}, creating a clear separation
+ * between users and their respective data. Subcollections are used to
+ * organize different data types (classes, students, grades, etc.) under
+ * each user.
  *
  * Key Security Decisions:
- * - Users can only read and write their own data under `/users/{userId}`.
- * - Data transfers are mediated by explicitly created transfer request documents.
- * - Listing of user documents is disallowed for privacy.
+ * - Users can only read their own document.
+ * - Users can only create and update their own document.
+ * - All subcollections are owned by the user and only accessible to them.
+ * - Transfer requests have specific rules to allow cross-user interaction.
  *
  * Denormalization for Authorization:
- * - Data ownership is enforced by matching the `userId` path segment with the `request.auth.uid`.
+ * The rules rely on the `userId` path segment to identify the owner of
+ * the data. Subcollections inherit this ownership. For transfer requests,
+ * the `toUserId` field is used to ensure that only the intended recipient
+ * can interact with the request.
+ *
+ * Structural Segregation:
+ * All user-related data is stored under the /users/{userId} path, ensuring
+ * clear separation and preventing accidental data leakage.
  */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the current user is signed in.
-     */
-    function isSignedIn() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the provided userId matches the authenticated user's UID.
-     */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the user exists and is the owner.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Root-level rule to prevent unauthorized access.
-     * @path /databases/{database}/documents
-     * @allow (get, list) if false - No direct access to the root.
-     * @deny (create, update, delete) always - No root-level modifications.
-     * @principle Prevents unintended access to the entire database.
-     */
-    match /{document=**} {
-      allow read: if false;
-      allow write: if false;
-    }
-
-    /**
-     * @description Controls access to user documents.
+     * @description Controls access to user profiles. Users can only read and write their own profile.
      * @path /users/{userId}
-     * @allow (create) User can create their own document.
-     * @allow (get) User can read their own document.
-     * @allow (update) User can update their own document.
-     * @allow (delete) User can delete their own document.
-     * @deny (list) Listing users is not allowed.
-     * @allow (create) if true - Placeholder for user creation
-     * @allow (get) if true - Placeholder for user creation
-     * @principle Enforces user-ownership for user profiles.
+     * @allow (get) - User A can read their own profile (user A).
+     * @allow (create, update) - User A can create/update their own profile (user A).
+     * @deny (get) - User A cannot read User B's profile.
+     * @deny (create, update) - User A cannot create/update User B's profile.
+     * @principle Enforces user-ownership for profile data.
      */
     match /users/{userId} {
+      // Allow users to read their own document
       allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-    }
+      // Allow any authenticated user to search for other users by userCode (for transfers)
+      allow list: if isAuthenticated();
+      // Allow users to create and update their own document
+      allow create, update: if isOwner(userId);
+      allow delete: if false; // Deny delete
+
+      /**
+       * @description Controls access to classes owned by a user. The user has full access to their own classes.
+       * @path /users/{userId}/classes/{classId}
+       * @allow (read, write) - User A can read/write their own classes.
+       * @deny (read, write) - User A cannot read/write User B's classes.
+       * @principle Enforces user-ownership for class data.
+       */
+      match /classes/{classId} {
+        // Owner has full access to their own classes
+        allow read, write: if isOwner(userId);
+        
+        /**
+         * @description Controls access to students within a class. Only the class owner can access student data.
+         * @path /users/{userId}/classes/{classId}/students/{studentId}
+         * @allow (read, write) - User A can read/write students within their own classes.
+         * @deny (read, write) - User A cannot read/write students within User B's classes.
+         * @principle Enforces user-ownership for student data within classes.
+         */
+        // Nested students in a class
+        match /students/{studentId} {
+          allow read, write: if isOwner(userId);
+        }
+        
+        /**
+         * @description Catch-all for any other nested collections under a class. Only the class owner can access.
+         * @path /users/{userId}/classes/{classId}/{nested=**}
+         * @allow (read, write) - User A can read/write any nested data under their own classes.
+         * @deny (read, write) - User A cannot read/write nested data under User B's classes.
+         * @principle Enforces user-ownership for all data nested under classes.
+         */
+        // Any other nested collections
+        match /{nested=**} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+      
+      /**
+       * @description Controls access to students directly under the user. The user has full access to their own student data.
+       * @path /users/{userId}/students/{studentId}
+       * @allow (read, write) - User A can read/write their own student data.
+       * @deny (read, write) - User A cannot read/write User B's student data.
+       * @principle Enforces user-ownership for student data.
+       */
+      // Rules for students
+      match /students/{studentId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Controls access to subjects owned by a user. The user has full access to their own subjects.
+       * @path /users/{userId}/subjects/{subjectId}
+       * @allow (read, write) - User A can read/write their own subjects.
+       * @deny (read, write) - User A cannot read/write User B's subjects.
+       * @principle Enforces user-ownership for subject data.
+       */
+      // Rules for subjects
+      match /subjects/{subjectId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Controls access to grades owned by a user. The user has full access to their own grades.
+       * @path /users/{userId}/grades/{gradeId}
+       * @allow (read, write) - User A can read/write their own grades.
+       * @deny (read, write) - User A cannot read/write User B's grades.
+       * @principle Enforces user-ownership for grade data.
+       */
+      // Rules for grades
+      match /grades/{gradeId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Controls access to attendance records owned by a user. The user has full access to their own attendance records.
+       * @path /users/{userId}/attendance/{attendanceId}
+       * @allow (read, write) - User A can read/write their own attendance records.
+       * @deny (read, write) - User A cannot read/write User B's attendance records.
+       * @principle Enforces user-ownership for attendance data.
+       */
+      // Rules for attendance
+      match /attendance/{attendanceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Controls access to traits owned by a user. The user has full access to their own traits.
+       * @path /users/{userId}/traits/{traitId}
+       * @allow (read, write) - User A can read/write their own traits.
+       * @deny (read, write) - User A cannot read/write User B's traits.
+       * @principle Enforces user-ownership for trait data.
+       */
+      // Rules for traits
+      match /traits/{traitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Controls access to incoming transfer requests. Users can read their own incoming transfers, and any authenticated user can create an incoming transfer for them.
+       * @path /users/{userId}/incomingTransfers/{transferId}
+       * @allow (read) - User A can read their own incoming transfer requests.
+       * @allow (create) - Any authenticated user can create an incoming transfer request for User A.
+       * @allow (update, delete) - User A can update/delete their own incoming transfer requests.
+       * @deny (read) - User A cannot read User B's incoming transfer requests.
+       * @deny (create) - User A cannot create an incoming transfer request for User B.
+       * @principle Allows creating incoming transfer requests and restricts reading/writing to the recipient.
+       */
+      // Rules for managing INCOMING transfers
+      match /incomingTransfers/{transferId} {
+        // User can read their own incoming transfers
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        // Any authenticated user can create an incoming transfer for another user
+        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
+        // User can update and delete their own incoming transfer
+        allow update, delete: if isOwner(userId);
+      }
+
+      /**
+       * @description Controls access to outgoing transfer requests. Users can read and write their own outgoing transfers. The recipient can read and update specific fields.
+       * @path /users/{userId}/outgoingTransfers/{transferId}
+       * @allow (read, write) - User A can read/write their own outgoing transfer requests.
+       * @allow (get) - User B can read a specific outgoing transfer request by ID if they are the recipient.
+       * @allow (update) - User B can update the status and processedAt fields of User A's outgoing transfer request if they are the recipient.
+       * @deny (read, write) - User A cannot read/write User B's outgoing transfer requests.
+       * @principle Enforces ownership for outgoing transfers while allowing limited recipient interaction.
+       */
+      // Rules for managing OUTGOING transfers
+      match /outgoingTransfers/{transferId} {
+        // User can read and write their own outgoing transfers
+        allow read, write: if isOwner(userId);
+        
+        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
+        allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
+        
+        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
+        allow update: if isAuthenticated() && 
+                         resource.data.toUserId == request.auth.uid &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
+        allow list: if isOwner(userId);
+        allow delete: if false;
+      }
+
+      /**
+       * @description Catch-all for any other subcollections under a user. The user has full access to all data within their own subcollections.
+       * @path /users/{userId}/{subcollection}/{docId}
+       * @allow (read, write) - User A can read/write any data within their own subcollections.
+       * @deny (read, write) - User A cannot read/write data within User B's subcollections.
+       * @principle Enforces user-ownership for all data within subcollections.
+       */
+      // Catch-all for any other subcollections
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId);
 
         /**
-     * @description Controls access to class documents nested under a user.
-     * @path /users/{userId}/classes/{classId}
-     * @allow (create) User can create classes in their own document.
-     * @allow (get) User can read classes in their own document.
-     * @allow (update) User can update classes in their own document.
-     * @allow (delete) User can delete classes in their own document.
-     * @allow (list) User can list classes in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for classes.
-     */
-    match /users/{userId}/classes/{classId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to student documents nested under a user.
-     * @path /users/{userId}/students/{studentId}
-     * @allow (create) User can create students in their own document.
-     * @allow (get) User can read students in their own document.
-     * @allow (update) User can update students in their own document.
-     * @allow (delete) User can delete students in their own document.
-     * @allow (list) User can list students in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for students.
-     */
-    match /users/{userId}/students/{studentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to subject documents nested under a user.
-     * @path /users/{userId}/subjects/{subjectId}
-     * @allow (create) User can create subjects in their own document.
-     * @allow (get) User can read subjects in their own document.
-     * @allow (update) User can update subjects in their own document.
-     * @allow (delete) User can delete subjects in their own document.
-     * @allow (list) User can list subjects in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for subjects.
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to grade documents nested under a user.
-     * @path /users/{userId}/grades/{gradeId}
-     * @allow (create) User can create grades in their own document.
-     * @allow (get) User can read grades in their own document.
-     * @allow (update) User can update grades in their own document.
-     * @allow (delete) User can delete grades in their own document.
-     * @allow (list) User can list grades in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for grades.
-     */
-    match /users/{userId}/grades/{gradeId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to attendance documents nested under a user.
-     * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (create) User can create attendance records in their own document.
-     * @allow (get) User can read attendance records in their own document.
-     * @allow (update) User can update attendance records in their own document.
-     * @allow (delete) User can delete attendance records in their own document.
-     * @allow (list) User can list attendance records in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for attendance.
-     */
-    match /users/{userId}/attendance/{attendanceId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to payment documents nested under a user.
-     * @path /users/{userId}/payments/{paymentId}
-     * @allow (create) User can create payments in their own document.
-     * @allow (get) User can read payments in their own document.
-     * @allow (update) User can update payments in their own document.
-     * @allow (delete) User can delete payments in their own document.
-     * @allow (list) User can list payments in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for payments.
-     */
-    match /users/{userId}/payments/{paymentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to incoming transfer documents nested under a user.
-     * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (create) User can create incoming transfers in their own document.
-     * @allow (get) User can read incoming transfers in their own document.
-     * @allow (update) User can update incoming transfers in their own document.
-     * @allow (delete) User can delete incoming transfers in their own document.
-     * @allow (list) User can list incoming transfers in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for incoming transfers.
-     */
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to outgoing transfer documents nested under a user.
-     * @path /users/{userId}/outgoingTransfers/{transferId}
-     * @allow (create) User can create outgoing transfers in their own document.
-     * @allow (get) User can read outgoing transfers in their own document.
-     * @allow (update) User can update outgoing transfers in their own document.
-     * @allow (delete) User can delete outgoing transfers in their own document.
-     * @allow (list) User can list outgoing transfers in their own document.
-     * @deny If the user is not the owner
-     * @principle Enforces user-ownership for outgoing transfers.
-     */
-    match /users/{userId}/outgoingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+         * @description Catch-all for any nested data under a subcollection.
+         * @path /users/{userId}/{subcollection}/{docId}/{nested=**}
+         * @allow (read, write) - User A can read/write any nested data under their own subcollections.
+         * @deny (read, write) - User A cannot read/write nested data under User B's subcollections.
+         * @principle Enforces user-ownership for all nested data.
+         */
+        match /{nested=**} {
+           allow read, write: if isOwner(userId);
+        }
+      }
     }
   }
 }

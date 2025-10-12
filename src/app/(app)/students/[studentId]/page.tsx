@@ -7,7 +7,7 @@ import StudentProfileContent from '@/components/student-profile-content';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentDetailsPage({ params }: { params: { studentId: string } }) {
-  const { studentId } = React.use(params);
+  const { studentId } = params;
   const { user, isUserLoading } = useUser();
   const { firestore } = useFirebase();
 
