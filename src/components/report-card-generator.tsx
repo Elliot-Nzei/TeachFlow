@@ -249,11 +249,8 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
   const studentsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    if (studentId) {
-      return query(collection(firestore, 'users', user.uid, 'students'), where('id', '==', studentId));
-    }
-    return query(collection(firestore, 'users', user.uid, 'students'));
-  }, [firestore, user, studentId]);
+    return query(collection(firestore, 'students'), where('userId', '==', user.uid));
+  }, [firestore, user]);
   const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   const allGradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
@@ -866,3 +863,5 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     </>
   );
 }
+
+    

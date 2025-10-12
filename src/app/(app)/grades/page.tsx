@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ export default function GradesPage() {
   const [filterTerm, setFilterTerm] = useState('');
   const [filterSession, setFilterSession] = useState('');
 
-  const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'students'), where('classId', '==', selectedClass.id), where('userId', '==', user.uid)) : null, [firestore, user, selectedClass]);
   const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
   
   const allGradesForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
@@ -388,3 +389,5 @@ export default function GradesPage() {
     </div>
   );
 }
+
+    

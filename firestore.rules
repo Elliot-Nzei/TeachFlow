@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -13,39 +14,27 @@ service cloud.firestore {
 
     // Rules for the top-level 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isAuthenticated(); // For user searches
-      allow write: if isOwner(userId);
+      allow read, write: if isOwner(userId);
 
-      // Rules for user-specific subcollections
+      // Rules for all user subcollections (classes, grades, etc.)
       match /{subcollection}/{docId} {
-        allow read, write, delete: if isOwner(userId);
-
-        match /{nested=**} {
-           allow read, write: if isOwner(userId);
-        }
+        allow read, write: if isOwner(userId);
       }
     }
 
-    // Rules for the top-level 'students' collection, accessible by teachers and parents
+    // Rules for the top-level 'students' collection
     match /students/{studentId} {
-      // TEACHER ACCESS:
-      // Allow read/write if the user's UID matches the student's userId field.
-      // This applies to get, update, delete operations.
-      allow read, write: if request.auth.uid == resource.data.userId;
-
-      // Allow a user to create a student document if they are setting the userId to their own UID.
-      allow create: if request.auth.uid == request.resource.data.userId;
-
-      // Allow a user to LIST students only if they are querying for their own students.
-      // This rule is critical for the dashboard and students page to work for logged-in users.
-      allow list: if isAuthenticated() && request.query.where.size() > 0 && request.query.where[0][0] == 'userId' && request.query.where[0][1] == '==' && request.query.where[0][2] == request.auth.uid;
-    }
-
-    // PARENT ACCESS: Anyone can query the students collection if they provide the exact parentId.
-    // This rule is separate to allow unauthenticated access for the parent portal.
-    match /students/{studentId} {
-        allow list: if request.auth == null && request.query.where.size() > 0 && request.query.where[0][0] == 'parentId' && request.query.where[0][1] == '==';
+      // Allow read access if the user is the owner OR if it's a parent portal query
+      allow read: if isOwner(resource.data.userId);
+      
+      // Allow list access for teachers querying their own students, and for parents querying by parentId
+      allow list: if (isAuthenticated() && request.query.where[0][0] == 'userId' && request.query.where[0][2] == request.auth.uid) || 
+                     (request.auth == null && request.query.keys.hasOnly(['parentId']));
+                     
+      // Allow write access only to the owner
+      allow write: if isOwner(request.resource.data.userId);
     }
   }
 }
+
+    
