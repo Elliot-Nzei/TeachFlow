@@ -247,10 +247,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const allStudentsQuery = useMemoFirebase(() => {
-    if (!user) return null; // Do not query if user is not logged in
-    return query(collection(firestore, 'users', user.uid, 'students'));
-  }, [firestore, user]);
+  const allStudentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(allStudentsQuery);
   
   const allGradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
@@ -602,7 +599,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
                 </>
-            ) : <><Download className="mr-2 h-4 w-4" />{buttonLabel}</>}
+            ) : <><FileDown className="mr-2 h-4 w-4" />{buttonLabel}</>}
           </Button>
       )
   }
