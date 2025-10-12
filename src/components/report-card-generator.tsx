@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Logo } from './logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -247,11 +247,11 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+  const allStudentsQuery = useMemoFirebase(() => {
+    if (!user) return null; // Do not query if user is not logged in
     return query(collection(firestore, 'students'), where('userId', '==', user.uid));
   }, [firestore, user]);
-  const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+  const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(allStudentsQuery);
   
   const allGradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
   const { data: allGrades, isLoading: isLoadingGrades } = useCollection<Grade>(allGradesQuery);
@@ -863,5 +863,3 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     </>
   );
 }
-
-    
