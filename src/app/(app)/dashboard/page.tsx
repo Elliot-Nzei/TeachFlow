@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { SettingsContext } from '@/contexts/settings-context';
-import type { Payment } from '@/lib/types';
+import type { Payment, Student } from '@/lib/types';
 
 
 export default function DashboardPage() {
@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const { settings, isLoading: isLoadingSettings } = useContext(SettingsContext);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
-  const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection(classesQuery);

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/componentsui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +72,7 @@ export default function TransferPage() {
   const classesQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const studentsQuery = useMemoFirebase(() => (user ? query(collection(firestore, 'users', user.uid, 'students')) : null), [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   const incomingTransfersQuery = useMemo(
@@ -391,8 +391,8 @@ export default function TransferPage() {
             }
         };
 
-        await upsertSubcollectionData(batch, 'grades', transfer.data?.grades);
-        await upsertSubcollectionData(batch, 'attendance', transfer.data?.attendance);
+        await upsertSubcollectionData(batch, 'grades', transfer.grades);
+        await upsertSubcollectionData(batch, 'attendance', transfer.attendance);
         await upsertSubcollectionData(batch, 'traits', transfer.traits);
         
         const timestamp = serverTimestamp();

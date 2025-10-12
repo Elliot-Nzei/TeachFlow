@@ -50,9 +50,6 @@ export default function Home() {
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <Logo />
         <nav className="ml-auto flex gap-2 sm:gap-4">
-          <Link href="/parents" passHref>
-            <Button variant="ghost">Parent Portal</Button>
-          </Link>
           <Link href="/login" passHref>
             <Button variant="ghost">Login</Button>
           </Link>

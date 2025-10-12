@@ -32,9 +32,9 @@
           "type": "string",
           "description": "The school's motto or slogan."
         },
-        "profilePicture": {
+        "schoolLogo": {
           "type": "string",
-          "description": "URL of the user's profile picture."
+          "description": "URL of the school's logo."
         },
         "currentTerm": {
           "type": "string",
@@ -368,6 +368,30 @@
     ]
   },
   "firestore": {
+    "/users/{userId}/classes/{classId}": {
+      "schema": { "$ref": "#/entities/Class" },
+      "description": "Stores classes for a user."
+    },
+    "/users/{userId}/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Stores students for a user."
+    },
+    "/users/{userId}/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "Stores master subject list for a user."
+    },
+    "/users/{userId}/grades/{gradeId}": {
+      "schema": { "$ref": "#/entities/Grade" },
+      "description": "Stores student grade records."
+    },
+    "/users/{userId}/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/Attendance" },
+      "description": "Stores student attendance records."
+    },
+    "/users/{userId}/traits/{traitId}": {
+      "schema": { "$ref": "#/entities/Trait" },
+      "description": "Stores student behavioral trait records."
+    },
     "/users/{userId}/incomingTransfers/{transferId}": {
       "schema": { "$ref": "#/entities/Transfer" },
       "description": "Stores incoming data transfer requests for a user."

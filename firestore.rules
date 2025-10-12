@@ -1,18 +1,67 @@
-
+/**
+ * @file Firestore Security Rules for PeerPrep App
+ *
+ * @description
+ * This ruleset enforces a strict user-ownership model, where users can only
+ * access data associated with their own accounts. It also allows public
+ * access to student data for parents via a unique parentId.
+ *
+ * Data Structure:
+ * - /users/{userId}: User profiles and settings.
+ * - /users/{userId}/classes/{classId}: Classes created by the user.
+ * - /users/{userId}/students/{studentId}: Students belonging to the user.
+ * - /users/{userId}/subjects/{subjectId}: Subjects created by the user.
+ * - /users/{userId}/grades/{gradeId}: Grades created by the user.
+ * - /users/{userId}/attendance/{attendanceId}: Attendance records created by the user.
+ * - /users/{userId}/traits/{traitId}: Traits data created by the user.
+ * - /users/{userId}/incomingTransfers/{transferId}: Incoming data transfer requests.
+ * - /users/{userId}/outgoingTransfers/{transferId}: Outgoing data transfer requests.
+ * - /students/{studentId}: Public collection of students, accessible by teachers and parents.
+ *
+ * Key Security Decisions:
+ * - User-owned data: Most data is stored under the /users/{userId} path and
+ *   is strictly controlled by the authenticated user's ID.
+ * - No user listing: Listing all users is disallowed to protect privacy.
+ * - Parent Portal Access: Parents can only access student data via a secure
+ *   parentId-based query on the /students collection.
+ *
+ * Denormalization for Authorization:
+ * - The /students collection has a 'userId' field to link it to the owning teacher.
+ *   This allows filtering by `userId` for teacher access and `parentId` for parent access.
+ */
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * @description Helper function to check if the user is authenticated.
+     * @returns {boolean} True if the user is authenticated, false otherwise.
+     */
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    /**
+     * @description Helper function to check if the authenticated user is the owner of the resource.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @returns {boolean} True if the user is the owner, false otherwise.
+     */
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Rules for the top-level 'users' collection
+    /**
+     * @description Rules for the top-level 'users' collection
+     * @path /users/{userId}
+     * @allow (get) Authenticated user can read their own document.
+     * @allow (list) Authenticated user can search for other users by userCode.
+     * @allow (write) Authenticated user can create and update their own document.
+     * @deny (get) Another user attempts to read a different user's document.
+     * @deny (list) Unauthenticated user attempts to list users.
+     * @deny (write) Another user attempts to write to a different user's document.
+     * @principle Enforces document ownership and prevents unauthorized access to user data.
+     */
     match /users/{userId} {
       // Allow users to read their own document
       allow get: if isOwner(userId);
@@ -21,14 +70,189 @@ service cloud.firestore {
       // Allow users to create and update their own document
       allow write: if isOwner(userId);
 
-      // Rules for ALL subcollections under a user's document
-      match /{subcollection}/{docId} {
-        allow read, write, delete: if isOwner(userId);
+      /**
+       * @description Rules for classes
+       * @path /users/{userId}/classes/{classId}
+       * @allow (read, write) Owner has full access to their own classes
+       * @deny (read, write) Non-owner attempts to read or write to a class
+       * @principle Enforces ownership for classes.
+       */
+      match /classes/{classId} {
+        // Owner has full access to their own classes
+        allow read, write: if isOwner(userId);
 
+        /**
+         * @description Nested students in a class
+         * @path /users/{userId}/classes/{classId}/students/{studentId}
+         * @allow (read, write) Owner has full access to their own students
+         * @deny (read, write) Non-owner attempts to read or write to a student
+         * @principle Enforces ownership for nested students.
+         */
+        match /students/{studentId} {
+          allow read, write: if isOwner(userId);
+        }
+
+        /**
+         * @description Any other nested collections
+         * @path /users/{userId}/classes/{classId}/{nested=**}
+         * @allow (read, write) Owner has full access to any other nested collection
+         * @deny (read, write) Non-owner attempts to read or write to any other nested collection
+         * @principle Enforces ownership for any other nested collections.
+         */
+        match /{nested=**} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+
+      /**
+       * @description Rules for students
+       * @path /users/{userId}/students/{studentId}
+       * @allow (read, write) Owner has full access to their own students
+       * @deny (read, write) Non-owner attempts to read or write to a student
+       * @principle Enforces ownership for students.
+       */
+      match /students/{studentId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Rules for subjects
+       * @path /users/{userId}/subjects/{subjectId}
+       * @allow (read, write) Owner has full access to their own subjects
+       * @deny (read, write) Non-owner attempts to read or write to a subject
+       * @principle Enforces ownership for subjects.
+       */
+      match /subjects/{subjectId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Rules for grades
+       * @path /users/{userId}/grades/{gradeId}
+       * @allow (read, write) Owner has full access to their own grades
+       * @deny (read, write) Non-owner attempts to read or write to a grade
+       * @principle Enforces ownership for grades.
+       */
+      match /grades/{gradeId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Rules for attendance
+       * @path /users/{userId}/attendance/{attendanceId}
+       * @allow (read, write) Owner has full access to their own attendance
+       * @deny (read, write) Non-owner attempts to read or write to attendance
+       * @principle Enforces ownership for attendance.
+       */
+      match /attendance/{attendanceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Rules for traits
+       * @path /users/{userId}/traits/{traitId}
+       * @allow (read, write) Owner has full access to their own traits
+       * @deny (read, write) Non-owner attempts to read or write to traits
+       * @principle Enforces ownership for traits.
+       */
+      match /traits/{traitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      /**
+       * @description Rules for managing INCOMING transfers
+       * @path /users/{userId}/incomingTransfers/{transferId}
+       * @allow (read) User can read their own incoming transfers
+       * @allow (create) Any authenticated user can create an incoming transfer for another user
+       * @allow (update, delete) User can update and delete their own incoming transfer
+       * @deny (read) Another user attempts to read a different user's incoming transfer
+       * @deny (create) Unauthenticated user attempts to create an incoming transfer
+       * @deny (update, delete) Another user attempts to update or delete a different user's incoming transfer
+       * @principle Enforces ownership and authentication for incoming transfers.
+       */
+      match /incomingTransfers/{transferId} {
+        // User can read their own incoming transfers
+        allow read: if isOwner(userId);
+        // Any authenticated user can create an incoming transfer for another user
+        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
+        // User can update and delete their own incoming transfer
+        allow update, delete: if isOwner(userId);
+      }
+
+      /**
+       * @description Rules for managing OUTGOING transfers
+       * @path /users/{userId}/outgoingTransfers/{transferId}
+       * @allow (read, write) User can read and write their own outgoing transfers
+       * @allow (get) Recipient can read a specific outgoing transfer by ID
+       * @allow (update) Recipient can update the status of the sender's outgoing transfer
+       * @deny (read, write) Non-owner attempts to read or write to a different user's outgoing transfer
+       * @deny (get) Unauthenticated user attempts to read an outgoing transfer
+       * @deny (update) Non-recipient attempts to update the status of the sender's outgoing transfer
+       * @principle Enforces ownership and authentication for outgoing transfers, and allows the recipient to manage the transfer.
+       */
+      match /outgoingTransfers/{transferId} {
+        // User can read and write their own outgoing transfers
+        allow read, write: if isOwner(userId);
+
+        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
+        allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
+
+        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
+        allow update: if isAuthenticated() &&
+                         resource.data.toUserId == request.auth.uid &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
+      }
+
+      /**
+       * @description Catch-all for any other subcollections
+       * @path /users/{userId}/{subcollection}/{docId}
+       * @allow (read, write) Owner has full access to any other subcollection
+       * @deny (read, write) Non-owner attempts to read or write to any other subcollection
+       * @principle Enforces ownership for any other subcollections.
+       */
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId);
+
+        /**
+         * @description Nested catch-all for any nested subcollections
+         * @path /users/{userId}/{subcollection}/{docId}/{nested=**}
+         * @allow (read, write) Owner has full access to any nested subcollection
+         * @deny (read, write) Non-owner attempts to read or write to any nested subcollection
+         * @principle Enforces ownership for any nested subcollections.
+         */
         match /{nested=**} {
            allow read, write: if isOwner(userId);
         }
       }
+    }
+
+    /**
+     * @description Rules for the top-level 'students' collection, accessible by teachers and parents
+     * @path /students/{studentId}
+     * @allow (read, write) A logged-in user can read/write a student document if they are the owner (their UID matches the student's userId).
+     * @allow (list) ANYONE (unauthenticated) can LIST students ONLY IF they are querying specifically by the 'parentId'. This is secure.
+     * @deny (read, write) A user attempts to access a student document that does not belong to them (mismatched UID).
+     * @deny (list) An unauthenticated user attempts to list all students without filtering by parentId.
+     * @principle Securely allows teacher and parent access to student data.
+     */
+    match /students/{studentId} {
+      // 1. TEACHER ACCESS: Allow a logged-in user to read/write a student
+      //    document if they are the owner (their UID matches the student's userId).
+      allow read, write: if request.auth.uid == resource.data.userId;
+
+      // 2. PARENT ACCESS: Allow ANYONE (unauthenticated) to LIST students
+      //    ONLY IF they are querying specifically by the 'parentId'. This is secure.
+      allow list: if request.query.keys.hasOnly(['parentId']);
+    }
+
+    /**
+     * @description Catch-all rule to deny access to any other document
+     * @path /{document=**}
+     * @allow (read, write) false
+     * @principle Denies all read and write access by default to prevent accidental exposure.
+     */
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
