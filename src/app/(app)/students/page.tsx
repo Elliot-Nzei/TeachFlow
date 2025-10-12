@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescri
 import StudentProfileContent from '@/components/student-profile-content';
 import Image from 'next/image';
 import type { Student } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -74,6 +75,9 @@ export default function StudentsPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [studentName, setStudentName] = useState('');
   const [classId, setClassId] = useState('');
+  const [parentName, setParentName] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
@@ -99,6 +103,15 @@ export default function StudentsPage() {
     }
   };
   
+  const resetForm = () => {
+      setPreviewImage('');
+      setStudentName('');
+      setClassId('');
+      setParentName('');
+      setParentPhone('');
+      setParentEmail('');
+  }
+
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (studentName && user && settings) {
@@ -122,14 +135,15 @@ export default function StudentsPage() {
                 studentId: newStudentId,
                 parentId: parentId,
                 name: studentName,
-                // Assign empty strings if no class is selected
                 className: studentClass?.name || '',
                 classId: studentClass?.id || '',
                 avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
+                parentName,
+                parentPhone,
+                parentEmail,
                 createdAt: serverTimestamp(),
             });
             
-            // If a class was selected, update the class document as well
             if (studentClass) {
               const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
               await updateDoc(classRef, {
@@ -142,9 +156,7 @@ export default function StudentsPage() {
             setSettings({ studentCounter: newStudentCount });
 
             setAddStudentOpen(false);
-            setPreviewImage('');
-            setStudentName('');
-            setClassId('');
+            resetForm();
             
             toast({
                 title: "Student Added",
@@ -211,8 +223,9 @@ export default function StudentsPage() {
                                     <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} />
                                 </div>
                             </div>
+                             <Separator>Student Details</Separator>
                             <div className="space-y-2">
-                                <Label htmlFor="student-name">Full Name</Label>
+                                <Label htmlFor="student-name">Full Name *</Label>
                                 <Input id="student-name" value={studentName} onChange={e => setStudentName(e.target.value)} placeholder="e.g., John Doe" required />
                             </div>
                             <div className="space-y-2">
@@ -230,6 +243,21 @@ export default function StudentsPage() {
                                     ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <Separator>Parent/Guardian Details (Optional)</Separator>
+                            <div className="space-y-2">
+                                <Label htmlFor="parent-name">Full Name</Label>
+                                <Input id="parent-name" value={parentName} onChange={e => setParentName(e.target.value)} placeholder="e.g., Jane Doe" />
+                            </div>
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="parent-phone">Phone Number</Label>
+                                    <Input id="parent-phone" type="tel" value={parentPhone} onChange={e => setParentPhone(e.target.value)} placeholder="e.g., 08012345678" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="parent-email">Email Address</Label>
+                                    <Input id="parent-email" type="email" value={parentEmail} onChange={e => setParentEmail(e.target.value)} placeholder="e.g., parent@example.com" />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>

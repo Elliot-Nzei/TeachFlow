@@ -124,6 +124,19 @@
           "type": "string",
           "format": "uri"
         },
+        "parentName": {
+          "type": "string",
+          "description": "The full name of the student's parent or guardian."
+        },
+        "parentPhone": {
+          "type": "string",
+          "description": "The phone number of the student's parent or guardian."
+        },
+        "parentEmail": {
+          "type": "string",
+          "description": "The email address of the student's parent or guardian.",
+          "format": "email"
+        },
         "promotionHistory": {
           "type": "array",
           "description": "A log of the student's promotions.",
@@ -387,5 +400,3 @@
     }
   }
 }
-
-    

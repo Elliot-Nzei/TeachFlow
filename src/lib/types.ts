@@ -18,6 +18,9 @@ export type Student = {
   avatarUrl: string;
   age?: number;
   gender?: 'Male' | 'Female';
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
   createdAt?: any;
   promotionHistory?: { from: string; to: string; date: string; session: string; }[];
   transferredFrom?: string;
