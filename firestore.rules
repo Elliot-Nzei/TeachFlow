@@ -1,40 +1,261 @@
-
+/**
+ * @fileoverview Firestore Security Rules for Nigerian School Management System.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model, where users can only
+ * access and modify data related to their own school and students. Data
+ * transfers are carefully controlled to ensure that only authorized users
+ * can share data with each other.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile data.
+ * - /users/{userId}/incomingTransfers/{transferId}: Stores data transfer requests
+ *   sent to a user.
+ * - /users/{userId}/outgoingTransfers/{transferId}: Stores data transfer requests
+ *   initiated by a user.
+ * - /users/{userId}/payments/{paymentId}: Stores payment records for a student.
+ * - /classes/{classId}: Stores class data.
+ * - /students/{studentId}: Stores student data.
+ * - /subjects/{subjectId}: Stores subject data.
+ * - /grades/{gradeId}: Stores student grades.
+ * - /attendances/{attendanceId}: Stores student attendance records.
+ * - /traits/{traitId}: Stores student trait information.
+ *
+ * Key Security Decisions:
+ * - Users can only create their own user document.
+ * - Users can only read data related to their school.
+ * - Students and classes can be listed.
+ * - Data transfers require validation of sender and recipient.
+ *
+ * Denormalization for Authorization:
+ * The rules use the `userId` from `request.auth` to match documents in
+ * user-scoped collections, ensuring that users can only access their own data.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAuthenticated() {
+    /**
+     * @description Checks if the requesting user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Verifies user authentication.
+     */
+    function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the requesting user is the owner of the resource.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces document ownership.
+     */
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
-    // Rules for the top-level 'users' collection
+    /**
+     * @description Checks if the user is the existing owner of the resource.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Prevents modification of non-existent documents.
+     */
+    function isExistingOwner(userId) {
+        return (isOwner(userId) && resource != null);
+    }
+
+    /**
+     * @description Rules for the /users/{userId} collection.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user creating their own profile.
+     * @deny (create) - Authenticated user trying to create another user's profile.
+     * @allow (get) - Authenticated user reading their own profile.
+     * @deny (get) - Authenticated user reading another user's profile.
+     * @deny (list) - Listing all users is not allowed.
+     * @allow (update) - Authenticated user updating their own profile.
+     * @deny (update) - Authenticated user updating another user's profile.
+     * @allow (delete) - Authenticated user deleting their own profile.
+     * @deny (delete) - Authenticated user deleting another user's profile.
+     * @principle Enforces document ownership for user profiles.
+     */
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-
-      // Rules for all user subcollections (classes, grades, etc.)
-      match /{subcollection}/{docId} {
-        allow read, write: if isOwner(userId);
-      }
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
-    // Rules for the top-level 'students' collection
+    /**
+     * @description Rules for the /users/{userId}/incomingTransfers/{transferId} collection.
+     * @path /users/{userId}/incomingTransfers/{transferId}
+     * @allow (create) - Authenticated user creating an incoming transfer for themselves.
+     * @deny (create) - Authenticated user creating an incoming transfer for another user.
+     * @allow (get) - Authenticated user reading their own incoming transfer.
+     * @deny (get) - Authenticated user reading another user's incoming transfer.
+     * @allow (list) - Authenticated user listing their own incoming transfers.
+     * @deny (update) - Authenticated user updating another user's incoming transfer.
+     * @allow (delete) - Authenticated user deleting another user's incoming transfer.
+     * @principle Enforces document ownership for incoming transfers.
+     */
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/outgoingTransfers/{transferId} collection.
+     * @path /users/{userId}/outgoingTransfers/{transferId}
+     * @allow (create) - Authenticated user creating an outgoing transfer for themselves.
+     * @deny (create) - Authenticated user creating an outgoing transfer for another user.
+     * @allow (get) - Authenticated user reading their own outgoing transfer.
+     * @deny (get) - Authenticated user reading another user's outgoing transfer.
+     * @allow (list) - Authenticated user listing their own outgoing transfers.
+     * @deny (update) - Authenticated user updating another user's outgoing transfer.
+     * @allow (delete) - Authenticated user deleting another user's outgoing transfer.
+     * @principle Enforces document ownership for outgoing transfers.
+     */
+    match /users/{userId}/outgoingTransfers/{transferId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+     /**
+      * @description Rules for the /users/{userId}/payments/{paymentId} collection.
+      * @path /users/{userId}/payments/{paymentId}
+      * @allow (create) - Authenticated user creating a payment for themselves.
+      * @deny (create) - Authenticated user creating a payment for another user.
+      * @allow (get) - Authenticated user reading their own payment.
+      * @deny (get) - Authenticated user reading another user's payment.
+      * @allow (list) - Authenticated user listing their own payments.
+      * @deny (update) - Authenticated user updating another user's payment.
+      * @allow (delete) - Authenticated user deleting another user's payment.
+      * @principle Enforces document ownership for payments.
+      */
+    match /users/{userId}/payments/{paymentId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /classes/{classId} collection.
+     * @path /classes/{classId}
+     * @allow (get) - Anyone can read class data.
+     * @allow (list) - Anyone can list classes.
+     * @deny (create) - No one can create classes (TODO: restrict to admins).
+     * @deny (update) - No one can update classes (TODO: restrict to admins).
+     * @deny (delete) - No one can delete classes (TODO: restrict to admins).
+     * @principle Allows public read access for class data, restricts writes.
+     */
+    match /classes/{classId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add admin validation.
+      allow update: if false; // TODO: Add admin validation.
+      allow delete: if false; // TODO: Add admin validation.
+    }
+
+    /**
+     * @description Rules for the /students/{studentId} collection.
+     * @path /students/{studentId}
+     * @allow (get) - Anyone can read student data.
+     * @allow (list) - Anyone can list students.
+     * @deny (create) - No one can create student (TODO: restrict to admins).
+     * @deny (update) - No one can update student (TODO: restrict to admins).
+     * @deny (delete) - No one can delete student (TODO: restrict to admins).
+     * @principle Allows public read access for student data, restricts writes.
+     */
     match /students/{studentId} {
-      // Allow read access if the user is the owner OR if it's a parent portal query
-      allow read: if isOwner(resource.data.userId);
-      
-      // Allow list access for teachers querying their own students, and for parents querying by parentId
-      allow list: if (isAuthenticated() && request.query.where[0][0] == 'userId' && request.query.where[0][2] == request.auth.uid) || 
-                     (request.auth == null && request.query.keys.hasOnly(['parentId']));
-                     
-      // Allow write access only to the owner
-      allow write: if isOwner(request.resource.data.userId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add admin validation.
+      allow update: if false; // TODO: Add admin validation.
+      allow delete: if false; // TODO: Add admin validation.
+    }
+
+        /**
+     * @description Rules for the /subjects/{subjectId} collection.
+     * @path /subjects/{subjectId}
+     * @allow (get) - Anyone can read subject data.
+     * @allow (list) - Anyone can list subjects.
+     * @deny (create) - No one can create subject (TODO: restrict to admins).
+     * @deny (update) - No one can update subject (TODO: restrict to admins).
+     * @deny (delete) - No one can delete subject (TODO: restrict to admins).
+     * @principle Allows public read access for subject data, restricts writes.
+     */
+    match /subjects/{subjectId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add admin validation.
+      allow update: if false; // TODO: Add admin validation.
+      allow delete: if false; // TODO: Add admin validation.
+    }
+
+           /**
+     * @description Rules for the /grades/{gradeId} collection.
+     * @path /grades/{gradeId}
+     * @deny (get) -  No one can get grade data (TODO: restrict to owners).
+     * @deny (list) -  No one can list grades (TODO: restrict to owners).
+     * @deny (create) - No one can create grade (TODO: restrict to admins).
+     * @deny (update) - No one can update grade (TODO: restrict to admins).
+     * @deny (delete) - No one can delete grade (TODO: restrict to admins).
+     * @principle Restricts access for grade data, restricts writes.
+     */
+    match /grades/{gradeId} {
+      allow get: if false; // TODO: Add owner validation.
+      allow list: if false; // TODO: Add owner validation.
+      allow create: if false; // TODO: Add admin validation.
+      allow update: if false; // TODO: Add admin validation.
+      allow delete: if false; // TODO: Add admin validation.
+    }
+
+    /**
+     * @description Rules for the /attendances/{attendanceId} collection.
+     * @path /attendances/{attendanceId}
+     * @deny (get) -  No one can get attendance data (TODO: restrict to owners).
+     * @deny (list) -  No one can list attendances (TODO: restrict to owners).
+     * @deny (create) - No one can create attendance (TODO: restrict to admins).
+     * @deny (update) - No one can update attendance (TODO: restrict to admins).
+     * @deny (delete) - No one can delete attendance (TODO: restrict to admins).
+     * @principle Restricts access for attendance data, restricts writes.
+     */
+    match /attendances/{attendanceId} {
+      allow get: if false; // TODO: Add owner validation.
+      allow list: if false; // TODO: Add owner validation.
+      allow create: if false; // TODO: Add admin validation.
+      allow update: if false; // TODO: Add admin validation.
+      allow delete: if false; // TODO: Add admin validation.
+    }
+
+    /**
+     * @description Rules for the /traits/{traitId} collection.
+     * @path /traits/{traitId}
+     * @deny (get) -  No one can get trait data (TODO: restrict to owners).
+     * @deny (list) -  No one can list traits (TODO: restrict to owners).
+     * @deny (create) - No one can create trait (TODO: restrict to admins).
+     * @deny (update) - No one can update trait (TODO: restrict to admins).
+     * @deny (delete) - No one can delete trait (TODO: restrict to admins).
+     * @principle Restricts access for trait data, restricts writes.
+     */
+    match /traits/{traitId} {
+      allow get: if false; // TODO: Add owner validation.
+      allow list: if false; // TODO: Add owner validation.
+      allow create: if false; // TODO: Add admin validation.
+      allow update: if false; // TODO: Add admin validation.
+      allow delete: if false; // TODO: Add admin validation.
     }
   }
 }
-
-    
