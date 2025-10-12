@@ -28,7 +28,7 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
-  const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'students'), where('classId', '==', selectedClass.id), where('userId', '==', user.uid)) : null, [firestore, user, selectedClass]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   const allAttendanceForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);

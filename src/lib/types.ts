@@ -10,6 +10,7 @@ export type User = {
 
 export type Student = {
   id:string;
+  userId: string; // The ID of the user (teacher/admin) this student belongs to
   studentId: string;
   parentId: string;
   name: string;
@@ -148,5 +149,3 @@ export type Settings = {
   userCode: string;
   studentCounter?: number;
 };
-
-    

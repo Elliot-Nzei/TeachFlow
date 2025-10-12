@@ -3,96 +3,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Rules for the top-level 'users' collection
+    // Users can only read and write to their own user document.
     match /users/{userId} {
-      // Allow users to read their own document
-      allow get: if isOwner(userId);
-      // Allow any authenticated user to search for other users by userCode (for transfers)
-      allow list: if isAuthenticated();
-      // Allow users to create and update their own document
-      allow write: if isOwner(userId);
+      allow read, write: if request.auth.uid == userId;
 
-      // Rules for classes
-      match /classes/{classId} {
-        // Owner has full access to their own classes
-        allow read, write: if isOwner(userId);
-        
-        // Nested students in a class
-        match /students/{studentId} {
-          allow read, write: if isOwner(userId);
-        }
-        
-        // Any other nested collections
-        match /{nested=**} {
-          allow read, write: if isOwner(userId);
-        }
-      }
-      
-      // Rules for students
-      match /students/{studentId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for subjects
-      match /subjects/{subjectId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for grades
-      match /grades/{gradeId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for attendance
-      match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for traits
-      match /traits/{traitId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for managing INCOMING transfers
-      match /incomingTransfers/{transferId} {
-        // User can read their own incoming transfers
-        allow read: if isOwner(userId);
-        // Any authenticated user can create an incoming transfer for another user
-        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
-        // User can update and delete their own incoming transfer
-        allow update, delete: if isOwner(userId);
-      }
-
-      // Rules for managing OUTGOING transfers
-      match /outgoingTransfers/{transferId} {
-        // User can read and write their own outgoing transfers
-        allow read, write: if isOwner(userId);
-        
-        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
-        allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
-        
-        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
-        allow update: if isAuthenticated() && 
-                         resource.data.toUserId == request.auth.uid &&
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
-      }
-
-      // Catch-all for any other subcollections
+      // Users can manage their own subcollections.
       match /{subcollection}/{docId} {
-        allow read, write: if isOwner(userId);
-
-        match /{nested=**} {
-           allow read, write: if isOwner(userId);
-        }
+        allow read, write, delete: if request.auth.uid == userId;
       }
+    }
+
+    // Public access for the Parent Portal.
+    // Anyone can query the students collection ONLY by parentId.
+    // They cannot list all students, only fetch specific ones they have the ID for.
+    match /students/{studentId} {
+       allow list: if request.auth == null && request.query.keys.hasAny(['parentId']);
+       allow get: if true; // Allows fetching related data after initial query
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
