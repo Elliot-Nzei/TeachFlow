@@ -13,14 +13,17 @@ service cloud.firestore {
       }
     }
 
-    // Public access for the Parent Portal.
-    // Anyone can query the students collection ONLY by parentId.
-    // They cannot list all students, only fetch specific ones they have the ID for.
+    // Authenticated users can query the students collection by their own userId.
     match /students/{studentId} {
-       allow list: if request.auth == null && request.query.keys.hasAny(['parentId']);
-       allow get: if true; // Allows fetching related data after initial query
+      allow read, write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Public access for the Parent Portal:
+      // Allow unauthenticated users to LIST students ONLY IF they are querying by 'parentId'.
+      // This is secure because they can't browse all students; they must know the exact ID.
+      allow list: if request.auth == null && 'parentId' in request.query.where;
     }
 
+    // Default deny all other access.
     match /{document=**} {
       allow read, write: if false;
     }
