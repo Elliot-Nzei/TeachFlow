@@ -72,7 +72,7 @@ export default function TransferPage() {
   const classesQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemo(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const studentsQuery = useMemo(() => user ? query(collection(firestore, 'students'), where('userId', '==', user.uid)) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   const incomingTransfersQuery = useMemo(
@@ -169,7 +169,7 @@ export default function TransferPage() {
             
             payload.data = classSnap.data();
 
-            const studentsInClassQuery = query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', dataItem));
+            const studentsInClassQuery = query(collection(firestore, 'students'), where('classId', '==', dataItem), where('userId', '==', user.uid));
             const studentsSnap = await getDocs(studentsInClassQuery);
             const studentDocs = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
             payload.students = studentDocs;
@@ -181,7 +181,7 @@ export default function TransferPage() {
             }
 
         } else if (dataType === 'Single Student Record') {
-            const studentRef = doc(firestore, `users/${user.uid}/students/${dataItem}`);
+            const studentRef = doc(firestore, `students/${dataItem}`);
             const studentSnap = await getDoc(studentRef);
             if (!studentSnap.exists()) throw new Error('Selected student not found.');
             payload.data = { ...studentSnap.data(), id: studentSnap.id } as Student;
@@ -248,7 +248,7 @@ export default function TransferPage() {
     
     try {
         const studentIdMap = new Map<string, string>(); // Maps original student ID to new/existing student doc ID
-        const recipientStudentsRef = collection(firestore, 'users', user.uid, 'students');
+        const recipientStudentsRef = collection(firestore, 'students');
 
         const processStudent = async (student: Student) => {
             const { id: originalStudentDocId, ...studentData } = student;
@@ -276,6 +276,7 @@ export default function TransferPage() {
                   parentId: student.parentId, // Explicitly carry over the parentId
                   transferredFrom: transfer.fromUserId,
                   transferredAt: serverTimestamp(),
+                  userId: user.uid, // Set the userId to the recipient's UID
                 });
                 finalStudentDocId = newStudentRef.id;
             }
@@ -317,7 +318,7 @@ export default function TransferPage() {
             }
 
             for (const studentId of studentDocIdsToMerge) {
-                const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
+                const studentRefToUpdate = doc(firestore, 'students', studentId);
                 batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
             }
             
@@ -708,5 +709,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-    
