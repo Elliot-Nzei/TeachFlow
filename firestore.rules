@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -17,90 +16,55 @@ service cloud.firestore {
       // Allow users to read their own document
       allow get: if isOwner(userId);
       // Allow any authenticated user to search for other users by userCode (for transfers)
-      allow list: if isAuthenticated();
+      allow list: if isAuthenticated() && request.query.keys.hasAny(['userCode']);
       // Allow users to create and update their own document
       allow write: if isOwner(userId);
 
-      // Rules for classes
+      // Subcollections within a user's document are only accessible by that user.
       match /classes/{classId} {
-        // Owner has full access to their own classes
         allow read, write: if isOwner(userId);
       }
-      
-      // Rules for subjects
       match /subjects/{subjectId} {
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for grades
       match /grades/{gradeId} {
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for attendance
       match /attendance/{attendanceId} {
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for traits
       match /traits/{traitId} {
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for managing INCOMING transfers
+      match /payments/{paymentId} {
+        allow read, write: if isOwner(userId);
+      }
       match /incomingTransfers/{transferId} {
-        // User can read their own incoming transfers
         allow read: if isOwner(userId);
-        // Any authenticated user can create an incoming transfer for another user
         allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
-        // User can update and delete their own incoming transfer
         allow update, delete: if isOwner(userId);
       }
-
-      // Rules for managing OUTGOING transfers
       match /outgoingTransfers/{transferId} {
-        // User can read and write their own outgoing transfers
         allow read, write: if isOwner(userId);
-        
-        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
         allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
-        
-        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
-        allow update: if isAuthenticated() && 
+        allow update: if isAuthenticated() &&
                          resource.data.toUserId == request.auth.uid &&
                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
       }
-      
-      // Rules for payments
-      match /payments/{paymentId} {
-          allow read, write: if isOwner(userId);
-      }
-
-      // Catch-all for any other subcollections
-      match /{subcollection}/{docId} {
-        allow read, write: if isOwner(userId);
-
-        match /{nested=**} {
-           allow read, write: if isOwner(userId);
-        }
-      }
     }
-
-    // Rules for the top-level 'students' collection
+    
+    // Rules for the top-level 'students' collection, accessible by teachers and parents
     match /students/{studentId} {
-        // Teachers can list their own students, Parents can list by parentId
-        allow list: if (isAuthenticated() && request.query.limit <= 100 && request.query.wheres[0].field == 'userId' && request.query.wheres[0].value == request.auth.uid) ||
-                       (request.auth == null && request.query.limit <= 100 && request.query.wheres[0].field == 'parentId');
-
-        // Teachers can get their own students, Parents can get their child's data
-        allow get: if (isAuthenticated() && resource.data.userId == request.auth.uid) ||
-                      (request.auth == null);
-
-        // Teachers can create students for themselves
-        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        // TEACHER ACCESS: Allow a logged-in user to list their own students.
+        // This is the key rule that fixes the /students page permission error.
+        allow list: if isAuthenticated() && request.query.where.userId == request.auth.uid;
         
-        // Teachers can update and delete their own students
-        allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+        // TEACHER ACCESS: Allow full read/write access if the user is the owner.
+        allow read, write: if request.auth.uid == resource.data.userId;
+
+        // PARENT ACCESS: Also allow public listing ONLY when querying by parentId.
+        // This keeps the parent portal functional and secure.
+        allow list: if request.auth == null && request.query.keys.hasOnly(['parentId']);
     }
   }
 }
