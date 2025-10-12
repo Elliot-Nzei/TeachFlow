@@ -50,7 +50,13 @@ export default function GradesPage() {
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
   
-  const allGradesForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const studentIdsInClass = useMemo(() => studentsInSelectedClass?.map(s => s.id) || [], [studentsInSelectedClass]);
+
+  const allGradesForClassQuery = useMemoFirebase(() => {
+    if (!user || !selectedClass || studentIdsInClass.length === 0) return null;
+    return query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIdsInClass));
+  }, [firestore, user, selectedClass, studentIdsInClass]);
+
   const { data: allGradesForClass, isLoading: isLoadingAllGrades } = useCollection<Grade>(allGradesForClassQuery);
   
   useEffect(() => {
@@ -389,3 +395,5 @@ export default function GradesPage() {
     </div>
   );
 }
+
+    
