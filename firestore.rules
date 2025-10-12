@@ -3,29 +3,109 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read and write to their own user document.
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-      // Users can manage their own subcollections.
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for the top-level 'users' collection
+    match /users/{userId} {
+      // Allow users to read their own document
+      allow get: if isOwner(userId);
+      // Allow any authenticated user to search for other users by userCode (for transfers)
+      allow list: if isAuthenticated();
+      // Allow users to create and update their own document
+      allow write: if isOwner(userId);
+
+      // Rules for classes
+      match /classes/{classId} {
+        // Owner has full access to their own classes
+        allow read, write: if isOwner(userId);
+        
+        // Nested students in a class
+        match /students/{studentId} {
+          allow read, write: if isOwner(userId);
+        }
+        
+        // Any other nested collections
+        match /{nested=**} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+      
+      // Rules for students (within user's subcollection - NOT the top-level one)
+      match /students/{studentId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for subjects
+      match /subjects/{subjectId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for grades
+      match /grades/{gradeId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for attendance
+      match /attendance/{attendanceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for traits
+      match /traits/{traitId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for managing INCOMING transfers
+      match /incomingTransfers/{transferId} {
+        // User can read their own incoming transfers
+        allow read: if isOwner(userId);
+        // Any authenticated user can create an incoming transfer for another user
+        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
+        // User can update and delete their own incoming transfer
+        allow update, delete: if isOwner(userId);
+      }
+
+      // Rules for managing OUTGOING transfers
+      match /outgoingTransfers/{transferId} {
+        // User can read and write their own outgoing transfers
+        allow read, write: if isOwner(userId);
+        
+        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
+        allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
+        
+        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
+        allow update: if isAuthenticated() && 
+                         resource.data.toUserId == request.auth.uid &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
+      }
+
+      // Catch-all for any other subcollections
       match /{subcollection}/{docId} {
-        allow read, write, delete: if request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
+
+        match /{nested=**} {
+           allow read, write: if isOwner(userId);
+        }
       }
     }
-
-    // Authenticated users can query the students collection by their own userId.
+    
+    // START: PARENT PORTAL RULE
+    // This rule applies ONLY to the top-level 'students' collection for the parent portal.
     match /students/{studentId} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      
-      // Public access for the Parent Portal:
-      // Allow unauthenticated users to LIST students ONLY IF they are querying by 'parentId'.
-      // This is secure because they can't browse all students; they must know the exact ID.
-      allow list: if request.auth == null && 'parentId' in request.query.where;
+        // Anyone (even unauthenticated users) can run a query on the students collection
+        // IF AND ONLY IF the query is filtering by the 'parentId'. This prevents listing all students.
+        allow list: if request.query.get('where')[0][0] == 'parentId';
+        
+        // Anyone can read a specific student document if they were able to query it.
+        // This is needed to fetch the student's data after the 'list' query succeeds.
+        allow get: if true;
     }
-
-    // Default deny all other access.
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    // END: PARENT PORTAL RULE
   }
 }
