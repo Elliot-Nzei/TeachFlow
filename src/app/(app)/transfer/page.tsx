@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar } from 'lucide-react';
+import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
@@ -26,6 +26,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
 
@@ -527,9 +534,26 @@ export default function TransferPage() {
 
   return (
     <>
-      <div className="mb-8">
+      <div className="flex items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold font-headline">Data Transfer</h1>
-        <p className="text-muted-foreground">Securely transfer data to another user with their unique code.</p>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                    <p className="font-bold mb-2">About Data Transfer</p>
+                    <p className="mb-2">This feature allows you to securely share school data with another registered PeerPrep user.</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li><strong>Full Class Data:</strong> Transfers a class, its subjects, and its full student roster including all their academic records (traits, etc).</li>
+                        <li><strong>Single Student Record:</strong> Transfers an individual student's complete profile.</li>
+                        <li><strong>Lesson Note:</strong> Shares a lesson note from your generation history.</li>
+                    </ul>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
       </div>
 
       <div className="space-y-8">
@@ -668,5 +692,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-    
