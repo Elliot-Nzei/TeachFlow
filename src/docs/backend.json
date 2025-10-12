@@ -107,6 +107,10 @@
         "studentId": {
           "type": "string"
         },
+        "parentId": {
+            "type": "string",
+            "description": "A unique, system-generated ID for parents to access student records."
+        },
         "name": {
           "type": "string"
         },
@@ -136,7 +140,8 @@
       },
       "required": [
         "studentId",
-        "name"
+        "name",
+        "parentId"
       ]
     },
     "Subject": {

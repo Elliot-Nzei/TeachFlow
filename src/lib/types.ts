@@ -11,6 +11,7 @@ export type User = {
 export type Student = {
   id:string;
   studentId: string;
+  parentId: string;
   name: string;
   className: string;
   classId: string;

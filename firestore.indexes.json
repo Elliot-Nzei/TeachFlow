@@ -24,10 +24,14 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+        "collectionGroup": "students",
+        "queryScope": "COLLECTION_GROUP",
+        "fields": [
+            { "fieldPath": "parentId", "order": "ASCENDING" }
+        ]
     }
   ],
   "fieldOverrides": []
 }
-
-
-    

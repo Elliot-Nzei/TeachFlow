@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, Clipboard } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -260,6 +260,15 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
     }
   };
 
+  const handleCopyParentId = () => {
+    if (student.parentId) {
+      navigator.clipboard.writeText(student.parentId);
+      toast({
+        title: 'Parent ID Copied',
+        description: 'The Parent ID has been copied to your clipboard.',
+      });
+    }
+  };
 
   return (
     <>
@@ -273,6 +282,12 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 <div>
                     <h2 className="text-2xl font-bold font-headline">{student.name}</h2>
                     <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="font-mono text-sm text-muted-foreground">{student.parentId}</p>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopyParentId}>
+                            <Clipboard className="h-4 w-4" />
+                        </Button>
+                    </div>
                     {student.className && <p className="text-muted-foreground">{student.className}</p>}
                 </div>
             </div>

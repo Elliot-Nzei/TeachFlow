@@ -8,7 +8,7 @@ import {
   type GenerateReportCardInput,
   type GenerateReportCardOutput,
 } from '@/ai/flows/generate-report-card';
-import { Button } from '@/components/ui/button';
+import { Button, ButtonProps } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade } from '@/lib/types';
@@ -44,6 +44,12 @@ type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   position: number;
   totalStudents: number;
 };
+
+type ReportCardGeneratorProps = {
+    studentId?: string;
+    buttonLabel?: string;
+    buttonVariant?: ButtonProps['variant'];
+}
 
 const getGradeColor = (score: number) => {
     if (score >= 70) return 'bg-green-500';
@@ -224,7 +230,7 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
 };
 
 
-export default function ReportCardGenerator() {
+export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate Reports', buttonVariant = 'default' }: ReportCardGeneratorProps) {
   const { firestore, user } = useFirebase();
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -241,7 +247,13 @@ export default function ReportCardGenerator() {
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
 
-  const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
+  const studentsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    if (studentId) {
+      return query(collection(firestore, 'users', user.uid, 'students'), where('id', '==', studentId));
+    }
+    return query(collection(firestore, 'users', user.uid, 'students'));
+  }, [firestore, user, studentId]);
   const { data: allStudents, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
   const allGradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades')) : null, [firestore, user]);
@@ -312,7 +324,9 @@ export default function ReportCardGenerator() {
   }, [settings, toast]);
 
   const handleGenerateReports = async () => {
-    if (!selectedClass && !selectedStudent) {
+    const finalSelectedStudent = studentId ? allStudents?.find(s => s.id === studentId) : selectedStudent;
+
+    if (!selectedClass && !finalSelectedStudent) {
       toast({
         variant: 'destructive',
         title: 'Selection Required',
@@ -330,7 +344,7 @@ export default function ReportCardGenerator() {
     setCurrentStudent('');
     setGeneratedReports([]);
 
-    const targets: Student[] = selectedStudent ? [selectedStudent] : studentsInClass;
+    const targets: Student[] = finalSelectedStudent ? [finalSelectedStudent] : studentsInClass;
     const term = settings!.currentTerm;
     const session = settings!.currentSession;
     
@@ -440,8 +454,8 @@ export default function ReportCardGenerator() {
       setGeneratedReports(newReports);
 
       if (newReports.length === 0) {
-          const description = selectedStudent
-              ? `No valid grades found for ${selectedStudent.name} for ${term}, ${session}.`
+          const description = finalSelectedStudent
+              ? `No valid grades found for ${finalSelectedStudent.name} for ${term}, ${session}.`
               : `No students in ${selectedClass?.name} have valid grades for ${term}, ${session}.`;
           toast({
               variant: "destructive",
@@ -550,8 +564,9 @@ export default function ReportCardGenerator() {
             doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
         }
         
-        const fileName = selectedStudent
-            ? `report-card-${selectedStudent.name.replace(' ', '-')}.pdf`
+        const finalSelectedStudent = studentId ? allStudents?.find(s => s.id === studentId) : selectedStudent;
+        const fileName = finalSelectedStudent
+            ? `report-card-${finalSelectedStudent.name.replace(' ', '-')}.pdf`
             : `report-cards-${selectedClass?.name.replace(' ', '-')}.pdf`;
         doc.save(fileName);
 
@@ -572,12 +587,26 @@ export default function ReportCardGenerator() {
 
   const isLoadingData = isLoadingClasses || isLoadingStudents || isLoadingGrades || isLoadingTraits || isLoadingAttendance;
   
-  if (isLoadingData) {
+  if (isLoadingData && !studentId) {
       return (
           <div className="space-y-6">
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-64 w-full" />
           </div>
+      )
+  }
+
+  // If component is used for a single student (e.g. from parent portal)
+  if (studentId) {
+      return (
+          <Button onClick={handleGenerateReports} disabled={loading} variant={buttonVariant}>
+            {loading ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                </>
+            ) : <><Download className="mr-2 h-4 w-4" />{buttonLabel}</>}
+          </Button>
       )
   }
 
@@ -689,7 +718,7 @@ export default function ReportCardGenerator() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Generating...
                     </>
-                ) : 'Generate Reports'}
+                ) : buttonLabel}
               </Button>
             </CardFooter>
           </Card>

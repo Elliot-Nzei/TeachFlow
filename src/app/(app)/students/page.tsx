@@ -114,11 +114,13 @@ export default function StudentsPage() {
 
         const newStudentCount = (settings.studentCounter || 0) + 1;
         const newStudentId = `${schoolAcronym}-${String(newStudentCount).padStart(3, '0')}`;
+        const parentId = `PARENT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
         
         try {
             const studentsCollection = collection(firestore, 'users', user.uid, 'students');
             const newStudentDoc = await addDoc(studentsCollection, {
                 studentId: newStudentId,
+                parentId: parentId,
                 name: studentName,
                 // Assign empty strings if no class is selected
                 className: studentClass?.name || '',
