@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Avatar, AvatarFallback, AvatarImage } from '@/componentsui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, Save, Users, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Class, Student, Attendance } from '@/lib/types';
