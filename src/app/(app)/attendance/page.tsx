@@ -31,7 +31,14 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  const allAttendanceForClassQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
+  const studentIdsInClass = useMemo(() => students?.map(s => s.id) || [], [students]);
+
+  const allAttendanceForClassQuery = useMemoFirebase(() => {
+    if (!user || studentIdsInClass.length === 0) return null;
+    // Query by studentId instead of classId to fetch all historical/transferred records
+    return query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIdsInClass));
+  }, [firestore, user, studentIdsInClass]);
+
   const { data: allAttendanceForClass, isLoading: isLoadingAttendance } = useCollection<Attendance>(allAttendanceForClassQuery);
   
   const attendanceMap = useMemo(() => {
@@ -270,3 +277,5 @@ export default function AttendancePage() {
   
   return <ClassSelector onSelectClass={setSelectedClass} />;
 }
+
+    
