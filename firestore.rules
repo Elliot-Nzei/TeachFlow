@@ -3,28 +3,23 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow public read access to the user counter document.
-    // Disallow any public writes.
-    match /metadata/userCount {
+
+    // --- Public Data Rules ---
+    // Matches the metadata collection specifically.
+    match /metadata/{docId} {
+      // Allow anyone to read documents in the metadata collection.
       allow read: if true;
+      
+      // Deny all write operations from the client-side.
+      // Writes should only happen from a trusted backend environment.
       allow write: if false;
     }
 
-    // Secure user-specific data
-    match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
-    }
-    
-    // Secure all subcollections within a user's document
+    // --- User-Specific Data Rules ---
+    // Secure all documents within each user's private space.
     match /users/{userId}/{document=**} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Allow logged-in users to find other users by their userCode for transfers
-    match /users/{userId} {
-      allow get: if request.auth != null;
+      // Only allow a user to read or write their own documents.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
