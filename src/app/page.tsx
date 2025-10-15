@@ -3,11 +3,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, ArrowRightCircle, CheckCircle, Send, FileQuestion, DollarSign, Linkedin } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, FileDown, Notebook, ArrowRightCircle, CheckCircle, Send, FileQuestion, DollarSign, Linkedin, Menu } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -59,7 +60,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <Logo />
-        <nav className="ml-auto flex gap-2 sm:gap-4">
+        <nav className="ml-auto hidden md:flex gap-2 sm:gap-4">
           <Link href="/parents" passHref>
             <Button variant="ghost">Parents Portal</Button>
           </Link>
@@ -72,6 +73,27 @@ export default function Home() {
             </Button>
           </Link>
         </nav>
+        <div className="ml-auto md:hidden">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <Menu className="h-6 w-6" />
+                        <span className="sr-only">Toggle menu</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <Link href="/parents" passHref>
+                        <DropdownMenuItem>Parents Portal</DropdownMenuItem>
+                    </Link>
+                    <Link href="/login" passHref>
+                        <DropdownMenuItem>Login</DropdownMenuItem>
+                    </Link>
+                    <Link href="/register" passHref>
+                        <DropdownMenuItem>Get Started</DropdownMenuItem>
+                    </Link>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </header>
       <main className="flex-1">
         <section className="relative w-full h-[70vh] md:h-[80vh] flex items-center justify-center text-center text-white">
