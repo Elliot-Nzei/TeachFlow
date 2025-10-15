@@ -1,4 +1,5 @@
 
+'use client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,9 @@ import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useDoc, useFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useMemo }from 'react';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -54,6 +58,21 @@ const features = [
     description: 'Share class rosters, academic records, and lesson notes securely with other users via a unique transfer code.',
   },
 ];
+
+
+function UserCounter() {
+    const { firestore } = useFirebase();
+    const counterQuery = useMemo(() => firestore ? doc(firestore, 'metadata', 'userCount') : null, [firestore]);
+    const { data: userCountDoc } = useDoc<{ count: number }>(counterQuery);
+
+    const count = userCountDoc?.count || 0;
+
+    return (
+        <div className="text-sm mt-6 animate-fade-in">
+            Join over <span className="font-bold text-lg text-primary">{count.toLocaleString()}</span> educators revolutionizing their schools.
+        </div>
+    )
+}
 
 export default function Home() {
   return (
@@ -127,6 +146,7 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
+            <UserCounter />
           </div>
         </section>
 
