@@ -3,7 +3,7 @@
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -238,18 +238,52 @@ export default function PaymentsPage() {
                         </div>
 
                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
+                            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div>
                                     <CardTitle>Payment Overview for {selectedClass.name}</CardTitle>
-                                    <CardDescription>Click on a student row to add or update a payment.</CardDescription>
+                                    <CardDescription>Click on a student row or card to add or update a payment.</CardDescription>
                                 </div>
-                                <div className="relative w-full max-w-xs">
+                                <div className="relative w-full sm:max-w-xs">
                                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                   <Input placeholder="Search students..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="border rounded-md">
+                                {/* Mobile View: Card List */}
+                                <div className="md:hidden space-y-4">
+                                  {isLoading ? (
+                                    Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)
+                                  ) : filteredRecords.length > 0 ? (
+                                    filteredRecords.map(record => (
+                                      <Card key={record.studentId} onClick={() => handleEditPayment(record)} className="cursor-pointer border-l-4 border-primary">
+                                        <CardHeader className="pb-2">
+                                          <div className="flex justify-between items-start">
+                                            <div>
+                                              <CardTitle className="text-base">{record.studentName}</CardTitle>
+                                              <CardDescription className="font-mono text-xs">{record.studentIdentifier}</CardDescription>
+                                            </div>
+                                            {getStatusBadge(record.status)}
+                                          </div>
+                                        </CardHeader>
+                                        <CardContent className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                            <div>
+                                                <p className="text-muted-foreground">Amount Paid</p>
+                                                <p className="font-semibold">₦{record.amountPaid.toLocaleString()}</p>
+                                            </div>
+                                             <div>
+                                                <p className="text-muted-foreground">Balance</p>
+                                                <p className="font-semibold">₦{record.balance.toLocaleString()}</p>
+                                            </div>
+                                        </CardContent>
+                                      </Card>
+                                    ))
+                                  ) : (
+                                    <div className="h-24 text-center flex items-center justify-center">No students found in this class.</div>
+                                  )}
+                                </div>
+
+                                {/* Desktop View: Table */}
+                                <div className="hidden md:block border rounded-md">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -270,8 +304,8 @@ export default function PaymentsPage() {
                                                 filteredRecords.map(record => (
                                                     <TableRow key={record.studentId} onClick={() => handleEditPayment(record)} className="cursor-pointer">
                                                         <TableCell className="font-medium">{record.studentName}<br/><span className="text-xs text-muted-foreground font-mono">{record.studentIdentifier}</span></TableCell>
-                                                        <TableCell>{record.amountPaid.toLocaleString()}</TableCell>
-                                                        <TableCell>{record.balance.toLocaleString()}</TableCell>
+                                                        <TableCell>₦{record.amountPaid.toLocaleString()}</TableCell>
+                                                        <TableCell>₦{record.balance.toLocaleString()}</TableCell>
                                                         <TableCell>{getStatusBadge(record.status)}</TableCell>
                                                     </TableRow>
                                                 ))
