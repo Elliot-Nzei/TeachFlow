@@ -26,10 +26,9 @@ type TimetableGridProps = {
   isSheetOpen: boolean;
   setIsSheetOpen: (open: boolean) => void;
   onTimetableLoad: (timetable: Timetable | null) => void;
-  viewMode?: 'desktop' | 'mobile';
 };
 
-export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOpen, onTimetableLoad, viewMode }: TimetableGridProps) {
+export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOpen, onTimetableLoad }: TimetableGridProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
 
@@ -44,6 +43,17 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   [firestore, user, selectedClass]);
   
   const { data: timetableData, isLoading } = useDoc<Timetable>(timetableQuery);
+
+  const [isMobileView, setIsMobileView] = useState(false);
+    
+  useEffect(() => {
+      const checkScreenSize = () => {
+          setIsMobileView(window.innerWidth < 768);
+      };
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+      return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   useEffect(() => {
     if (timetableData) {
@@ -126,8 +136,6 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
     toast({ title: 'Success', description: 'Timetable saved successfully.' });
     setIsSheetOpen(false);
   };
-  
-  const effectiveViewMode = viewMode || (typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop');
 
   if (isLoading) {
     return <Skeleton className="h-[500px] w-full" />
@@ -136,7 +144,7 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   return (
     <>
       {/* Desktop Grid View */}
-      {effectiveViewMode === 'desktop' && (
+      {!isMobileView && (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs xl:text-sm">
             <thead>
@@ -173,8 +181,8 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
         </div>
       )}
 
-      {/* Mobile Accordion View */}
-      {effectiveViewMode === 'mobile' && (
+      {/* Mobile Card View */}
+      {isMobileView && (
         <div className="space-y-3">
           {daysOfWeek.map(day => (
               <Card key={day}>
