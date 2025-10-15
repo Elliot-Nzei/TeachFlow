@@ -26,7 +26,25 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
-    window.print();
+    const printableElement = document.getElementById('printable-timetable');
+    if(printableElement) {
+        const printWindow = window.open('', '', 'height=800,width=1200');
+        printWindow?.document.write('<html><head><title>Print Timetable</title>');
+        // Inject styles
+        const styles = Array.from(document.styleSheets)
+          .map(styleSheet => {
+            try {
+              return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
+            } catch (e) {
+              return '';
+            }
+          }).join('\n');
+        printWindow?.document.write(`<style>${styles}</style></head><body>`);
+        printWindow?.document.write(printableElement.innerHTML);
+        printWindow?.document.write('</body></html>');
+        printWindow?.document.close();
+        printWindow?.print();
+    }
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
@@ -44,8 +62,8 @@ export default function TimetablePage() {
 
     try {
         const canvas = await html2canvas(timetableElement, {
-            scale: 2,
-            backgroundColor: 'white', // Ensure background is white for PDF
+            scale: 2, // Increase resolution
+            backgroundColor: null, // Use transparent background
         });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
@@ -56,26 +74,24 @@ export default function TimetablePage() {
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = imgWidth / imgHeight;
-        
-        let finalWidth = pdfWidth - 20; // with margins
-        let finalHeight = finalWidth / ratio;
-        
-        if (finalHeight > pdfHeight - 20) {
-            finalHeight = pdfHeight - 20;
-            finalWidth = finalHeight * ratio;
-        }
-
-        const x = (pdfWidth - finalWidth) / 2;
-        const y = (pdfHeight - finalHeight) / 2;
+        const margin = 10;
+        const usableWidth = pdfWidth - margin * 2;
         
         pdf.setFontSize(16);
-        pdf.text(`${selectedClass.name} - Weekly Timetable`, pdfWidth / 2, 15, { align: 'center' });
+        pdf.text(`${selectedClass.name} - Weekly Timetable`, pdfWidth / 2, margin + 5, { align: 'center' });
         
-        pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgRatio = imgProps.width / imgProps.height;
+        let imgHeight = usableWidth / imgRatio;
+        let y = margin + 15;
+
+        if (imgHeight > pdfHeight - y - margin) {
+            imgHeight = pdfHeight - y - margin;
+        }
+
+        pdf.addImage(imgData, 'PNG', margin, y, usableWidth, imgHeight);
         pdf.save(`timetable_${selectedClass.name.replace(/\s+/g, '_')}.pdf`);
+
     } catch (error) {
         console.error("PDF Generation Error: ", error);
         toast({ variant: 'destructive', title: "PDF Error", description: "Failed to generate PDF." });

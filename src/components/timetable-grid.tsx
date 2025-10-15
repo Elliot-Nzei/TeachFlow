@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,8 +8,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirebase, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
+import { useFirebase, useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { Class, Timetable, TimetableSchedule, TimetablePeriod } from '@/lib/types';
 import { PlusCircle, Trash2, Edit, Clock } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
@@ -43,7 +43,7 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   
   const { data: timetableData, isLoading } = useDoc<Timetable>(timetableQuery);
 
-  useMemo(() => {
+  useEffect(() => {
     if (timetableData?.schedule) {
       setSchedule(timetableData.schedule);
     } else {
@@ -125,7 +125,7 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   return (
     <>
       {/* Desktop Grid View */}
-      <div id="timetable-grid" className="hidden md:block print:block overflow-x-auto">
+      <div id="timetable-grid" className="hidden print:block md:block overflow-x-auto">
         <table className="w-full border-collapse text-xs xl:text-sm">
           <thead>
             <tr className="bg-muted">
@@ -161,33 +161,33 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
       </div>
 
       {/* Mobile Accordion View */}
-      <div className="md:hidden space-y-2">
-        <Accordion type="single" collapsible className="w-full">
-            {daysOfWeek.map(day => (
-                <AccordionItem value={day} key={day}>
-                    <AccordionTrigger>{day}</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="space-y-3 pl-2">
-                          {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
-                            (schedule[day as keyof TimetableSchedule] || []).map((period, index) => (
-                                <div key={index} className="flex items-center gap-4">
-                                    <div className="text-center w-20">
-                                        <p className="font-mono text-sm">{period.startTime}</p>
-                                        <p className="font-mono text-xs text-muted-foreground">{period.endTime}</p>
-                                    </div>
-                                    <div className="flex-1 p-3 bg-secondary rounded-md text-secondary-foreground font-semibold">
-                                        {period.subject}
-                                    </div>
+      <div className="md:hidden space-y-3">
+        {daysOfWeek.map(day => (
+            <Card key={day}>
+                <CardHeader className="p-4">
+                    <CardTitle className="text-base">{day}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                    <div className="space-y-3">
+                        {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
+                        (schedule[day as keyof TimetableSchedule] || []).map((period, index) => (
+                            <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Clock className="h-4 w-4" />
+                                    <span className="font-mono text-sm">{period.startTime}</span>
                                 </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground pl-4">No periods scheduled for {day}.</p>
-                          )}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            ))}
-        </Accordion>
+                                <div className="flex-1 font-semibold text-secondary-foreground">
+                                    {period.subject}
+                                </div>
+                            </div>
+                        ))
+                        ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+        ))}
       </div>
       
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -197,40 +197,42 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
             <SheetDescription>Add, edit, or remove periods for each day of the week.</SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto pr-6 -mr-6">
-            <div className="space-y-6">
+            <Accordion type="multiple" className="w-full space-y-4">
               {daysOfWeek.map(day => (
-                <Card key={day}>
-                  <CardHeader>
-                    <CardTitle>{day}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {(schedule[day as keyof TimetableSchedule] || []).map((period, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded-md">
-                        <div className="flex items-center gap-4">
-                          <div className="text-center">
-                            <span className="font-mono text-xs text-muted-foreground">{period.startTime}</span>
-                            <span className="font-mono text-xs text-muted-foreground"> - </span>
-                            <span className="font-mono text-xs text-muted-foreground">{period.endTime}</span>
-                          </div>
-                          <span className="font-semibold">{period.subject}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditPeriodClick(day, period, index)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemovePeriod(day, index)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" onClick={() => handleAddPeriodClick(day)}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Period
-                    </Button>
-                  </CardContent>
-                </Card>
+                <AccordionItem value={day} key={day} className="border-b-0">
+                    <Card>
+                        <AccordionTrigger className="p-4 hover:no-underline">
+                             <CardTitle className="text-lg">{day}</CardTitle>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-4">
+                             <div className="space-y-2">
+                                {(schedule[day as keyof TimetableSchedule] || []).map((period, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded-md">
+                                    <div className="flex items-center gap-4">
+                                    <div className="text-center">
+                                        <span className="font-mono text-xs text-muted-foreground">{period.startTime} - {period.endTime}</span>
+                                    </div>
+                                    <span className="font-semibold">{period.subject}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditPeriodClick(day, period, index)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemovePeriod(day, index)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    </div>
+                                </div>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={() => handleAddPeriodClick(day)} className="w-full">
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Period
+                                </Button>
+                            </div>
+                        </AccordionContent>
+                    </Card>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           </div>
           <SheetFooter>
             <SheetClose asChild>
