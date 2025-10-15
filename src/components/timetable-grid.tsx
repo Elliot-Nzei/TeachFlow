@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +15,7 @@ import { PlusCircle, Trash2, Edit, Clock } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const timeSlots = [
@@ -26,15 +27,18 @@ type TimetableGridProps = {
   isSheetOpen: boolean;
   setIsSheetOpen: (open: boolean) => void;
   onTimetableLoad: (timetable: Timetable | null) => void;
+  viewMode?: 'desktop' | 'mobile' | 'print';
 };
 
-export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOpen, onTimetableLoad }: TimetableGridProps) {
+export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOpen, onTimetableLoad, viewMode }: TimetableGridProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
 
   const [schedule, setSchedule] = useState<TimetableSchedule>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<{ day: string; period?: TimetablePeriod; index?: number } | null>(null);
+  const isMobile = useIsMobile();
+  const currentView = viewMode || (isMobile ? 'mobile' : 'desktop');
   
   const timetableQuery = useMemoFirebase(() => 
     (user && selectedClass) 
@@ -44,25 +48,13 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   
   const { data: timetableData, isLoading } = useDoc<Timetable>(timetableQuery);
 
-  const [isMobileView, setIsMobileView] = useState(false);
-    
   useEffect(() => {
-      const checkScreenSize = () => {
-          setIsMobileView(window.innerWidth < 768);
-      };
-      checkScreenSize();
-      window.addEventListener('resize', checkScreenSize);
-      return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  useEffect(() => {
+    const initialSchedule = daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
     if (timetableData) {
-      setSchedule(timetableData.schedule || {});
+      setSchedule(timetableData.schedule || initialSchedule);
       onTimetableLoad(timetableData);
     } else {
-      const emptySchedule: TimetableSchedule = {};
-      daysOfWeek.forEach(day => emptySchedule[day as keyof TimetableSchedule] = []);
-      setSchedule(emptySchedule);
+      setSchedule(initialSchedule);
       onTimetableLoad(null);
     }
   }, [timetableData, onTimetableLoad]);
@@ -144,7 +136,7 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   return (
     <>
       {/* Desktop Grid View */}
-      {!isMobileView && (
+      {currentView !== 'mobile' && (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs xl:text-sm">
             <thead>
@@ -182,7 +174,7 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
       )}
 
       {/* Mobile Card View */}
-      {isMobileView && (
+      {currentView === 'mobile' && (
         <div className="space-y-3">
           {daysOfWeek.map(day => (
               <Card key={day}>

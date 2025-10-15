@@ -12,7 +12,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
-import { TimetablePeriod } from '@/lib/types';
+import type { TimetablePeriod } from '@/lib/types';
 
 
 export default function TimetablePage() {
@@ -30,12 +30,17 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
+    const printContent = document.getElementById('timetable-content');
+    const originalContents = document.body.innerHTML;
+    document.body.innerHTML = printContent?.innerHTML || '';
     window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload();
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!selectedClass || !timetable?.schedule) {
-        toast({ variant: 'destructive', title: "Error", description: "No timetable data to generate PDF." });
+        toast({ variant: "destructive", title: "Error", description: "No timetable data to generate PDF." });
         return;
     }
 
@@ -56,56 +61,43 @@ export default function TimetablePage() {
         doc.setFont('helvetica', 'normal');
         doc.text(`${selectedClass.name} - Weekly Timetable`, doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
         
-        const tableBody: (string | null)[][] = [];
+        const tableBody: (string | {content: string, colSpan?: number, rowSpan?: number, styles?: any})[][] = [];
         const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-        const allPeriods: { day: string; period: TimetablePeriod }[] = [];
-        daysOfWeek.forEach(day => {
-            const dayPeriods = timetable.schedule[day as keyof typeof timetable.schedule] || [];
-            dayPeriods.forEach(p => allPeriods.push({ day, period: p }));
-        });
-        allPeriods.sort((a, b) => {
-            if (a.period.startTime < b.period.startTime) return -1;
-            if (a.period.startTime > b.period.startTime) return 1;
-            return 0;
+        const timeSlots = Array.from(new Set(
+            Object.values(timetable.schedule).flat().map(p => `${p.startTime} - ${p.endTime}`)
+        )).sort();
+
+        const tableHead = ['Time', ...daysOfWeek];
+        
+        timeSlots.forEach(slot => {
+            const row: string[] = [slot];
+            daysOfWeek.forEach(day => {
+                const period = timetable.schedule[day as keyof typeof timetable.schedule]?.find(p => `${p.startTime} - ${p.endTime}` === slot);
+                row.push(period ? period.subject : '');
+            });
+            tableBody.push(row);
         });
 
-        daysOfWeek.forEach(day => {
-            const periodsForDay = (timetable.schedule[day as keyof typeof timetable.schedule] || []).sort((a,b) => a.startTime.localeCompare(b.startTime));
-            if (periodsForDay.length > 0) {
-                periodsForDay.forEach((period, index) => {
-                    tableBody.push([
-                        index === 0 ? day : '',
-                        `${period.startTime} - ${period.endTime}`,
-                        period.subject
-                    ]);
-                });
-            } else {
-                 tableBody.push([day, 'No periods scheduled', '']);
-            }
-             if (day !== 'Friday' && periodsForDay.length > 0) {
-                 tableBody.push([{ content: '', colSpan: 3, styles: { fillColor: [240, 240, 240], minCellHeight: 1 } }]);
-             }
-        });
+        if (tableBody.length === 0) {
+            toast({ variant: 'destructive', title: "No Data", description: "There are no scheduled periods to include in the PDF." });
+            setIsProcessingPdf(false);
+            return;
+        }
         
         (doc as any).autoTable({
-            head: [['Day', 'Time', 'Subject']],
+            head: [tableHead],
             body: tableBody,
             startY: 30,
             theme: 'grid',
             headStyles: {
-                fillColor: [56, 142, 60],
+                fillColor: [35, 122, 87], // A green shade from your theme
                 textColor: 255,
                 fontStyle: 'bold',
             },
-            didDrawCell: (data: any) => {
-                if (data.cell.raw != null && daysOfWeek.includes(data.cell.raw) && data.column.index === 0) {
-                   (doc as any).autoTable.drawText(data.cell.raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
-                        halign: 'center',
-                        valign: 'middle',
-                        fontStyle: 'bold'
-                    });
-                    return false;
+            didParseCell: function (data: any) {
+                if (data.cell.section === 'body' && data.cell.text[0] && data.cell.text[0].length > 15) {
+                    data.cell.styles.fontSize = 8;
                 }
             }
         });
@@ -116,54 +108,14 @@ export default function TimetablePage() {
 
     } catch (error) {
         console.error("PDF Generation Error: ", error);
-        toast({ variant: 'destructive', title: "PDF Error", description: "Failed to generate PDF." });
+        toast({ variant: "destructive", title: "PDF Error", description: "Failed to generate PDF." });
     } finally {
         setIsProcessingPdf(false);
     }
   }, [selectedClass, timetable, settings, toast]);
 
   return (
-    <>
-      <style jsx global>{`
-        @media print {
-            body, .print-container {
-                background: white !important;
-                color: black !important;
-            }
-            .print-hidden {
-                display: none !important;
-            }
-            #printable-timetable {
-                display: block !important;
-                visibility: visible !important;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-            #printable-timetable * {
-                color: black !important;
-            }
-        }
-      `}</style>
-    
-      <div id="printable-timetable" className="hidden print:block">
-        {selectedClass && (
-            <div className="p-4">
-                 <h2 className="text-xl font-bold text-center">{settings?.schoolName || 'School Timetable'}</h2>
-                 <h3 className="text-lg text-center mb-4">{selectedClass.name} - Weekly Timetable</h3>
-                <TimetableGrid 
-                    selectedClass={selectedClass} 
-                    isSheetOpen={false}
-                    setIsSheetOpen={() => {}}
-                    onTimetableLoad={setTimetable}
-                    viewMode="desktop"
-                />
-            </div>
-        )}
-      </div>
-
-      <div className="flex flex-1 gap-8 print-hidden">
+    <div className="flex flex-1 gap-8">
         {/* Sidebar for Desktop */}
         <div className="hidden md:block md:w-1/4 lg:w-1/5 sticky top-20 self-start">
           <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
@@ -210,16 +162,14 @@ export default function TimetablePage() {
                 </div>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent id="timetable-content">
               {selectedClass ? (
-                <div id="timetable-content">
                   <TimetableGrid 
                       selectedClass={selectedClass} 
                       isSheetOpen={isSheetOpen}
                       setIsSheetOpen={setIsSheetOpen}
                       onTimetableLoad={setTimetable}
                   />
-                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
                   <CalendarDays className="h-16 w-16 mb-4 opacity-20" />
@@ -229,7 +179,24 @@ export default function TimetablePage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </>
+    </div>
   );
 }
+
+// Add a hidden div for printing that can be styled independently
+const PrintableTimetable = ({ timetable, settings, selectedClass }: { timetable: Timetable | null, settings: any, selectedClass: Class | null }) => {
+  if (!timetable || !selectedClass) return null;
+  return (
+    <div id="printable-timetable" className="hidden print:block p-4">
+      <h2 className="text-xl font-bold text-center">{settings?.schoolName || 'School Timetable'}</h2>
+      <h3 className="text-lg text-center mb-4">{selectedClass.name} - Weekly Timetable</h3>
+      <TimetableGrid
+        selectedClass={selectedClass}
+        isSheetOpen={false}
+        setIsSheetOpen={() => { }}
+        onTimetableLoad={() => { }}
+        viewMode="print"
+      />
+    </div>
+  );
+};
