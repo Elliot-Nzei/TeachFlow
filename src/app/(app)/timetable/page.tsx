@@ -47,7 +47,7 @@ export default function TimetablePage() {
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
   const { toast } = useToast();
   const { settings } = useContext(SettingsContext);
-  const { user } = useFirebase();
+  const { firestore, user } = useFirebase();
 
   const timetablesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'timetables')) : null, [firestore, user]);
   const { data: allTimetables, isLoading: isLoadingTimetables } = useCollection<Timetable>(timetablesQuery);
@@ -62,14 +62,14 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
-    const printContent = document.getElementById('timetable-grid-content');
-    if (printContent) {
-      const originalContents = document.body.innerHTML;
-      const printContents = printContent.innerHTML;
-      document.body.innerHTML = printContents;
-      window.print();
-      document.body.innerHTML = originalContents;
-      window.location.reload();
+    const printContainer = document.getElementById('printable-timetable');
+    if (printContainer) {
+      const timetableContent = document.getElementById('timetable-content');
+      if (timetableContent) {
+        printContainer.innerHTML = timetableContent.innerHTML;
+        window.print();
+        printContainer.innerHTML = '';
+      }
     }
   }, []);
 
@@ -83,7 +83,7 @@ export default function TimetablePage() {
     toast({ title: "Generating PDF...", description: "Please wait while the timetable is being prepared." });
 
     try {
-        const doc = new jsPDF({
+        const doc = new (jsPDF as any)({
             orientation: 'landscape',
             unit: 'mm',
             format: 'a4',
@@ -108,17 +108,17 @@ export default function TimetablePage() {
            return;
         }
 
-        const tableHead = ['Time', ...daysOfWeek];
-        const tableBody = timeSlots.map(slot => {
+        const tableHead: any = ['Time', ...daysOfWeek];
+        const tableBody: any = timeSlots.map(slot => {
             const row = [slot];
             daysOfWeek.forEach(day => {
-                const period = activeTimetable.schedule[day as keyof typeof activeTimetable.schedule]?.find(p => `${p.startTime} - ${p.endTime}` === slot);
+                const period = (activeTimetable.schedule as any)[day]?.find((p: TimetablePeriod) => `${p.startTime} - ${p.endTime}` === slot);
                 row.push(period ? period.subject : '');
             });
             return row;
         });
         
-        (doc as any).autoTable({
+        doc.autoTable({
             head: [tableHead],
             body: tableBody,
             startY: 30,
@@ -156,9 +156,9 @@ export default function TimetablePage() {
 
     const periods: TodaySchedulePeriod[] = [];
     allTimetables.forEach(timetable => {
-      const todayPeriods = timetable.schedule[today as keyof typeof timetable.schedule];
+      const todayPeriods = (timetable.schedule as any)[today];
       if (todayPeriods) {
-        todayPeriods.forEach(period => {
+        todayPeriods.forEach((period: TimetablePeriod) => {
           periods.push({
             ...period,
             className: timetable.className,
@@ -212,7 +212,7 @@ export default function TimetablePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Sidebar for Desktop */}
-          <div className="lg:col-span-3 sticky top-20 self-start">
+          <div className="hidden lg:block lg:col-span-3 sticky top-20 self-start">
             <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
           </div>
         
@@ -275,7 +275,7 @@ export default function TimetablePage() {
             </Card>
           </div>
       </div>
-       <PrintableTimetable timetable={activeTimetable} settings={settings} selectedClass={selectedClass} />
+       <div id="printable-timetable" className="hidden print:block"></div>
         <style jsx global>{`
             @media print {
               body * {
