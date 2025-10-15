@@ -125,7 +125,7 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   return (
     <>
       {/* Desktop Grid View */}
-      <div id="timetable-grid" className="hidden print:block md:block overflow-x-auto">
+      <div id="timetable-grid-container" className="hidden print:block md:block overflow-x-auto">
         <table className="w-full border-collapse text-xs xl:text-sm">
           <thead>
             <tr className="bg-muted">

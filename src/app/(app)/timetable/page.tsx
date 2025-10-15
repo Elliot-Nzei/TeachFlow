@@ -26,7 +26,10 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
+    // We'll add a temporary class to the body to help CSS target print styles
+    document.body.classList.add('printing-timetable');
     window.print();
+    document.body.classList.remove('printing-timetable');
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
@@ -35,9 +38,9 @@ export default function TimetablePage() {
     setIsProcessingPdf(true);
     toast({ title: "Generating PDF...", description: "Please wait while the timetable is being prepared." });
 
-    const timetableElement = document.getElementById('timetable-grid');
+    const timetableElement = document.getElementById('timetable-grid-container');
     if (!timetableElement) {
-        toast({ variant: 'destructive', title: "Error", description: "Could not find timetable element to print." });
+        toast({ variant: 'destructive', title: "Error", description: "Could not find timetable element to generate PDF." });
         setIsProcessingPdf(false);
         return;
     }
@@ -98,6 +101,11 @@ export default function TimetablePage() {
                 left: 0;
                 top: 0;
                 width: 100%;
+                background: white;
+                color: black;
+            }
+            #printable-timetable .print-only-title {
+                display: block !important;
             }
         }
     `}</style>
@@ -129,7 +137,7 @@ export default function TimetablePage() {
         </div>
 
         <Card className="h-full">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-y-2 gap-x-4">
             <div>
               <CardTitle className="font-headline">
                 {selectedClass ? `${selectedClass.name} - Timetable` : 'Timetable'}
@@ -152,6 +160,9 @@ export default function TimetablePage() {
           <CardContent>
             {selectedClass ? (
               <div id="printable-timetable">
+                <div className="print-only-title text-center my-4 hidden">
+                  <h2 className="text-xl font-bold">{selectedClass.name} - Weekly Timetable</h2>
+                </div>
                 <TimetableGrid 
                     selectedClass={selectedClass} 
                     isSheetOpen={isSheetOpen}
