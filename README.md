@@ -11,6 +11,7 @@ PeerPrep is a modern, web-based school management system designed specifically f
 - **Academics & Subjects**: Maintain a master list of all subjects offered by the school and assign them to specific classes.
 - **Gradebook**: A detailed grade management system for inputting and editing scores for continuous assessments (CAs) and exams.
 - **Attendance**: A simple interface for marking daily student attendance (Present, Absent, Late) for any class on any given day.
+- **Timetable**: An interactive tool for creating and managing weekly class schedules visually.
 - **AI Report Card Generator**: An intelligent tool that generates comprehensive report cards for individual students or entire classes. It includes AI-driven, personalized comments for teachers and principals.
 - **AI Lesson Note Generator**: A powerful assistant that creates detailed, NERDC-compliant lesson notes for any subject and class level, complete with objectives, activities, and evaluations.
 - **Secure Data Transfer**: A unique feature allowing users to securely transfer class data (including student rosters) to another registered user using a system-generated transfer code.
@@ -38,6 +39,7 @@ PeerPrep is a modern, web-based school management system designed specifically f
 | **Students**        | `/students`                | **Student Gallery:** Displays a gallery of all students. Users can add new students (with an auto-generated ID) and optionally assign them to a class. Clicking a student card opens their profile in a side sheet. **Permissions:** Requires authenticated user. Needs `read`/`write` on `students`, `read` on `classes`. |
 | **Academics**       | `/academics`               | **Subject Management:** A two-part page. Users manage a master list of all subjects offered. They can then assign these subjects to specific classes from a multi-select dropdown. **Permissions:** Requires authenticated user. Needs `read`/`write` on `subjects` and `update` access on `classes` documents. |
 | **Attendance**      | `/attendance`              | **Daily Roll Call:** A two-step process. The user first selects a class, then sees a list of students for that class. They can mark each student as 'Present', 'Absent', or 'Late' for a selected date and save the record. **Permissions:** Requires authenticated user. Needs `read` on `classes`/`students` and `write` access to the `attendance` subcollection. |
+| **Timetable**       | `/timetable`               | **Weekly Schedule Manager:** Users can select a class to view its weekly timetable. An "Edit" mode allows them to add, modify, or remove periods for each day, assigning subjects to specific time slots. **Permissions:** Requires authenticated user. Needs `read` on `classes`/`subjects` and `read`/`write` on the `timetables` subcollection. |
 | **Grades**          | `/grades`                  | **Grade Entry & Viewing:** Users select a class and subject to either enter or view grades. In the entry dialog, they can input scores for two Continuous Assessments (CAs) and an Exam. The system auto-calculates the total and assigns a grade. **Permissions:** Requires authenticated user. Needs `read` on `classes`/`students` and `read`/`write` on the `grades` subcollection. |
 | **Report Cards**    | `/reports`                 | **AI Report Generation:** The interface for the AI Report Card Generator. Users select a class or a single student, and the system gathers all academic, attendance, and trait data to generate comprehensive, printable report cards with AI-driven comments. **Permissions:** Requires authenticated user. Needs `read` access across `students`, `classes`, `grades`, `attendance`, and `traits`. |
 | **Lesson Generator**| `/lesson-generator`        | **AI Lesson Planning:** An assistant for creating detailed lesson notes. Users provide a topic, class level, subject, and number of weeks. The AI generates multi-week, NERDC-compliant lesson plans in Markdown, which can be downloaded as a PDF. **Permissions:** Requires authenticated user. |
@@ -65,6 +67,7 @@ src
 │   │   ├── reports/
 │   │   ├── settings/
 │   │   ├── students/
+│   │   ├── timetable/  # Timetable management page
 │   │   └── transfer/
 │   ├── (auth)/         # Authentication routes (login, register)
 │   ├── globals.css     # Global styles and Tailwind directives
