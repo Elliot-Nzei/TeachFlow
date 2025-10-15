@@ -18,6 +18,7 @@ import {
   CalendarCheck,
   FileQuestion,
   DollarSign,
+  Database,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -61,6 +62,7 @@ const menuItems = [
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion },
   { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft },
+  { href: '/system', label: 'System', icon: Database },
 ];
 
 function UserProfileDisplay() {
