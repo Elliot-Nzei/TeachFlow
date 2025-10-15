@@ -4,12 +4,12 @@ import { useState, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarDays, Edit, FileDown, Printer, PanelLeft } from 'lucide-react';
-import type { Class } from '@/lib/types';
+import type { Class, TimetablePeriod } from '@/lib/types';
 import ClassSidebar from '@/components/class-sidebar';
 import TimetableGrid from '@/components/timetable-grid';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 
@@ -20,6 +20,7 @@ export default function TimetablePage() {
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
   const { toast } = useToast();
   const { settings } = useContext(SettingsContext);
+  const [timetable, setTimetable] = useState<any>(null);
 
   const handleSelectClass = (cls: Class) => {
     setSelectedClass(cls);
@@ -27,108 +28,148 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
-    window.print();
+    const printableElement = document.getElementById('printable-timetable');
+    if (printableElement) {
+        const printWindow = window.open('', '', 'height=800,width=1200');
+        printWindow?.document.write('<html><head><title>Print Timetable</title>');
+        // Inject styles
+        const styles = Array.from(document.styleSheets)
+            .map(styleSheet => {
+                try {
+                    return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
+                } catch (e) {
+                    console.warn("Could not read stylesheet rules:", e);
+                    return '';
+                }
+            }).join('');
+        printWindow?.document.write(`<style>${styles}</style></head><body>`);
+        printWindow?.document.write(printableElement.innerHTML);
+        printWindow?.document.write('</body></html>');
+        printWindow?.document.close();
+        printWindow?.focus();
+        setTimeout(() => {
+            printWindow?.print();
+            printWindow?.close();
+        }, 250);
+    }
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
-    if (!selectedClass) return;
+    if (!selectedClass || !timetable?.schedule) {
+        toast({ variant: 'destructive', title: "Error", description: "No timetable data to generate PDF." });
+        return;
+    }
 
     setIsProcessingPdf(true);
     toast({ title: "Generating PDF...", description: "Please wait while the timetable is being prepared." });
 
-    const timetableElement = document.getElementById('printable-timetable');
-    if (!timetableElement) {
-        toast({ variant: 'destructive', title: "Error", description: "Could not find timetable element to generate PDF." });
-        setIsProcessingPdf(false);
-        return;
-    }
-    
-    // Use the a clone to avoid modifying the visible element
-    const clone = timetableElement.cloneNode(true) as HTMLElement;
-    clone.style.position = 'absolute';
-    clone.style.left = '-9999px';
-    clone.style.top = '0px';
-    clone.style.width = '1024px'; // A fixed width for consistent capture
-    clone.style.height = 'auto';
-    clone.classList.remove('hidden'); // Ensure it's not hidden
-    document.body.appendChild(clone);
-
-    // Add title element to the clone for PDF
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'text-center p-4';
-    titleDiv.innerHTML = `
-      <h2 class="text-xl font-bold">${settings?.schoolName || 'School Timetable'}</h2>
-      <h3 class="text-lg">${selectedClass.name} - Weekly Timetable</h3>
-    `;
-    clone.insertBefore(titleDiv, clone.firstChild);
-
     try {
-        const canvas = await html2canvas(clone, {
-            scale: 2,
-            useCORS: true,
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'landscape',
+        const doc = new jsPDF({
+            orientation: 'portrait',
             unit: 'mm',
             format: 'a4',
         });
 
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const margin = 10;
+        // Add Header
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(settings?.schoolName || 'School Timetable', doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${selectedClass.name} - Weekly Timetable`, doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
         
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = pdfWidth - margin * 2;
-        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-        let yPosition = margin;
+        const tableBody: (string | null)[][] = [];
+        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-        if (imgHeight > pdfHeight - (margin * 2)) {
-           toast({ variant: 'destructive', title: "PDF Error", description: "Timetable content is too large to fit on one page." });
-           return;
-        }
+        daysOfWeek.forEach(day => {
+            const periods = timetable.schedule[day as keyof typeof timetable.schedule] || [];
+            if (periods.length > 0) {
+                periods.sort((a: TimetablePeriod, b: TimetablePeriod) => a.startTime.localeCompare(b.startTime));
+                periods.forEach((period: TimetablePeriod, index: number) => {
+                    tableBody.push([
+                        index === 0 ? day : null,
+                        `${period.startTime} - ${period.endTime}`,
+                        period.subject
+                    ]);
+                });
+            } else {
+                 tableBody.push([day, 'No periods scheduled', '']);
+            }
+             if (day !== 'Friday' && periods.length > 0) {
+                 tableBody.push([{ content: '', colSpan: 3, styles: { fillColor: [240, 240, 240], minCellHeight: 1 } }]);
+             }
+        });
 
-        pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
-        pdf.save(`timetable_${selectedClass.name.replace(/\s+/g, '_')}.pdf`);
+        (doc as any).autoTable({
+            head: [['Day', 'Time', 'Subject']],
+            body: tableBody,
+            startY: 30,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [56, 142, 60], // Primary Green
+                textColor: 255,
+                fontStyle: 'bold',
+            },
+            didDrawCell: (data: any) => {
+                // If this is the first cell of a new day, span the cell
+                if (data.cell.raw != null && data.column.index === 0) {
+                    doc.rect(data.cell.x, data.cell.y, data.table.getWidth(), data.cell.height, 'S');
+                }
+            }
+        });
+
+        doc.save(`timetable_${selectedClass.name.replace(/\s+/g, '_')}.pdf`);
+        toast({ title: 'Success!', description: 'Timetable PDF has been downloaded.' });
 
     } catch (error) {
         console.error("PDF Generation Error: ", error);
         toast({ variant: 'destructive', title: "PDF Error", description: "Failed to generate PDF." });
     } finally {
-        document.body.removeChild(clone); // Clean up the cloned element
         setIsProcessingPdf(false);
     }
-  }, [selectedClass, toast, settings]);
+  }, [selectedClass, timetable, settings, toast]);
 
   return (
     <>
     <style jsx global>{`
         @media print {
-            body * {
-                visibility: hidden;
+            body, .print-container {
+                background: white !important;
+                color: black !important;
             }
-            #printable-timetable, #printable-timetable * {
-                visibility: visible;
+            .print-hidden {
+                display: none !important;
             }
-            #printable-timetable {
+            .print-visible {
+                visibility: visible !important;
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 100vw;
-                height: 100vh;
-                background: white !important;
-                color: black !important;
-                display: block !important;
+                width: 100%;
             }
-            #printable-timetable .print-only-title {
-                display: block !important;
+            .print-visible * {
                 color: black !important;
             }
         }
     `}</style>
+    
+    <div id="printable-timetable" className="print-hidden">
+        {selectedClass && (
+            <div className="p-4">
+                 <h2 className="text-xl font-bold text-center">{settings?.schoolName || 'School Timetable'}</h2>
+                 <h3 className="text-lg text-center mb-4">{selectedClass.name} - Weekly Timetable</h3>
+                <TimetableGrid 
+                    selectedClass={selectedClass} 
+                    isSheetOpen={false}
+                    setIsSheetOpen={() => {}}
+                    onTimetableLoad={setTimetable}
+                    viewMode="desktop"
+                />
+            </div>
+        )}
+    </div>
 
-    <div className="flex flex-1 gap-8 print:hidden">
+    <div className="flex flex-1 gap-8">
       {/* Sidebar for Desktop */}
       <div className="hidden md:block md:w-1/4 lg:w-1/5 sticky top-20 self-start">
         <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
@@ -177,13 +218,12 @@ export default function TimetablePage() {
           </CardHeader>
           <CardContent>
             {selectedClass ? (
-              <div id="printable-timetable">
-                <TimetableGrid 
-                    selectedClass={selectedClass} 
-                    isSheetOpen={isSheetOpen}
-                    setIsSheetOpen={setIsSheetOpen}
-                />
-              </div>
+              <TimetableGrid 
+                  selectedClass={selectedClass} 
+                  isSheetOpen={isSheetOpen}
+                  setIsSheetOpen={setIsSheetOpen}
+                  onTimetableLoad={setTimetable}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
                 <CalendarDays className="h-16 w-16 mb-4 opacity-20" />

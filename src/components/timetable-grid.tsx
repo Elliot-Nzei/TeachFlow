@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,9 +25,11 @@ type TimetableGridProps = {
   selectedClass: Class;
   isSheetOpen: boolean;
   setIsSheetOpen: (open: boolean) => void;
+  onTimetableLoad: (timetable: Timetable | null) => void;
+  viewMode?: 'desktop' | 'mobile';
 };
 
-export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOpen }: TimetableGridProps) {
+export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOpen, onTimetableLoad, viewMode }: TimetableGridProps) {
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
 
@@ -44,14 +46,16 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   const { data: timetableData, isLoading } = useDoc<Timetable>(timetableQuery);
 
   useEffect(() => {
-    if (timetableData?.schedule) {
-      setSchedule(timetableData.schedule);
+    if (timetableData) {
+      setSchedule(timetableData.schedule || {});
+      onTimetableLoad(timetableData);
     } else {
       const emptySchedule: TimetableSchedule = {};
       daysOfWeek.forEach(day => emptySchedule[day as keyof TimetableSchedule] = []);
       setSchedule(emptySchedule);
+      onTimetableLoad(null);
     }
-  }, [timetableData]);
+  }, [timetableData, onTimetableLoad]);
 
   const handleAddPeriodClick = (day: string) => {
     setEditingPeriod({ day });
@@ -64,11 +68,13 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   };
   
   const handleRemovePeriod = (day: string, index: number) => {
-    const newSchedule = { ...schedule };
-    const daySchedule = newSchedule[day as keyof TimetableSchedule] || [];
-    daySchedule.splice(index, 1);
-    newSchedule[day as keyof TimetableSchedule] = daySchedule;
-    setSchedule(newSchedule);
+    setSchedule(prevSchedule => {
+        const newSchedule = { ...prevSchedule };
+        const daySchedule = [...(newSchedule[day as keyof TimetableSchedule] || [])];
+        daySchedule.splice(index, 1);
+        newSchedule[day as keyof TimetableSchedule] = daySchedule;
+        return newSchedule;
+    });
   };
 
   const handleSavePeriod = (e: React.FormEvent<HTMLFormElement>) => {
@@ -85,19 +91,22 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
       return;
     }
 
-    const newSchedule = { ...schedule };
-    const daySchedule = [...(newSchedule[editingPeriod.day as keyof TimetableSchedule] || [])];
-    
-    if (editingPeriod.index !== undefined) {
-      daySchedule[editingPeriod.index] = newPeriod;
-    } else {
-      daySchedule.push(newPeriod);
-    }
+    setSchedule(prevSchedule => {
+        const newSchedule = { ...prevSchedule };
+        const daySchedule = [...(newSchedule[editingPeriod.day as keyof TimetableSchedule] || [])];
+        
+        if (editingPeriod.index !== undefined) {
+          daySchedule[editingPeriod.index] = newPeriod;
+        } else {
+          daySchedule.push(newPeriod);
+        }
 
-    daySchedule.sort((a, b) => a.startTime.localeCompare(b.startTime));
+        daySchedule.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-    newSchedule[editingPeriod.day as keyof TimetableSchedule] = daySchedule;
-    setSchedule(newSchedule);
+        newSchedule[editingPeriod.day as keyof TimetableSchedule] = daySchedule;
+        return newSchedule;
+    });
+
     setIsDialogOpen(false);
     setEditingPeriod(null);
   };
@@ -117,6 +126,8 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
     toast({ title: 'Success', description: 'Timetable saved successfully.' });
     setIsSheetOpen(false);
   };
+  
+  const effectiveViewMode = viewMode || (typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop');
 
   if (isLoading) {
     return <Skeleton className="h-[500px] w-full" />
@@ -125,70 +136,76 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
   return (
     <>
       {/* Desktop Grid View */}
-      <div id="timetable-grid-container" className="hidden print:block md:block overflow-x-auto">
-        <table className="w-full border-collapse text-xs xl:text-sm">
-          <thead>
-            <tr className="bg-muted">
-              <th className="p-2 border font-semibold w-24">Time</th>
-              {daysOfWeek.map(day => (
-                <th key={day} className="p-2 border font-semibold min-w-[120px]">{day}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {timeSlots.slice(0, -1).map((startTime, index) => {
-              const endTime = timeSlots[index + 1];
-              return (
-                <tr key={startTime}>
-                  <td className="p-2 border text-center font-medium text-muted-foreground">{`${startTime} - ${endTime}`}</td>
-                  {daysOfWeek.map(day => {
-                    const period = schedule[day as keyof TimetableSchedule]?.find(p => p.startTime === startTime);
-                    return (
-                      <td key={`${day}-${startTime}`} className="p-1 border align-top h-16">
-                        {period ? (
-                          <div className="bg-primary/10 text-primary p-2 rounded-md h-full text-center flex flex-col justify-center">
-                            <p className="font-bold">{period.subject}</p>
-                          </div>
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {effectiveViewMode === 'desktop' && (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs xl:text-sm">
+            <thead>
+              <tr className="bg-muted">
+                <th className="p-2 border font-semibold w-24">Time</th>
+                {daysOfWeek.map(day => (
+                  <th key={day} className="p-2 border font-semibold min-w-[120px]">{day}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {timeSlots.slice(0, -1).map((startTime, index) => {
+                const endTime = timeSlots[index + 1];
+                return (
+                  <tr key={startTime}>
+                    <td className="p-2 border text-center font-medium text-muted-foreground">{`${startTime} - ${endTime}`}</td>
+                    {daysOfWeek.map(day => {
+                      const period = schedule[day as keyof TimetableSchedule]?.find(p => p.startTime === startTime);
+                      return (
+                        <td key={`${day}-${startTime}`} className="p-1 border align-top h-16">
+                          {period ? (
+                            <div className="bg-primary/10 text-primary p-2 rounded-md h-full text-center flex flex-col justify-center">
+                              <p className="font-bold">{period.subject}</p>
+                            </div>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Mobile Accordion View */}
-      <div className="md:hidden space-y-3">
-        {daysOfWeek.map(day => (
-            <Card key={day}>
-                <CardHeader className="p-4">
-                    <CardTitle className="text-base">{day}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                    <div className="space-y-3">
-                        {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
-                        (schedule[day as keyof TimetableSchedule] || []).map((period, index) => (
-                            <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span className="font-mono text-sm">{period.startTime}</span>
-                                </div>
-                                <div className="flex-1 font-semibold text-secondary-foreground">
-                                    {period.subject}
-                                </div>
-                            </div>
-                        ))
-                        ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        ))}
-      </div>
+      {effectiveViewMode === 'mobile' && (
+        <div className="space-y-3">
+          {daysOfWeek.map(day => (
+              <Card key={day}>
+                  <CardHeader className="p-4">
+                      <CardTitle className="text-base">{day}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                      <div className="space-y-3">
+                          {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
+                          [...(schedule[day as keyof TimetableSchedule] || [])]
+                            .sort((a,b) => a.startTime.localeCompare(b.startTime))
+                            .map((period, index) => (
+                              <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Clock className="h-4 w-4" />
+                                      <span className="font-mono text-sm">{period.startTime}</span>
+                                  </div>
+                                  <div className="flex-1 font-semibold text-secondary-foreground">
+                                      {period.subject}
+                                  </div>
+                              </div>
+                          ))
+                          ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
+                          )}
+                      </div>
+                  </CardContent>
+              </Card>
+          ))}
+        </div>
+      )}
       
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="w-full max-w-2xl sm:w-3/4 flex flex-col">
@@ -206,7 +223,9 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4">
                              <div className="space-y-2">
-                                {(schedule[day as keyof TimetableSchedule] || []).map((period, index) => (
+                                {[...(schedule[day as keyof TimetableSchedule] || [])]
+                                .sort((a,b) => a.startTime.localeCompare(b.startTime))
+                                .map((period, index) => (
                                 <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded-md">
                                     <div className="flex items-center gap-4">
                                     <div className="text-center">
