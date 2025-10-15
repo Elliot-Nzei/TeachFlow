@@ -21,25 +21,6 @@ type TodaySchedulePeriod = TimetablePeriod & {
   classId: string;
 };
 
-// Add a hidden div for printing that can be styled independently
-const PrintableTimetable = ({ timetable, settings, selectedClass }: { timetable: Timetable | null, settings: any, selectedClass: Class | null }) => {
-  if (!timetable || !selectedClass) return null;
-  return (
-    <div id="printable-timetable" className="hidden print:block p-4">
-      <h2 className="text-xl font-bold text-center">{settings?.schoolName || 'School Timetable'}</h2>
-      <h3 className="text-lg text-center mb-4">{selectedClass.name} - Weekly Timetable</h3>
-      <TimetableGrid
-        selectedClass={selectedClass}
-        isSheetOpen={false}
-        setIsSheetOpen={() => { }}
-        onTimetableLoad={() => { }}
-        viewMode="print"
-      />
-    </div>
-  );
-};
-
-
 export default function TimetablePage() {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -64,7 +45,7 @@ export default function TimetablePage() {
   const handlePrint = useCallback(() => {
     const printContainer = document.getElementById('printable-timetable');
     if (printContainer) {
-      const timetableContent = document.getElementById('timetable-content');
+      const timetableContent = document.getElementById('timetable-grid-content');
       if (timetableContent) {
         printContainer.innerHTML = timetableContent.innerHTML;
         window.print();
@@ -108,7 +89,7 @@ export default function TimetablePage() {
            return;
         }
 
-        const tableHead: any = ['Time', ...daysOfWeek];
+        const tableHead: any = [['Time', ...daysOfWeek]];
         const tableBody: any = timeSlots.map(slot => {
             const row = [slot];
             daysOfWeek.forEach(day => {
@@ -119,7 +100,7 @@ export default function TimetablePage() {
         });
         
         doc.autoTable({
-            head: [tableHead],
+            head: tableHead,
             body: tableBody,
             startY: 30,
             theme: 'grid',
@@ -246,7 +227,7 @@ export default function TimetablePage() {
                   </CardDescription>
                 </div>
                 {selectedClass && (
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex flex-wrap gap-2 flex-shrink-0">
                     <Button onClick={handlePrint} size="sm" variant="outline"><Printer className="mr-2 h-4 w-4" /> Print</Button>
                     <Button onClick={handleDownloadPdf} size="sm" variant="outline" disabled={isProcessingPdf}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
                     <Button onClick={() => setIsSheetOpen(true)} size="sm">
@@ -256,21 +237,23 @@ export default function TimetablePage() {
                   </div>
                 )}
               </CardHeader>
-              <CardContent id="timetable-content">
-                {selectedClass ? (
-                    <TimetableGrid 
-                        key={selectedClass.id} // Add key to force re-render on class change
-                        selectedClass={selectedClass} 
-                        isSheetOpen={isSheetOpen}
-                        setIsSheetOpen={setIsSheetOpen}
-                        onTimetableLoad={setActiveTimetable}
-                    />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
-                    <CalendarDays className="h-16 w-16 mb-4 opacity-20" />
-                    <p>Please select a class from the sidebar to view or edit its timetable.</p>
-                  </div>
-                )}
+              <CardContent>
+                <div id="timetable-grid-content">
+                  {selectedClass ? (
+                      <TimetableGrid 
+                          key={selectedClass.id} // Add key to force re-render on class change
+                          selectedClass={selectedClass} 
+                          isSheetOpen={isSheetOpen}
+                          setIsSheetOpen={setIsSheetOpen}
+                          onTimetableLoad={setActiveTimetable}
+                      />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
+                      <CalendarDays className="h-16 w-16 mb-4 opacity-20" />
+                      <p>Please select a class from the sidebar to view or edit its timetable.</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
