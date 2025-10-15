@@ -146,7 +146,7 @@ export default function TimetablePage() {
         </div>
 
         <Card className="h-full">
-          <CardHeader className="flex-wrap flex-row items-center justify-between gap-y-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="font-headline">
                 {selectedClass ? `${selectedClass.name} - Timetable` : 'Timetable'}
@@ -156,7 +156,7 @@ export default function TimetablePage() {
               </CardDescription>
             </div>
             {selectedClass && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-shrink-0">
                 <Button onClick={handlePrint} size="sm" variant="outline"><Printer className="mr-2 h-4 w-4" /> Print</Button>
                 <Button onClick={handleDownloadPdf} size="sm" variant="outline" disabled={isProcessingPdf}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
                 <Button onClick={() => setIsSheetOpen(true)} size="sm">
