@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, Video, ArrowRightCircle, CheckCircle, Send, Linkedin } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, FileDown, Notebook, ArrowRightCircle, CheckCircle, Send, FileQuestion, DollarSign, Linkedin } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -22,15 +22,25 @@ const features = [
     title: 'Comprehensive Gradebook',
     description: 'Input scores for continuous assessments and exams. The system auto-calculates totals and assigns grades.',
   },
+    {
+    icon: <DollarSign className="h-8 w-8 text-primary" />,
+    title: 'Fee & Payment Tracking',
+    description: 'Set class fees and record student payments to track revenue and outstanding balances each term.',
+  },
   {
     icon: <FileDown className="h-8 w-8 text-primary" />,
-    title: 'AI-Powered Report Cards',
-    description: 'Generate insightful, detailed, and printable report cards with AI-driven comments for teachers and principals.',
+    title: 'AI Report Card Generator',
+    description: 'Generate insightful, printable report cards with AI-driven comments for teachers and principals.',
   },
   {
     icon: <Notebook className="h-8 w-8 text-primary" />,
     title: 'AI Lesson Note Generator',
     description: 'Create multi-week, NERDC-compliant lesson notes for any subject, downloadable as a PDF.',
+  },
+    {
+    icon: <FileQuestion className="h-8 w-8 text-primary" />,
+    title: 'AI Exam Question Generator',
+    description: 'Instantly create objective, essay, or mixed-format exam questions based on your topics.',
   },
   {
     icon: <CheckCircle className="h-8 w-8 text-primary" />,
@@ -40,7 +50,7 @@ const features = [
   {
     icon: <Send className="h-8 w-8 text-primary" />,
     title: 'Secure Data Transfer',
-    description: 'Share class rosters, attendance, and trait data securely with other users via a unique transfer code.',
+    description: 'Share class rosters, academic records, and lesson notes securely with other users via a unique transfer code.',
   },
 ];
 
@@ -109,7 +119,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 lg:grid-cols-3 pt-12">
+            <div className="mx-auto grid max-w-6xl items-start gap-8 sm:grid-cols-2 lg:grid-cols-4 pt-12">
               {features.map((feature, index) => (
                 <div key={index} className="flex flex-col items-center text-center gap-4">
                   {feature.icon}
