@@ -359,6 +359,49 @@
         "status",
         "createdAt"
       ]
+    },
+    "Timetable": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Timetable",
+      "type": "object",
+      "description": "Represents the weekly timetable for a class.",
+      "properties": {
+        "classId": {
+          "type": "string",
+          "description": "The ID of the class this timetable belongs to."
+        },
+        "className": {
+          "type": "string",
+          "description": "The name of the class."
+        },
+        "schedule": {
+          "type": "object",
+          "description": "An object containing the schedule for each day of the week.",
+          "properties": {
+            "Monday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Tuesday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Wednesday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Thursday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Friday": { "$ref": "#/entities/Timetable/definitions/daySchedule" }
+          }
+        }
+      },
+      "required": ["classId", "className", "schedule"],
+      "definitions": {
+        "daySchedule": {
+          "type": "array",
+          "description": "An array of periods for a single day.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startTime": { "type": "string", "format": "time", "description": "e.g., 08:00" },
+              "endTime": { "type": "string", "format": "time", "description": "e.g., 08:40" },
+              "subject": { "type": "string", "description": "The subject for this period." }
+            },
+            "required": ["startTime", "endTime", "subject"]
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -403,6 +446,10 @@
     "/users/{userId}/payments/{paymentId}": {
       "schema": { "$ref": "#/entities/Payment" },
       "description": "Stores student payment records for a term."
+    },
+     "/users/{userId}/timetables/{timetableId}": {
+      "schema": { "$ref": "#/entities/Timetable" },
+      "description": "Stores the weekly timetable for a specific class."
     }
   }
 }

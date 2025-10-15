@@ -1,5 +1,4 @@
 
-
 export type User = {
   id: string;
   name: string;
@@ -141,4 +140,25 @@ export type Settings = {
   currentSession: string;
   userCode: string;
   studentCounter?: number;
+};
+
+export type TimetablePeriod = {
+  startTime: string;
+  endTime: string;
+  subject: string;
+};
+
+export type TimetableSchedule = {
+  Monday?: TimetablePeriod[];
+  Tuesday?: TimetablePeriod[];
+  Wednesday?: TimetablePeriod[];
+  Thursday?: TimetablePeriod[];
+  Friday?: TimetablePeriod[];
+};
+
+export type Timetable = {
+  id: string;
+  classId: string;
+  className: string;
+  schedule: TimetableSchedule;
 };

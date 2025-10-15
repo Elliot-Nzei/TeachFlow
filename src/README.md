@@ -81,6 +81,15 @@ Once your school structure is set up, you can perform daily and termly tasks.
 3.  For each student, select their status: **Present**, **Absent**, or **Late**.
 4.  Click **Save Attendance**. The records are saved for the current term and session set in your settings.
 
+### Timetable
+**Go to [Timetable](/timetable)**
+
+1.  **Select a Class**: Choose a class from the sidebar to view its current weekly timetable.
+2.  **Edit the Schedule**: Click **Edit Schedule** to open the management panel.
+3.  **Add a Period**: For any day of the week, click **Add Period**. Select a start time, end time, and a subject from the class's assigned subject list.
+4.  **Manage Periods**: You can edit or delete existing periods directly from the list.
+5.  **Save Changes**: Click **Save Changes** to update the timetable for that class.
+
 ### Gradebook
 **Go to [Grades](/grades)**
 
