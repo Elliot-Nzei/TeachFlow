@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +15,8 @@ import { Skeleton } from './ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const timeSlots = [
@@ -50,8 +51,10 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
 
   useEffect(() => {
     const initialSchedule = daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
-    if (timetableData) {
-      setSchedule(timetableData.schedule || initialSchedule);
+    if (timetableData?.schedule) {
+      // Ensure all days are present in the schedule
+      const fullSchedule = { ...initialSchedule, ...timetableData.schedule };
+      setSchedule(fullSchedule);
       onTimetableLoad(timetableData);
     } else {
       setSchedule(initialSchedule);
@@ -135,77 +138,79 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
 
   return (
     <>
-      {/* Desktop Grid View */}
-      {currentView !== 'mobile' && (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs xl:text-sm">
-            <thead>
-              <tr className="bg-muted">
-                <th className="p-2 border font-semibold w-24">Time</th>
-                {daysOfWeek.map(day => (
-                  <th key={day} className="p-2 border font-semibold min-w-[120px]">{day}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {timeSlots.slice(0, -1).map((startTime, index) => {
-                const endTime = timeSlots[index + 1];
-                return (
-                  <tr key={startTime}>
-                    <td className="p-2 border text-center font-medium text-muted-foreground">{`${startTime} - ${endTime}`}</td>
-                    {daysOfWeek.map(day => {
-                      const period = schedule[day as keyof TimetableSchedule]?.find(p => p.startTime === startTime);
-                      return (
-                        <td key={`${day}-${startTime}`} className="p-1 border align-top h-16">
-                          {period ? (
-                            <div className="bg-primary/10 text-primary p-2 rounded-md h-full text-center flex flex-col justify-center">
-                              <p className="font-bold">{period.subject}</p>
-                            </div>
-                          ) : null}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Mobile Card View */}
-      {currentView === 'mobile' && (
-        <div className="space-y-3">
-          {daysOfWeek.map(day => (
-              <Card key={day}>
-                  <CardHeader className="p-4">
-                      <CardTitle className="text-base">{day}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                      <div className="space-y-3">
-                          {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
-                          [...(schedule[day as keyof TimetableSchedule] || [])]
-                            .sort((a,b) => a.startTime.localeCompare(b.startTime))
-                            .map((period, index) => (
-                              <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                      <Clock className="h-4 w-4" />
-                                      <span className="font-mono text-sm">{period.startTime}</span>
-                                  </div>
-                                  <div className="flex-1 font-semibold text-secondary-foreground">
-                                      {period.subject}
-                                  </div>
+      <div id="timetable-grid-content">
+        {/* Desktop Grid View */}
+        {currentView !== 'mobile' && (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-xs xl:text-sm">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="p-2 border font-semibold w-24">Time</th>
+                  {daysOfWeek.map(day => (
+                    <th key={day} className="p-2 border font-semibold min-w-[120px]">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {timeSlots.slice(0, -1).map((startTime, index) => {
+                  const endTime = timeSlots[index + 1];
+                  return (
+                    <tr key={startTime}>
+                      <td className="p-2 border text-center font-medium text-muted-foreground">{`${startTime} - ${endTime}`}</td>
+                      {daysOfWeek.map(day => {
+                        const period = schedule[day as keyof TimetableSchedule]?.find(p => p.startTime === startTime);
+                        return (
+                          <td key={`${day}-${startTime}`} className="p-1 border align-top h-16">
+                            {period ? (
+                              <div className="bg-primary/10 text-primary p-2 rounded-md h-full text-center flex flex-col justify-center">
+                                <p className="font-bold">{period.subject}</p>
                               </div>
-                          ))
-                          ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
-                          )}
-                      </div>
-                  </CardContent>
-              </Card>
-          ))}
-        </div>
-      )}
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Mobile Card View */}
+        {currentView === 'mobile' && (
+          <div className="space-y-3">
+            {daysOfWeek.map(day => (
+                <Card key={day}>
+                    <CardHeader className="p-4">
+                        <CardTitle className="text-base">{day}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                        <div className="space-y-3">
+                            {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
+                            [...(schedule[day as keyof TimetableSchedule] || [])]
+                              .sort((a,b) => a.startTime.localeCompare(b.startTime))
+                              .map((period, index) => (
+                                <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Clock className="h-4 w-4" />
+                                        <span className="font-mono text-sm">{period.startTime}</span>
+                                    </div>
+                                    <div className="flex-1 font-semibold text-secondary-foreground">
+                                        {period.subject}
+                                    </div>
+                                </div>
+                            ))
+                            ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+          </div>
+        )}
+      </div>
       
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="w-full max-w-2xl sm:w-3/4 flex flex-col">
