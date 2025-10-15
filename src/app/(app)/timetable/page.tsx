@@ -3,12 +3,11 @@
 import { useState, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, Edit, FileDown, Printer } from 'lucide-react';
+import { CalendarDays, Edit, FileDown, Printer, PanelLeft } from 'lucide-react';
 import type { Class } from '@/lib/types';
 import ClassSidebar from '@/components/class-sidebar';
 import TimetableGrid from '@/components/timetable-grid';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { PanelLeft } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
@@ -28,10 +27,7 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
-    // We'll add a temporary class to the body to help CSS target print styles
-    document.body.classList.add('printing-timetable');
     window.print();
-    document.body.classList.remove('printing-timetable');
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
@@ -46,19 +42,31 @@ export default function TimetablePage() {
         setIsProcessingPdf(false);
         return;
     }
+    
+    // Use the a clone to avoid modifying the visible element
+    const clone = timetableElement.cloneNode(true) as HTMLElement;
+    clone.style.position = 'absolute';
+    clone.style.left = '-9999px';
+    clone.style.top = '0px';
+    clone.style.width = '1024px'; // A fixed width for consistent capture
+    clone.style.height = 'auto';
+    clone.classList.remove('hidden'); // Ensure it's not hidden
+    document.body.appendChild(clone);
 
-    // Temporarily make the printable element visible for capturing
-    const originalDisplay = timetableElement.style.display;
-    timetableElement.style.display = 'block';
+    // Add title element to the clone for PDF
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'text-center p-4';
+    titleDiv.innerHTML = `
+      <h2 class="text-xl font-bold">${settings?.schoolName || 'School Timetable'}</h2>
+      <h3 class="text-lg">${selectedClass.name} - Weekly Timetable</h3>
+    `;
+    clone.insertBefore(titleDiv, clone.firstChild);
 
     try {
-        const canvas = await html2canvas(timetableElement, {
+        const canvas = await html2canvas(clone, {
             scale: 2,
             useCORS: true,
         });
-
-        // Restore original display after capture
-        timetableElement.style.display = originalDisplay;
 
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
@@ -71,32 +79,24 @@ export default function TimetablePage() {
         const pdfHeight = pdf.internal.pageSize.getHeight();
         const margin = 10;
         
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(16);
-        pdf.text(settings?.schoolName || 'School Timetable', pdfWidth / 2, margin + 5, { align: 'center' });
-        pdf.setFontSize(14);
-        pdf.text(`${selectedClass.name} - Weekly Timetable`, pdfWidth / 2, margin + 12, { align: 'center' });
-        
         const imgProps = pdf.getImageProperties(imgData);
         const imgWidth = pdfWidth - margin * 2;
         const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-        let y = margin + 20;
+        let yPosition = margin;
 
-        if (imgHeight > pdfHeight - y - margin) {
+        if (imgHeight > pdfHeight - (margin * 2)) {
            toast({ variant: 'destructive', title: "PDF Error", description: "Timetable content is too large to fit on one page." });
-           setIsProcessingPdf(false);
            return;
         }
 
-        pdf.addImage(imgData, 'PNG', margin, y, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
         pdf.save(`timetable_${selectedClass.name.replace(/\s+/g, '_')}.pdf`);
 
     } catch (error) {
         console.error("PDF Generation Error: ", error);
         toast({ variant: 'destructive', title: "PDF Error", description: "Failed to generate PDF." });
     } finally {
-        // Ensure the element is hidden again, even if an error occurs
-        timetableElement.style.display = originalDisplay;
+        document.body.removeChild(clone); // Clean up the cloned element
         setIsProcessingPdf(false);
     }
   }, [selectedClass, toast, settings]);
@@ -177,11 +177,13 @@ export default function TimetablePage() {
           </CardHeader>
           <CardContent>
             {selectedClass ? (
-              <TimetableGrid 
-                  selectedClass={selectedClass} 
-                  isSheetOpen={isSheetOpen}
-                  setIsSheetOpen={setIsSheetOpen}
-              />
+              <div id="printable-timetable">
+                <TimetableGrid 
+                    selectedClass={selectedClass} 
+                    isSheetOpen={isSheetOpen}
+                    setIsSheetOpen={setIsSheetOpen}
+                />
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-muted-foreground rounded-lg border border-dashed">
                 <CalendarDays className="h-16 w-16 mb-4 opacity-20" />
