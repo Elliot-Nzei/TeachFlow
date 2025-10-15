@@ -177,38 +177,40 @@ export default function TimetableGrid({ selectedClass, isSheetOpen, setIsSheetOp
           </div>
         )}
 
-        {/* Mobile Card View */}
+        {/* Mobile Accordion View */}
         {currentView === 'mobile' && (
-          <div className="space-y-3">
+           <Accordion type="single" collapsible className="w-full space-y-3">
             {daysOfWeek.map(day => (
-                <Card key={day}>
-                    <CardHeader className="p-4">
-                        <CardTitle className="text-base">{day}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                        <div className="space-y-3">
-                            {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
-                            [...(schedule[day as keyof TimetableSchedule] || [])]
-                              .sort((a,b) => a.startTime.localeCompare(b.startTime))
-                              .map((period, index) => (
-                                <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Clock className="h-4 w-4" />
-                                        <span className="font-mono text-sm">{period.startTime}</span>
+                <AccordionItem value={day} key={day} className="border-b-0">
+                    <Card>
+                        <AccordionTrigger className="p-4 hover:no-underline text-base font-semibold">
+                             {day}
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                            <div className="space-y-3">
+                                {(schedule[day as keyof TimetableSchedule] || []).length > 0 ? (
+                                [...(schedule[day as keyof TimetableSchedule] || [])]
+                                .sort((a,b) => a.startTime.localeCompare(b.startTime))
+                                .map((period, index) => (
+                                    <div key={index} className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock className="h-4 w-4" />
+                                            <span className="font-mono text-sm">{period.startTime}</span>
+                                        </div>
+                                        <div className="flex-1 font-semibold text-secondary-foreground">
+                                            {period.subject}
+                                        </div>
                                     </div>
-                                    <div className="flex-1 font-semibold text-secondary-foreground">
-                                        {period.subject}
-                                    </div>
-                                </div>
-                            ))
-                            ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                ))
+                                ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">No periods scheduled for {day}.</p>
+                                )}
+                            </div>
+                        </AccordionContent>
+                    </Card>
+                </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         )}
       </div>
       
