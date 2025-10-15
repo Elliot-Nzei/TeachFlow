@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { DatabaseBackup, Upload, Loader2, AlertCircle } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -115,7 +115,7 @@ export default function SystemPage() {
         if (dataArray && dataArray.length > 0) {
             const collRef = collection(firestore, 'users', user.uid, collectionName);
             dataArray.forEach(itemData => {
-                const newDocRef = collection(firestore, collRef.path).doc();
+                const newDocRef = doc(collRef);
                 batch.set(newDocRef, itemData);
             });
         }
