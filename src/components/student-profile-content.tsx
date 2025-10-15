@@ -233,15 +233,11 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 
   if (isLoadingStudent) {
       return (
-          <div className="space-y-8 p-6">
-              <div className="grid gap-8 md:grid-cols-3">
-                  <div className="md:col-span-1 space-y-8">
-                      <Skeleton className="h-64 w-full" />
-                      <Skeleton className="h-40 w-full" />
-                  </div>
-                  <div className="md:col-span-2">
-                      <Skeleton className="h-96 w-full" />
-                  </div>
+          <div className="space-y-8 p-4 md:p-6">
+              <Skeleton className="h-32 w-full" />
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-1/3" />
+                <Skeleton className="h-64 w-full" />
               </div>
           </div>
       )
@@ -262,10 +258,10 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 
   return (
     <>
-      <div className="p-6 border-b">
-        <div className="flex justify-between items-start">
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-                <Avatar className="h-24 w-24">
+                <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
                     <AvatarImage src={student.avatarUrl} alt={student.name} />
                     <AvatarFallback className="text-3xl">{student.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                 </Avatar>
@@ -277,8 +273,8 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
             </div>
             <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    <Button variant="destructive" size="sm" className="w-full sm:w-auto">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
                     </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -299,8 +295,8 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
         </div>
       </div>
 
-      <Tabs defaultValue="academic-record" className="p-6">
-        <TabsList>
+      <Tabs defaultValue="academic-record" className="p-4 md:p-6">
+        <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="academic-record">Academic Record</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="traits">Behavioral Traits</TabsTrigger>
