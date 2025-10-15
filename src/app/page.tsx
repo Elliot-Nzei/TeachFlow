@@ -59,21 +59,6 @@ const features = [
   },
 ];
 
-
-function UserCounter() {
-    const { firestore } = useFirebase();
-    const counterQuery = useMemo(() => firestore ? doc(firestore, 'metadata', 'userCount') : null, [firestore]);
-    const { data: userCountDoc } = useDoc<{ count: number }>(counterQuery);
-
-    const count = userCountDoc?.count || 0;
-
-    return (
-        <div className="text-sm mt-6 animate-fade-in">
-            Join over <span className="font-bold text-lg text-primary">{count.toLocaleString()}</span> educators revolutionizing their schools.
-        </div>
-    )
-}
-
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -146,7 +131,6 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-            <UserCounter />
           </div>
         </section>
 
@@ -239,7 +223,7 @@ export default function Home() {
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">&copy; 2024 PeerPrep. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
+          <Link className="text-xs hover:underline underline-offse-4" href="#">
             Terms of Service
           </Link>
           <Link className="text-xs hover:underline underline-offset-4" href="#">

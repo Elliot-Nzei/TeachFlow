@@ -9,7 +9,7 @@ import { Logo } from "@/components/logo"
 import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, increment, runTransaction } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -34,34 +34,18 @@ export default function RegisterPage() {
             if (userCredential && userCredential.user) {
                 const user = userCredential.user;
                 
-                // Create user document and increment public counter in a transaction
-                const userCounterRef = doc(firestore, "metadata", "userCount");
-                const userRef = doc(firestore, "users", user.uid);
+                const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
                 
-                await runTransaction(firestore, async (transaction) => {
-                    // Get current count
-                    const counterDoc = await transaction.get(userCounterRef);
-                    if (!counterDoc.exists()) {
-                         // Initialize if it doesn't exist
-                        transaction.set(userCounterRef, { count: 1 });
-                    } else {
-                        // Increment
-                        transaction.update(userCounterRef, { count: increment(1) });
-                    }
-
-                    // Set user document
-                    const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-                    transaction.set(userRef, {
-                        uid: user.uid,
-                        name: fullName,
-                        email: user.email,
-                        schoolName: schoolName,
-                        userCode: userCode,
-                        profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`,
-                        studentCounter: 0,
-                        currentTerm: 'First Term',
-                        currentSession: '2023/2024'
-                    });
+                await setDoc(doc(firestore, "users", user.uid), {
+                    uid: user.uid,
+                    name: fullName,
+                    email: user.email,
+                    schoolName: schoolName,
+                    userCode: userCode,
+                    profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`,
+                    studentCounter: 0,
+                    currentTerm: 'First Term',
+                    currentSession: '2023/2024'
                 });
 
                 router.push('/dashboard');
