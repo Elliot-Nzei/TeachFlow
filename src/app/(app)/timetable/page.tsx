@@ -26,25 +26,7 @@ export default function TimetablePage() {
   };
   
   const handlePrint = useCallback(() => {
-    const printableElement = document.getElementById('printable-timetable');
-    if(printableElement) {
-        const printWindow = window.open('', '', 'height=800,width=1200');
-        printWindow?.document.write('<html><head><title>Print Timetable</title>');
-        // Inject styles
-        const styles = Array.from(document.styleSheets)
-          .map(styleSheet => {
-            try {
-              return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
-            } catch (e) {
-              return '';
-            }
-          }).join('\n');
-        printWindow?.document.write(`<style>${styles}</style></head><body>`);
-        printWindow?.document.write(printableElement.innerHTML);
-        printWindow?.document.write('</body></html>');
-        printWindow?.document.close();
-        printWindow?.print();
-    }
+    window.print();
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
@@ -62,8 +44,9 @@ export default function TimetablePage() {
 
     try {
         const canvas = await html2canvas(timetableElement, {
-            scale: 2, // Increase resolution
-            backgroundColor: null, // Use transparent background
+            scale: 2,
+            backgroundColor: null,
+            useCORS: true,
         });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
@@ -121,7 +104,7 @@ export default function TimetablePage() {
 
     <div className="flex flex-1 gap-8 print:hidden">
       {/* Sidebar for Desktop */}
-      <div className="hidden md:block md:w-1/4 lg:w-1/5">
+      <div className="hidden md:block md:w-1/4 lg:w-1/5 sticky top-20 self-start">
         <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
       </div>
       
