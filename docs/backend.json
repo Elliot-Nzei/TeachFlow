@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user in the Nigerian School Management System.",
+      "description": "Represents a user in the TeachFlow School Management System.",
       "properties": {
         "name": {
           "type": "string",
@@ -120,6 +120,19 @@
           "type": "string",
           "format": "uri"
         },
+        "guardianName": {
+            "type": "string",
+            "description": "Full name of the parent or guardian."
+        },
+        "guardianPhone": {
+            "type": "string",
+            "description": "Phone number of the parent or guardian."
+        },
+        "guardianEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address of the parent or guardian."
+        },
         "promotionHistory": {
           "type": "array",
           "description": "A log of the student's promotions.",
@@ -174,8 +187,21 @@
         "session": {
           "type": "string"
         },
-        "score": {
-          "type": "number"
+        "ca1": {
+            "type": "number",
+            "description": "Score for Continuous Assessment 1."
+        },
+        "ca2": {
+            "type": "number",
+            "description": "Score for Continuous Assessment 2."
+        },
+        "exam": {
+            "type": "number",
+            "description": "Score for the exam."
+        },
+        "total": {
+            "type": "number",
+            "description": "The total score (ca1 + ca2 + exam)."
         },
         "studentName": {
           "type": "string"
@@ -194,7 +220,7 @@
         "subject",
         "term",
         "session",
-        "score",
+        "total",
         "studentName",
         "className",
         "grade"
@@ -453,3 +479,5 @@
     }
   }
 }
+
+    

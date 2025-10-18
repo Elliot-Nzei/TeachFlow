@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescri
 import StudentProfileContent from '@/components/student-profile-content';
 import Image from 'next/image';
 import type { Student } from '@/lib/types';
+import placeholderImages from '@/lib/placeholder-images.json';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -71,9 +72,15 @@ export default function StudentsPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStudentOpen, setAddStudentOpen] = useState(false);
+  
+  const [newStudent, setNewStudent] = useState({
+      name: '',
+      classId: '',
+      guardianName: '',
+      guardianPhone: '',
+      guardianEmail: ''
+  });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [studentName, setStudentName] = useState('');
-  const [classId, setClassId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
@@ -100,15 +107,23 @@ export default function StudentsPage() {
   };
   
   const resetForm = () => {
+      setNewStudent({ name: '', classId: '', guardianName: '', guardianPhone: '', guardianEmail: '' });
       setPreviewImage('');
-      setStudentName('');
-      setClassId('');
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { id, value } = e.target;
+      setNewStudent(prev => ({...prev, [id]: value }));
+  }
+
+  const handleClassSelect = (value: string) => {
+      setNewStudent(prev => ({...prev, classId: value}));
   }
 
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (studentName && user && settings) {
-        const studentClass = classes?.find(c => c.id === classId);
+    if (newStudent.name && user && settings) {
+        const studentClass = classes?.find(c => c.id === newStudent.classId);
         
         const schoolAcronym = settings.schoolName
           ? settings.schoolName
@@ -123,17 +138,22 @@ export default function StudentsPage() {
         
         try {
             const studentsCollection = collection(firestore, 'users', user.uid, 'students');
-            const newStudentDoc = await addDoc(studentsCollection, {
+            const studentData = {
                 studentId: newStudentId,
-                name: studentName,
+                name: newStudent.name,
                 className: studentClass?.name || '',
                 classId: studentClass?.id || '',
-                avatarUrl: previewImage || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
+                avatarUrl: previewImage || placeholderImages.placeholderImages.find(img => img.id === 'hero-students')?.imageUrl || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
+                guardianName: newStudent.guardianName || '',
+                guardianPhone: newStudent.guardianPhone || '',
+                guardianEmail: newStudent.guardianEmail || '',
                 createdAt: serverTimestamp(),
-            });
+            };
+
+            const newStudentDoc = await addDoc(studentsCollection, studentData);
             
             if (studentClass) {
-              const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
+              const classRef = doc(firestore, 'users', user.uid, 'classes', newStudent.classId);
               await updateDoc(classRef, {
                   students: arrayUnion(newStudentDoc.id)
               });
@@ -148,7 +168,7 @@ export default function StudentsPage() {
             
             toast({
                 title: "Student Added",
-                description: `${studentName} has been added.`
+                description: `${newStudent.name} has been added.`
             });
 
         } catch (error) {
@@ -187,7 +207,7 @@ export default function StudentsPage() {
                         <UserPlus className="mr-2 h-4 w-4" /> Add Student
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Add New Student</DialogTitle>
                         <DialogDescription>
@@ -211,25 +231,45 @@ export default function StudentsPage() {
                                     <Input id="picture" type="file" accept="image/*" onChange={handleImageUpload} />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="student-name">Full Name *</Label>
-                                <Input id="student-name" value={studentName} onChange={e => setStudentName(e.target.value)} placeholder="e.g., John Doe" required />
+                            
+                            <h3 className="font-semibold border-b pb-2">Student Information</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="name">Full Name *</Label>
+                                    <Input id="name" value={newStudent.name} onChange={handleInputChange} placeholder="e.g., John Doe" required />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="classId">Class (Optional)</Label>
+                                    <Select onValueChange={handleClassSelect} value={newStudent.classId}>
+                                        <SelectTrigger id="classId">
+                                        <SelectValue placeholder="Select a class" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                        {isLoadingClasses ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
+                                        classes?.map(cls => (
+                                            <SelectItem key={cls.id} value={cls.id}>
+                                            {cls.name}
+                                            </SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="student-class">Class (Optional)</Label>
-                                <Select onValueChange={setClassId} value={classId}>
-                                    <SelectTrigger id="student-class">
-                                    <SelectValue placeholder="Select a class" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                    {isLoadingClasses ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
-                                    classes?.map(cls => (
-                                        <SelectItem key={cls.id} value={cls.id}>
-                                        {cls.name}
-                                        </SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
+                            
+                            <h3 className="font-semibold border-b pb-2 mt-4">Parent/Guardian Information</h3>
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="guardianName">Guardian's Full Name</Label>
+                                    <Input id="guardianName" value={newStudent.guardianName} onChange={handleInputChange} placeholder="e.g., Jane Doe" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="guardianPhone">Guardian's Phone</Label>
+                                    <Input id="guardianPhone" type="tel" value={newStudent.guardianPhone} onChange={handleInputChange} placeholder="e.g., 08012345678" />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="guardianEmail">Guardian's Email</Label>
+                                    <Input id="guardianEmail" type="email" value={newStudent.guardianEmail} onChange={handleInputChange} placeholder="e.g., guardian@example.com" />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>
@@ -295,3 +335,5 @@ export default function StudentsPage() {
     </>
   );
 }
+
+    

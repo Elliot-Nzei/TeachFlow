@@ -31,27 +31,27 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  const studentIdsInClass = useMemo(() => students?.map(s => s.id) || [], [students]);
-
-  const allAttendanceForClassQuery = useMemoFirebase(() => {
-    if (!user || studentIdsInClass.length === 0) return null;
-    // Query by studentId instead of classId to fetch all historical/transferred records
-    return query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', 'in', studentIdsInClass));
-  }, [firestore, user, studentIdsInClass]);
-
-  const { data: allAttendanceForClass, isLoading: isLoadingAttendance } = useCollection<Attendance>(allAttendanceForClassQuery);
+  // Optimized query: Only fetch attendance for the selected date.
+  const attendanceForDateQuery = useMemoFirebase(() => {
+    if (!user || !selectedClass || !date) return null;
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    return query(
+        collection(firestore, 'users', user.uid, 'attendance'),
+        where('classId', '==', selectedClass.id),
+        where('date', '==', formattedDate)
+    );
+  }, [firestore, user, selectedClass, date]);
+  
+  const { data: attendanceForDate, isLoading: isLoadingAttendance } = useCollection<Attendance>(attendanceForDateQuery);
   
   const attendanceMap = useMemo(() => {
-    if (!allAttendanceForClass) return new Map<string, any>();
-    
+    if (!attendanceForDate) return new Map<string, any>();
     const map = new Map<string, any>();
-    for (const record of allAttendanceForClass) {
-        // Create a unique key for each student-date pair
-        const key = `${record.studentId}_${record.date}`;
-        map.set(key, record);
+    for (const record of attendanceForDate) {
+        map.set(record.studentId, record);
     }
     return map;
-  }, [allAttendanceForClass]);
+  }, [attendanceForDate]);
 
 
   useEffect(() => {
@@ -59,12 +59,9 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
       setAttendance([]);
       return;
     };
-
-    const formattedDate = format(date, 'yyyy-MM-dd');
     
     const newAttendance = students.map(student => {
-        const recordKey = `${student.id}_${formattedDate}`;
-        const existingRecord = attendanceMap.get(recordKey);
+        const existingRecord = attendanceMap.get(student.id);
 
         return {
             studentId: student.id,

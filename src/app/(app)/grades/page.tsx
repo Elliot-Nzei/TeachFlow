@@ -31,6 +31,15 @@ import { useToast } from '@/hooks/use-toast';
 
 type GradeInput = { studentId: string; studentName: string; avatarUrl: string; ca1: number | string; ca2: number | string; exam: number | string; };
 
+const calculateNigerianGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
+  if (score >= 75) return 'A';
+  if (score >= 70) return 'B';
+  if (score >= 60) return 'C';
+  if (score >= 50) return 'D';
+  if (score >= 45) return 'E';
+  return 'F';
+};
+
 export default function GradesPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
@@ -137,12 +146,7 @@ export default function GradesPage() {
 
         const total = (ca1 || 0) + (ca2 || 0) + (exam || 0);
         
-        let grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' = 'F';
-        if (total >= 70) grade = 'A';
-        else if (total >= 60) grade = 'B';
-        else if (total >= 50) grade = 'C';
-        else if (total >= 45) grade = 'D';
-        else if (total > 40) grade = 'E';
+        const grade = calculateNigerianGrade(total);
         
         const existingGrade = (allGradesForClass || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject && g.term === settings.currentTerm && g.session === settings.currentSession);
 
@@ -201,7 +205,7 @@ export default function GradesPage() {
                 <SheetContent side="left" className="w-[80vw] max-w-xs p-0">
                   <SheetHeader>
                     <SheetTitle className="sr-only">Select Class</SheetTitle>
-                    <SheetDescription className="sr-only">Choose a class from the list to manage grades.</SheetDescription>
+                    <SheetDescription className="sr-only">Choose a class to manage grades.</SheetDescription>
                   </SheetHeader>
                     <ClassSidebar selectedClass={selectedClass} onSelectClass={handleSelectClass} />
                 </SheetContent>

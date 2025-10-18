@@ -17,6 +17,9 @@ export type Student = {
   age?: number;
   gender?: 'Male' | 'Female';
   createdAt?: any;
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianEmail?: string;
   promotionHistory?: { from: string; to: string; date: string; session: string; }[];
 };
 
@@ -127,6 +130,8 @@ export type DataTransfer = {
   students?: Student[];
   traits?: Trait[];
   lessonNote?: LessonNote;
+  grades?: Grade[];
+  attendance?: Attendance[];
 };
 
 export type Settings = {
@@ -162,3 +167,5 @@ export type Timetable = {
   className: string;
   schedule: TimetableSchedule;
 };
+
+    

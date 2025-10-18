@@ -1,3 +1,4 @@
+
 import data from './placeholder-images.json';
 
 export type ImagePlaceholder = {
@@ -7,4 +8,7 @@ export type ImagePlaceholder = {
   imageHint: string;
 };
 
+// This is not used, but is here as a reference for the structure of the JSON file.
 export const PlaceHolderImages: ImagePlaceholder[] = data.placeholderImages;
+
+    

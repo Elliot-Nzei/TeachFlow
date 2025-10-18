@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2 } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,7 +59,7 @@ function TraitEditor({ student }: { student: any }) {
             allTraitsList.forEach(trait => initialRatings[trait] = 3);
             setTraitRatings(initialRatings);
         }
-    }, [traitsData]);
+    }, [traitsData, allTraitsList]);
     
 
     const handleRatingChange = (trait: string, value: number[]) => {
@@ -293,9 +293,25 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 </AlertDialogContent>
             </AlertDialog>
         </div>
+          <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UserCircle2 className="h-5 w-5" /> Parent/Guardian Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+                 {(student.guardianName || student.guardianPhone || student.guardianEmail) ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        {student.guardianName && <div><p className="text-muted-foreground">Name</p><p className="font-medium">{student.guardianName}</p></div>}
+                        {student.guardianPhone && <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{student.guardianPhone}</p></div>}
+                        {student.guardianEmail && <div className="col-span-1 sm:col-span-2"><p className="text-muted-foreground">Email</p><p className="font-medium">{student.guardianEmail}</p></div>}
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No guardian information provided.</p>
+                )}
+            </CardContent>
+        </Card>
       </div>
 
-      <Tabs defaultValue="academic-record" className="p-4 md:p-6">
+      <Tabs defaultValue="academic-record" className="p-4 md:p-6 pt-0">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="academic-record">Academic Record</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
@@ -407,3 +423,5 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 }
 
 export default StudentProfileContent;
+
+    
