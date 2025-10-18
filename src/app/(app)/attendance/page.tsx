@@ -170,12 +170,12 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
             </div>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-wrap gap-4">
                 <Popover>
                     <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
-                        className="w-full md:w-[280px] justify-start text-left font-normal"
+                        className="w-full sm:w-[280px] justify-start text-left font-normal"
                     >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -190,8 +190,8 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
                     />
                     </PopoverContent>
                 </Popover>
-                <div className="flex-1 flex flex-col sm:flex-row gap-2">
-                    <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0} className="w-full sm:w-auto">
+                <div className="flex-1 flex flex-wrap items-center gap-2">
+                    <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0}>
                         <Save className="mr-2 h-4 w-4" />
                         Save Attendance
                     </Button>
