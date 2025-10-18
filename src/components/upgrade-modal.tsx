@@ -38,15 +38,15 @@ export default function UpgradeModal() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
               <Star className="h-6 w-6 text-primary" />
           </div>
-          <DialogTitle className="text-center text-xl">Free Trial Expired</DialogTitle>
+          <DialogTitle className="text-center text-xl">Subscription Expired</DialogTitle>
           <DialogDescription className="text-center">
-            Your trial has ended. Please upgrade to a paid plan to restore full access to TeachFlow.
+            Your plan has expired. Please renew your subscription to restore full access to TeachFlow.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
           <Button onClick={handleGoToBilling} className="w-full">
             <Zap className="mr-2 h-4 w-4" />
-            View Plans
+            View Plans & Renew
           </Button>
           <Button variant="outline" onClick={handleLogout} className="w-full">
             Logout

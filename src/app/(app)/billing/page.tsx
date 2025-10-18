@@ -1,9 +1,8 @@
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Zap, Lock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CheckCircle2, XCircle, Zap, Star } from 'lucide-react';
+import { cn, toTitleCase } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { useFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -11,10 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { format, differenceInSeconds } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { toTitleCase } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
 
 const plansData = [
   {
@@ -70,7 +67,7 @@ const plansData = [
 
 
 const SubscriptionStatusCard = () => {
-    const { plan, subscriptionCycle, renewalDate } = usePlan();
+    const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
     const [timeLeft, setTimeLeft] = useState('');
 
     useEffect(() => {
@@ -81,8 +78,8 @@ const SubscriptionStatusCard = () => {
 
         const interval = setInterval(() => {
             const now = new Date();
-            const secondsRemaining = differenceInSeconds(renewalDate, now);
-
+            const secondsRemaining = Math.max(0, Math.floor((renewalDate.getTime() - now.getTime()) / 1000));
+            
             if (secondsRemaining <= 0) {
                 setTimeLeft('Expired');
                 clearInterval(interval);
@@ -103,8 +100,8 @@ const SubscriptionStatusCard = () => {
         return () => clearInterval(interval);
     }, [renewalDate]);
 
-    if (!plan || !renewalDate) {
-        return null;
+    if (isTrial || !plan || !renewalDate) {
+        return null; // Don't show for trial users or if data is missing
     }
 
     const planName = toTitleCase(plan.replace('_', ' '));
@@ -114,7 +111,7 @@ const SubscriptionStatusCard = () => {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Zap /> Your Current Plan</CardTitle>
                  <CardDescription className="text-primary-foreground/80">
-                    You are currently on the {planName} plan.
+                    You are currently subscribed to the {planName} plan.
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
@@ -124,7 +121,7 @@ const SubscriptionStatusCard = () => {
                 </div>
                 <div className="bg-primary-foreground/10 p-3 rounded-lg">
                     <p className="text-sm text-primary-foreground/80">Billing Cycle</p>
-                    <p className="text-xl font-bold">{subscriptionCycle ? toTitleCase(subscriptionCycle) : 'Trial'}</p>
+                    <p className="text-xl font-bold">{subscriptionCycle ? toTitleCase(subscriptionCycle) : 'N/A'}</p>
                 </div>
                 <div className="bg-primary-foreground/10 p-3 rounded-lg col-span-2 md:col-span-1">
                     <p className="text-sm text-primary-foreground/80">
@@ -142,7 +139,6 @@ export default function BillingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleUpgrade = async (newPlanId: 'basic' | 'prime') => {
       if (!user) {
@@ -154,7 +150,7 @@ export default function BillingPage() {
           await updateDoc(userRef, {
               plan: newPlanId,
               subscriptionCycle: billingCycle,
-              planStartDate: serverTimestamp(),
+              planStartDate: serverTimestamp(), // Reset the start date to now
           });
           toast({
               title: 'Plan Updated!',
