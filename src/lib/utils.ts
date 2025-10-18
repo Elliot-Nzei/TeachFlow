@@ -19,14 +19,11 @@ export const getNextClassName = (currentName: string, allClasses: { name: string
 };
 
 /**
- * Converts a string to title case where the first letter of each word is capitalized.
+ * Converts a string to title case where the first letter of each word is capitalized, preserving spaces.
  * @param str The input string.
  * @returns The title-cased string.
  */
 export function toTitleCase(str: string): string {
   if (!str) return '';
-  return str
-    .trim()
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return str.toLowerCase().replace(/(^|\s)\S/g, (L) => L.toUpperCase());
 }
