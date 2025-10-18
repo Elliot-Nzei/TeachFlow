@@ -134,7 +134,7 @@ function UserProfileDisplay() {
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { plan, isLocked } = usePlan();
+  const { plan } = usePlan();
 
   const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
 
@@ -149,11 +149,10 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <Link href={item.href} aria-disabled={isLocked && item.href !== '/billing'} onClick={(e) => (isLocked && item.href !== '/billing') && e.preventDefault()}>
+                  <Link href={item.href}>
                     <SidebarMenuButton
                       isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
                       tooltip={{ children: item.label }}
-                      disabled={isLocked && item.href !== '/billing'}
                     >
                       <item.icon />
                       <span>{item.label}</span>
@@ -166,8 +165,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <SidebarFooter>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <Link href="/settings" aria-disabled={isLocked} onClick={(e) => isLocked && e.preventDefault()}>
-                        <SidebarMenuButton isActive={pathname === '/settings'} tooltip={{children: 'Settings'}} disabled={isLocked}>
+                    <Link href="/settings">
+                        <SidebarMenuButton isActive={pathname === '/settings'} tooltip={{children: 'Settings'}}>
                             <Settings />
                             <span>Settings</span>
                         </SidebarMenuButton>
