@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, UserPlus, ChevronRight, Lock } from 'lucide-react';
+import { Search, UserPlus, ChevronRight, Lock, InfinityIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toTitleCase } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -215,10 +216,22 @@ export default function StudentsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+             <Card className="w-full md:w-auto">
+                <CardContent className="p-3 flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">Student Limit</div>
+                    {isLoadingStudents ? <Skeleton className="h-6 w-12" /> : (
+                        <div className="flex items-center gap-1 font-bold text-lg">
+                            <span>{students?.length || 0}</span>
+                            <span>/</span>
+                            {features.studentLimit === 'Unlimited' ? <InfinityIcon className="h-5 w-5" /> : <span>{features.studentLimit}</span>}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
             <Dialog open={isAddStudentOpen} onOpenChange={setAddStudentOpen}>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                         <div tabIndex={atStudentLimit ? 0 : undefined}>
+                         <div tabIndex={atStudentLimit ? 0 : undefined} className="w-full sm:w-auto">
                             <DialogTrigger asChild>
                                 <Button className="w-full sm:w-auto" disabled={atStudentLimit}>
                                     {atStudentLimit && <Lock className="mr-2 h-4 w-4" />}

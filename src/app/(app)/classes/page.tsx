@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookCopy, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check, Lock } from 'lucide-react';
+import { BookCopy, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check, Lock, InfinityIcon } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassDetailsContent from '@/app/(app)/class-details-content';
 import type { Class } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -23,6 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { usePlan } from '@/contexts/plan-context';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { SheetTrigger } from '@/components/ui/sheet';
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
@@ -142,94 +143,108 @@ export default function ClassesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold font-headline">Classes</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <Tooltip>
-              <TooltipTrigger asChild>
-                <div tabIndex={atClassLimit ? 0 : undefined}>
-                    <DialogTrigger asChild>
-                        <Button disabled={atClassLimit}>
-                            {atClassLimit && <Lock className="mr-2 h-4 w-4" />}
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add New Class
-                        </Button>
-                    </DialogTrigger>
-                </div>
-              </TooltipTrigger>
-              {atClassLimit && (
-                <TooltipContent>
-                    <p>You have reached the class limit for your current plan.</p>
-                </TooltipContent>
-              )}
-          </Tooltip>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Class</DialogTitle>
-              <DialogDescription>
-                Enter the name for the new class and assign its academic details.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAddClass}>
-                <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input id="name" value={newClassName} onChange={(e) => setNewClassName(toTitleCase(e.target.value))} placeholder="e.g., Primary 5A" className="col-span-3" />
-                </div>
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="category" className="text-right">Category</Label>
-                    <div className="col-span-3">
-                         <Select onValueChange={(value: ClassCategory) => setSelectedCategory(value)} value={selectedCategory}>
-                            <SelectTrigger id="category">
-                                <SelectValue placeholder="Select category..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {classCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="grade" className="text-right">Grade</Label>
-                    <div className="col-span-3">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {selectedGrade !== null ? `Grade ${selectedGrade}` : "Select grade..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <h1 className="text-3xl font-bold font-headline">Classes</h1>
+             <div className="flex items-center gap-4">
+                <Card className="w-full md:w-auto">
+                    <CardContent className="p-3 flex items-center gap-4">
+                        <div className="text-sm text-muted-foreground">Class Limit</div>
+                        {isLoading ? <Skeleton className="h-6 w-12" /> : (
+                            <div className="flex items-center gap-1 font-bold text-lg">
+                                <span>{classes?.length || 0}</span>
+                                <span>/</span>
+                                {features.classLimit === 'Unlimited' ? <InfinityIcon className="h-5 w-5" /> : <span>{features.classLimit}</span>}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div tabIndex={atClassLimit ? 0 : undefined}>
+                            <DialogTrigger asChild>
+                                <Button disabled={atClassLimit} className="w-full md:w-auto">
+                                    {atClassLimit && <Lock className="mr-2 h-4 w-4" />}
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add New Class
                                 </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width)] p-0">
-                                <Command>
-                                <CommandInput placeholder="Search grade..." />
-                                <CommandList>
-                                    <CommandEmpty>No grade found.</CommandEmpty>
-                                    <CommandGroup>
-                                    {classGrades.map((grade) => (
-                                        <CommandItem
-                                        key={grade}
-                                        value={String(grade)}
-                                        onSelect={() => {
-                                            setSelectedGrade(grade);
-                                        }}
-                                        >
-                                         <Check className={cn("mr-2 h-4 w-4", selectedGrade === grade ? "opacity-100" : "opacity-0")} />
-                                        Grade {grade}
-                                        </CommandItem>
-                                    ))}
-                                    </CommandGroup>
-                                </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                </div>
-                </div>
-                <DialogFooter>
-                <Button type="submit">Save Class</Button>
-                </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                            </DialogTrigger>
+                        </div>
+                    </TooltipTrigger>
+                    {atClassLimit && (
+                        <TooltipContent>
+                            <p>You have reached the class limit for your current plan.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                    <DialogTitle>Add New Class</DialogTitle>
+                    <DialogDescription>
+                        Enter the name for the new class and assign its academic details.
+                    </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddClass}>
+                        <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">Name</Label>
+                            <Input id="name" value={newClassName} onChange={(e) => setNewClassName(toTitleCase(e.target.value))} placeholder="e.g., Primary 5A" className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="category" className="text-right">Category</Label>
+                            <div className="col-span-3">
+                                <Select onValueChange={(value: ClassCategory) => setSelectedCategory(value)} value={selectedCategory}>
+                                    <SelectTrigger id="category">
+                                        <SelectValue placeholder="Select category..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="grade" className="text-right">Grade</Label>
+                            <div className="col-span-3">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                                            {selectedGrade !== null ? `Grade ${selectedGrade}` : "Select grade..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width)] p-0">
+                                        <Command>
+                                        <CommandInput placeholder="Search grade..." />
+                                        <CommandList>
+                                            <CommandEmpty>No grade found.</CommandEmpty>
+                                            <CommandGroup>
+                                            {classGrades.map((grade) => (
+                                                <CommandItem
+                                                key={grade}
+                                                value={String(grade)}
+                                                onSelect={() => {
+                                                    setSelectedGrade(grade);
+                                                }}
+                                                >
+                                                <Check className={cn("mr-2 h-4 w-4", selectedGrade === grade ? "opacity-100" : "opacity-0")} />
+                                                Grade {grade}
+                                                </CommandItem>
+                                            ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
+                        </div>
+                        <DialogFooter>
+                        <Button type="submit">Save Class</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+                </Dialog>
+            </div>
       </div>
 
        <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -300,5 +315,3 @@ export default function ClassesPage() {
     </>
   );
 }
-
-    
