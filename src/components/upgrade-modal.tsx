@@ -16,7 +16,7 @@ import { useFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
 export default function UpgradeModal() {
-  const { isTrialExpired, isLocked } = usePlan();
+  const { isLocked } = usePlan();
   const { auth } = useFirebase();
   const router = useRouter();
 
@@ -32,7 +32,7 @@ export default function UpgradeModal() {
   };
 
   return (
-    <Dialog open={isLocked && isTrialExpired}>
+    <Dialog open={isLocked}>
       <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()} hideCloseButton>
         <DialogHeader>
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
@@ -40,13 +40,13 @@ export default function UpgradeModal() {
           </div>
           <DialogTitle className="text-center text-xl">Free Trial Expired</DialogTitle>
           <DialogDescription className="text-center">
-            Your 30-second trial has ended. Please upgrade to a paid plan to continue using all features of TeachFlow.
+            Your trial has ended. Please upgrade to a paid plan to restore full access to TeachFlow.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
           <Button onClick={handleGoToBilling} className="w-full">
             <Zap className="mr-2 h-4 w-4" />
-            Upgrade to a Plan
+            View Plans
           </Button>
           <Button variant="outline" onClick={handleLogout} className="w-full">
             Logout
@@ -56,5 +56,3 @@ export default function UpgradeModal() {
     </Dialog>
   );
 }
-
-    

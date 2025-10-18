@@ -1,5 +1,7 @@
+
 'use client';
 import React, { createContext, useState, useEffect, useContext, ReactNode, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { SettingsContext } from './settings-context';
 import type { User } from 'firebase/auth';
@@ -28,10 +30,10 @@ const PlanContext = createContext<PlanContextType | undefined>(undefined);
 export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const { user, isUserLoading } = useFirebase();
   const { settings, isLoading: isSettingsLoading } = useContext(SettingsContext);
+  const pathname = usePathname();
   
   const [plan, setPlan] = useState<Plan>(null);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(TRIAL_DURATION_SECONDS);
-  const [isLocked, setIsLocked] = useState(false);
 
   const trialStartedAt = settings?.trialStartedAt;
 
@@ -46,7 +48,6 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (plan !== 'free_trial' || !trialStartedAt) {
       setTrialTimeRemaining(0);
-      setIsLocked(false);
       return;
     }
 
@@ -56,11 +57,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       const nowMs = Date.now();
       const elapsedSeconds = Math.floor((nowMs - trialStartMs) / 1000);
       const remaining = TRIAL_DURATION_SECONDS - elapsedSeconds;
-      setTrialTimeRemaining(remaining);
+      setTrialTimeRemaining(remaining < 0 ? 0 : remaining);
 
       if (remaining <= 0) {
-        setTrialTimeRemaining(0);
-        setIsLocked(true);
         clearInterval(interval);
       }
     }, 1000);
@@ -68,6 +67,15 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [plan, trialStartedAt]);
   
+  const isTrialExpired = useMemo(() => {
+    return plan === 'free_trial' && trialTimeRemaining <= 0;
+  }, [plan, trialTimeRemaining]);
+  
+  const isLocked = useMemo(() => {
+    // The app is locked if the trial is expired AND the user is not on the billing page.
+    return isTrialExpired && pathname !== '/billing';
+  }, [isTrialExpired, pathname]);
+
   const features = useMemo(() => {
     switch (plan) {
       case 'prime':
@@ -100,7 +108,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const value: PlanContextType = {
     plan,
     isTrial: plan === 'free_trial',
-    isTrialExpired: plan === 'free_trial' && trialTimeRemaining <= 0,
+    isTrialExpired,
     trialTimeRemaining,
     isLocked,
     features,

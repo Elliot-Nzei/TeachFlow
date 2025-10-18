@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -49,7 +50,7 @@ import { doc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsProvider } from '@/contexts/settings-context';
-import { PlanProvider } from '@/contexts/plan-context';
+import { PlanProvider, usePlan } from '@/contexts/plan-context';
 import NotificationBell from '@/components/notification-bell';
 import PlanStatusBanner from '@/components/plan-status-banner';
 import UpgradeModal from '@/components/upgrade-modal';
@@ -132,74 +133,83 @@ function UserProfileDisplay() {
   )
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { isLocked } = usePlan();
 
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <Sidebar>
+          <SidebarHeader>
+            <Logo />
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href} aria-disabled={isLocked && item.href !== '/billing'} onClick={(e) => (isLocked && item.href !== '/billing') && e.preventDefault()}>
+                    <SidebarMenuButton
+                      isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
+                      tooltip={{ children: item.label }}
+                      disabled={isLocked && item.href !== '/billing'}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <Link href="/settings" aria-disabled={isLocked} onClick={(e) => isLocked && e.preventDefault()}>
+                        <SidebarMenuButton isActive={pathname === '/settings'} tooltip={{children: 'Settings'}} disabled={isLocked}>
+                            <Settings />
+                            <span>Settings</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <Link href="/">
+                        <SidebarMenuButton tooltip={{children: 'Logout'}}>
+                            <LogOut />
+                            <span>Logout</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </Sidebar>
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+            <SidebarTrigger className="md:hidden" />
+            <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+                <div className="ml-auto flex items-center gap-2">
+                    <NotificationBell />
+                    <UserProfileDisplay />
+                </div>
+            </div>
+          </header>
+          <PlanStatusBanner />
+          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            {children}
+          </main>
+          <UpgradeModal />
+        </div>
+      </div>
+    </SidebarProvider>
+  )
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <PlanProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full">
-            <Sidebar>
-              <SidebarHeader>
-                <Logo />
-              </SidebarHeader>
-              <SidebarContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <Link href={item.href}>
-                        <SidebarMenuButton
-                          isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
-                          tooltip={{ children: item.label }}
-                        >
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </Link>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarContent>
-              <SidebarFooter>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <Link href="/settings">
-                            <SidebarMenuButton isActive={pathname === '/settings'} tooltip={{children: 'Settings'}}>
-                                <Settings />
-                                <span>Settings</span>
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <Link href="/">
-                            <SidebarMenuButton tooltip={{children: 'Logout'}}>
-                                <LogOut />
-                                <span>Logout</span>
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarFooter>
-            </Sidebar>
-            <div className="flex flex-1 flex-col">
-              <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-                <SidebarTrigger className="md:hidden" />
-                <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-                    <div className="ml-auto flex items-center gap-2">
-                        <NotificationBell />
-                        <UserProfileDisplay />
-                    </div>
-                </div>
-              </header>
-              <PlanStatusBanner />
-              <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-                {children}
-              </main>
-              <UpgradeModal />
-            </div>
-          </div>
-        </SidebarProvider>
+        <AppLayoutContent>{children}</AppLayoutContent>
       </PlanProvider>
     </SettingsProvider>
   );
