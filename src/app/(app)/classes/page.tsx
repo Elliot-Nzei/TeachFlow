@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
@@ -63,6 +64,7 @@ const classCategories: ClassCategory[] = ['Early Years', 'Primary', 'Junior Seco
 export default function ClassesPage() {
     const { firestore } = useFirebase();
     const { user } = useUser();
+    const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
     const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
@@ -76,12 +78,28 @@ export default function ClassesPage() {
 
     const classGrades = Array.from({length: 12}, (_, i) => i + 1);
 
+    const normalizeClassName = (name: string) => {
+        return name.toLowerCase().replace(/\s+/g, '');
+    }
+
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (newClassName.trim() && selectedGrade !== null && selectedCategory && user) {
+            const normalizedNewName = normalizeClassName(newClassName);
+            const isDuplicate = classes?.some(c => normalizeClassName(c.name) === normalizedNewName);
+
+            if (isDuplicate) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Duplicate Class Name',
+                    description: `A class with a name similar to "${newClassName.trim()}" already exists.`,
+                });
+                return;
+            }
+            
             const classesCollection = collection(firestore, 'users', user.uid, 'classes');
             addDocumentNonBlocking(classesCollection, {
-                name: newClassName,
+                name: newClassName.trim(),
                 grade: selectedGrade,
                 category: selectedCategory,
                 students: [],
@@ -253,5 +271,3 @@ export default function ClassesPage() {
     </>
   );
 }
-
-    
