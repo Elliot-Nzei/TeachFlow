@@ -155,6 +155,15 @@ export type Settings = {
   currentSession: string;
   userCode: string;
   studentCounter?: number;
+  plan?: 'free_trial' | 'basic' | 'prime';
+  planStartDate?: any;
+  subscriptionCycle?: 'monthly' | 'annually';
+  aiUsage?: {
+      reportCardGenerations?: number;
+      lessonNoteGenerations?: number;
+      examGenerations?: number;
+      usageCycleStartDate?: any;
+  }
 };
 
 export type TimetablePeriod = {
@@ -177,5 +186,3 @@ export type Timetable = {
   className: string;
   schedule: TimetableSchedule;
 };
-
-    

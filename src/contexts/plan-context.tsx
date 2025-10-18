@@ -2,12 +2,17 @@
 'use client';
 import React, { createContext, useState, useEffect, useContext, ReactNode, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { useFirebase } from '@/firebase';
+import { useFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { SettingsContext } from './settings-context';
 import type { User } from 'firebase/auth';
-import { add, differenceInDays } from 'date-fns';
+import { add, differenceInDays, isAfter } from 'date-fns';
+import { doc } from 'firebase/firestore';
 
-const TRIAL_DURATION_DAYS = 30;
+const TRIAL_DURATION_SECONDS = 30;
+const BASIC_MONTHLY_SECONDS = 45;
+const BASIC_ANNUALLY_MINUTES = 1;
+const PRIME_MONTHLY_MINUTES = 1;
+const PRIME_ANNUALLY_MINUTES = 90;
 
 type Plan = 'free_trial' | 'basic' | 'prime' | null;
 type BillingCycle = 'monthly' | 'annually' | null;
@@ -25,13 +30,21 @@ interface PlanContextType {
     canUseSystemExport: boolean;
     studentLimit: number | 'Unlimited';
     classLimit: number | 'Unlimited';
+    aiGenerations: number | 'Unlimited';
   };
+  aiUsage: {
+    reportCardGenerations: number;
+    lessonNoteGenerations: number;
+    examGenerations: number;
+    usageCycleStartDate: Date | null;
+  };
+  incrementUsage: (featureType: 'reportCard' | 'lessonNote' | 'exam') => void;
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 export const PlanProvider = ({ children }: { children: ReactNode }) => {
-  const { user, isUserLoading } = useFirebase();
+  const { user, isUserLoading, firestore } = useFirebase();
   const { settings, isLoading: isSettingsLoading } = useContext(SettingsContext);
   const pathname = usePathname();
   
@@ -39,6 +52,12 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionCycle, setSubscriptionCycle] = useState<BillingCycle>(null);
   const [renewalDate, setRenewalDate] = useState<Date | null>(null);
   const [daysRemaining, setDaysRemaining] = useState(0);
+  const [aiUsage, setAiUsage] = useState({
+    reportCardGenerations: 0,
+    lessonNoteGenerations: 0,
+    examGenerations: 0,
+    usageCycleStartDate: null as Date | null,
+  });
 
   useEffect(() => {
     if (isUserLoading || isSettingsLoading || !settings) {
@@ -46,6 +65,14 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     }
     setPlan(settings.plan || 'free_trial');
     setSubscriptionCycle(settings.subscriptionCycle || null);
+    if (settings.aiUsage) {
+       setAiUsage({
+            reportCardGenerations: settings.aiUsage.reportCardGenerations || 0,
+            lessonNoteGenerations: settings.aiUsage.lessonNoteGenerations || 0,
+            examGenerations: settings.aiUsage.examGenerations || 0,
+            usageCycleStartDate: settings.aiUsage.usageCycleStartDate?.toDate() || new Date(),
+       });
+    }
   }, [settings, isUserLoading, isSettingsLoading]);
 
 
@@ -62,12 +89,18 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     let endDate: Date;
 
     if (plan === 'free_trial') {
-        endDate = add(startDate, { days: TRIAL_DURATION_DAYS });
-    } else {
+        endDate = add(startDate, { seconds: TRIAL_DURATION_SECONDS });
+    } else if (plan === 'basic') {
         if (subscriptionCycle === 'annually') {
-            endDate = add(startDate, { years: 1 });
-        } else { // 'monthly' or default for paid
-            endDate = add(startDate, { months: 1 });
+            endDate = add(startDate, { minutes: BASIC_ANNUALLY_MINUTES });
+        } else {
+            endDate = add(startDate, { seconds: BASIC_MONTHLY_SECONDS });
+        }
+    } else { // prime
+         if (subscriptionCycle === 'annually') {
+            endDate = add(startDate, { minutes: PRIME_ANNUALLY_MINUTES });
+        } else {
+            endDate = add(startDate, { minutes: PRIME_MONTHLY_MINUTES });
         }
     }
     
@@ -77,17 +110,11 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   }, [plan, subscriptionCycle, settings]);
   
   const isSubscriptionExpired = useMemo(() => {
-    // Don't determine expiry until all data is loaded
-    if (isSettingsLoading || isUserLoading) return false;
-
-    // A plan is considered expired if there are negative days remaining.
-    // A positive or zero value means it's still active today.
-    return daysRemaining < 0;
-
-  }, [daysRemaining, isSettingsLoading, isUserLoading]);
+    if (isSettingsLoading || isUserLoading || !renewalDate) return false;
+    return isAfter(new Date(), renewalDate);
+  }, [renewalDate, isSettingsLoading, isUserLoading]);
   
   const isLocked = useMemo(() => {
-    // The app is locked if the subscription is expired AND the user is not on the billing page.
     return isSubscriptionExpired && pathname !== '/billing';
   }, [isSubscriptionExpired, pathname]);
 
@@ -100,6 +127,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
           canUseSystemExport: true,
           studentLimit: 'Unlimited' as const,
           classLimit: 'Unlimited' as const,
+          aiGenerations: 'Unlimited' as const,
         };
       case 'basic':
         return {
@@ -108,6 +136,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
           canUseSystemExport: false,
           studentLimit: 150,
           classLimit: 'Unlimited' as const,
+          aiGenerations: 15,
         };
       default: // free_trial or null
         return {
@@ -116,9 +145,30 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
           canUseSystemExport: false,
           studentLimit: 25,
           classLimit: 5,
+          aiGenerations: 0,
         };
     }
   }, [plan]);
+
+  const incrementUsage = (featureType: 'reportCard' | 'lessonNote' | 'exam') => {
+    if (!user || plan !== 'basic') return;
+
+    const fieldMap = {
+        reportCard: 'reportCardGenerations',
+        lessonNote: 'lessonNoteGenerations',
+        exam: 'examGenerations',
+    };
+    const fieldToIncrement = fieldMap[featureType];
+    const newCount = aiUsage[fieldToIncrement] + 1;
+
+    setAiUsage(prev => ({...prev, [fieldToIncrement]: newCount }));
+    
+    const userRef = doc(firestore, 'users', user.uid);
+    updateDocumentNonBlocking(userRef, {
+        [`aiUsage.${fieldToIncrement}`]: newCount
+    });
+  };
+
 
   const value: PlanContextType = {
     plan,
@@ -128,6 +178,8 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     daysRemaining,
     isLocked,
     features,
+    aiUsage,
+    incrementUsage,
   };
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;

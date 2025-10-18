@@ -66,6 +66,16 @@
             "type": "string",
             "enum": ["monthly", "annually"],
             "description": "The billing cycle for the subscription."
+        },
+        "aiUsage": {
+            "type": "object",
+            "description": "Tracks monthly AI feature usage.",
+            "properties": {
+                "reportCardGenerations": { "type": "number" },
+                "lessonNoteGenerations": { "type": "number" },
+                "examGenerations": { "type": "number" },
+                "usageCycleStartDate": { "type": "string", "format": "date-time" }
+            }
         }
       },
       "required": [
@@ -462,6 +472,10 @@
     ]
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User"},
+      "description": "Stores user profile and application settings."
+    },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
       "description": "Stores classes for a user."
