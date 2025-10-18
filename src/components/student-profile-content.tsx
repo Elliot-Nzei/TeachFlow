@@ -50,16 +50,18 @@ function TraitEditor({ student }: { student: any }) {
     const [traitRatings, setTraitRatings] = useState<Record<string, number>>({});
 
     useEffect(() => {
+        if (isLoadingTraits) return; // Wait for loading to finish
+
         const allTraitsList = [...TRAIT_DEFINITIONS.affective, ...TRAIT_DEFINITIONS.psychomotor];
-        if (traitsData && traitsData.length > 0) {
-            setTraitRatings(traitsData[0].traits || {});
+        if (traitsData && traitsData.length > 0 && traitsData[0].traits) {
+            setTraitRatings(traitsData[0].traits);
         } else {
             // Set default ratings only if not loading and no data exists
             const initialRatings: Record<string, number> = {};
-            allTraitsList.forEach(trait => initialRatings[trait] = 3);
+            allTraitsList.forEach(trait => initialRatings[trait] = 3); // Default to 'Good'
             setTraitRatings(initialRatings);
         }
-    }, [traitsData]);
+    }, [traitsData, isLoadingTraits]);
     
 
     const handleRatingChange = (trait: string, value: number[]) => {
@@ -114,41 +116,49 @@ function TraitEditor({ student }: { student: any }) {
 
     return (
         <div className="space-y-6">
-            <div className="space-y-4">
-                <h4 className="font-semibold">Affective Traits</h4>
-                {TRAIT_DEFINITIONS.affective.map(trait => (
-                    <div key={trait} className="grid gap-2">
-                        <div className="flex justify-between items-center">
-                            <Label htmlFor={trait}>{trait}</Label>
-                            <span className="text-sm font-medium text-primary w-20 text-center">{getRatingText(traitRatings[trait] || 3)}</span>
-                        </div>
-                        <Slider 
-                            id={trait}
-                            min={1} max={5} step={1}
-                            value={[traitRatings[trait] || 3]}
-                            onValueChange={(val) => handleRatingChange(trait, val)}
-                        />
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
+                <div>
+                    <h4 className="font-semibold mb-4 border-b pb-2">Affective Traits</h4>
+                    <div className="space-y-4">
+                        {TRAIT_DEFINITIONS.affective.map(trait => (
+                            <div key={trait} className="grid gap-2">
+                                <div className="flex justify-between items-center">
+                                    <Label htmlFor={trait}>{trait}</Label>
+                                    <span className="text-sm font-medium text-primary w-20 text-center">{getRatingText(traitRatings[trait] || 3)}</span>
+                                </div>
+                                <Slider 
+                                    id={trait}
+                                    min={1} max={5} step={1}
+                                    value={[traitRatings[trait] || 3]}
+                                    onValueChange={(val) => handleRatingChange(trait, val)}
+                                />
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
-            <div className="space-y-4">
-                <h4 className="font-semibold">Psychomotor Skills</h4>
-                {TRAIT_DEFINITIONS.psychomotor.map(trait => (
-                    <div key={trait} className="grid gap-2">
-                        <div className="flex justify-between items-center">
-                            <Label htmlFor={trait}>{trait}</Label>
-                            <span className="text-sm font-medium text-primary w-20 text-center">{getRatingText(traitRatings[trait] || 3)}</span>
-                        </div>
-                        <Slider 
-                            id={trait}
-                            min={1} max={5} step={1}
-                            value={[traitRatings[trait] || 3]}
-                            onValueChange={(val) => handleRatingChange(trait, val)}
-                        />
+                </div>
+                 <div>
+                    <h4 className="font-semibold mb-4 border-b pb-2">Psychomotor Skills</h4>
+                    <div className="space-y-4">
+                        {TRAIT_DEFINITIONS.psychomotor.map(trait => (
+                            <div key={trait} className="grid gap-2">
+                                <div className="flex justify-between items-center">
+                                    <Label htmlFor={trait}>{trait}</Label>
+                                    <span className="text-sm font-medium text-primary w-20 text-center">{getRatingText(traitRatings[trait] || 3)}</span>
+                                </div>
+                                <Slider 
+                                    id={trait}
+                                    min={1} max={5} step={1}
+                                    value={[traitRatings[trait] || 3]}
+                                    onValueChange={(val) => handleRatingChange(trait, val)}
+                                />
+                            </div>
+                        ))}
                     </div>
-                ))}
+                </div>
             </div>
-            <Button onClick={handleSaveTraits}>Save Traits</Button>
+            <div className="mt-6">
+                <Button onClick={handleSaveTraits}>Save Traits</Button>
+            </div>
         </div>
     )
 }
@@ -268,7 +278,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 <div>
                     <h2 className="text-2xl font-bold font-headline">{student.name}</h2>
                     <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
-                    {student.className && <p className="text-muted-foreground">{student.className}</p>}
+                    {student.className && <Badge variant="outline" className="mt-1">{student.className}</Badge>}
                 </div>
             </div>
             <AlertDialog>
@@ -293,37 +303,39 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 </AlertDialogContent>
             </AlertDialog>
         </div>
-          <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {student.address ? (
-                    <div className="text-sm">
-                        <p className="text-muted-foreground">Address</p>
-                        <p className="font-medium">{student.address}</p>
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No residential address provided.</p>
-                )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><UserCircle2 className="h-5 w-5" /> Parent/Guardian Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 {(student.guardianName || student.guardianPhone || student.guardianEmail) ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                        {student.guardianName && <div><p className="text-muted-foreground">Name</p><p className="font-medium">{student.guardianName}</p></div>}
-                        {student.guardianPhone && <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{student.guardianPhone}</p></div>}
-                        {student.guardianEmail && <div className="col-span-1 sm:col-span-2"><p className="text-muted-foreground">Email</p><p className="font-medium">{student.guardianEmail}</p></div>}
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No guardian information provided.</p>
-                )}
-            </CardContent>
-        </Card>
+        <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Personal Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {student.address ? (
+                        <div className="text-sm">
+                            <p className="text-muted-foreground">Address</p>
+                            <p className="font-medium">{student.address}</p>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No residential address provided.</p>
+                    )}
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><UserCircle2 className="h-5 w-5" /> Parent/Guardian</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {(student.guardianName || student.guardianPhone || student.guardianEmail) ? (
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            {student.guardianName && <div><p className="text-muted-foreground">Name</p><p className="font-medium">{student.guardianName}</p></div>}
+                            {student.guardianPhone && <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{student.guardianPhone}</p></div>}
+                            {student.guardianEmail && <div className="col-span-2"><p className="text-muted-foreground">Email</p><p className="font-medium">{student.guardianEmail}</p></div>}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No guardian information provided.</p>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
       </div>
 
       <Tabs defaultValue="academic-record" className="p-4 md:p-6 pt-0">
@@ -339,8 +351,8 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     <CardDescription>Grades for all sessions.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {/* Mobile Card View */}
-                    <div className="md:hidden space-y-3">
+                     {/* Mobile Card View */}
+                     <div className="md:hidden space-y-3">
                         {isLoadingGrades ? <Skeleton className="h-24 w-full" /> : 
                         gradesForStudent && gradesForStudent.length > 0 ? (
                             gradesForStudent.map((grade: any) => (
@@ -467,5 +479,3 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 }
 
 export default StudentProfileContent;
-
-    
