@@ -1,8 +1,7 @@
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Zap, Star } from 'lucide-react';
+import { CheckCircle2, XCircle, Zap, Star, Lock } from 'lucide-react';
 import { cn, toTitleCase } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { useFirebase } from '@/firebase';
@@ -71,6 +70,11 @@ const SubscriptionStatusCard = () => {
     const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
     const [timeLeft, setTimeLeft] = useState('');
 
+    const planName = useMemo(() => {
+        if (!plan) return 'Free';
+        return plan.charAt(0).toUpperCase() + plan.slice(1);
+    }, [plan]);
+
     useEffect(() => {
         if (!renewalDate) {
             setTimeLeft('N/A');
@@ -106,11 +110,6 @@ const SubscriptionStatusCard = () => {
     if (isTrial || !plan || !renewalDate) {
         return null; // Don't show for trial users or if data is missing
     }
-    
-    const planName = useMemo(() => {
-        if (!plan) return 'Free';
-        return plan.charAt(0).toUpperCase() + plan.slice(1);
-    }, [plan]);
 
     return (
         <Card className="bg-primary text-primary-foreground">
