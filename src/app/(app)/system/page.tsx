@@ -69,7 +69,7 @@ export default function SystemPage() {
       const link = document.createElement('a');
       link.href = url;
       const date = new Date().toISOString().split('T')[0];
-      link.download = `peerprep_backup_${settings?.schoolName?.replace(/\s+/g, '_') || 'school'}_${date}.json`;
+      link.download = `TeachFlow_backup_${settings?.schoolName?.replace(/\s+/g, '_') || 'school'}_${date}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
