@@ -180,7 +180,7 @@ export default function ClassesPage() {
       </div>
 
        <Tabs defaultValue="All" className="mt-6">
-        <TabsList className="grid w-full grid-cols-2 md:w-auto md:grid-cols-5">
+        <TabsList className="w-full md:w-auto">
             <TabsTrigger value="All">All</TabsTrigger>
             {classCategories.map(cat => (
                 <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
