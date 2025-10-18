@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { usePlan } from '@/contexts/plan-context';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
 
@@ -745,121 +746,112 @@ export default function DataManagementPage() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-8">
-               <Card>
+          <Card>
+            <Tabs defaultValue="transfer">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DatabaseBackup className="h-5 w-5" /> Export All Data
-                  </CardTitle>
-                  <CardDescription>
-                    Download a full backup of all your data into a single JSON file.
-                  </CardDescription>
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="transfer">New Transfer</TabsTrigger>
+                        <TabsTrigger value="history">History</TabsTrigger>
+                    </TabsList>
                 </CardHeader>
-                <CardFooter>
-                  <Button onClick={handleExportData} disabled={isExporting}>
-                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseBackup className="mr-2 h-4 w-4" />}
-                    {isExporting ? 'Exporting...' : 'Export Data'}
-                  </Button>
-                </CardFooter>
-              </Card>
+                <TabsContent value="transfer">
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="recipient-code">Recipient's User Code</Label>
+                            <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="data-type">Data Type</Label>
+                                <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
+                                    <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Full Class Data">Full Class Data</SelectItem>
+                                        <SelectItem value="Single Student Record">Single Student Record</SelectItem>
+                                        <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="data-item">Specific Item</Label>
+                                <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
+                                    <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
+                                    <SelectContent>
+                                    {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
+                            {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
+                        </Button>
+                    </CardFooter>
+                </TabsContent>
+                <TabsContent value="history">
+                     <CardContent className="space-y-4">
+                        {isLoading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
+                            ))
+                        ) : combinedTransfers.length > 0 ? (
+                            combinedTransfers.map((transfer) => (
+                                <TransferHistoryItem key={transfer.id} transfer={transfer} />
+                            ))
+                        ) : (
+                            <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                                <p>No transfer history yet.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </TabsContent>
+            </Tabs>
+        </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="h-5 w-5" /> Import Data
-                  </CardTitle>
-                  <CardDescription>
-                    Restore data from a previously exported backup file.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Alert variant="destructive">
+          <Card>
+            <CardHeader>
+                <CardTitle>Backup & Restore</CardTitle>
+                <CardDescription>Create a full backup of your data or restore from a previous one.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4 p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                        <DatabaseBackup className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold">Export All Data</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Download a full backup of all your school data into a single JSON file.</p>
+                    <Button onClick={handleExportData} disabled={isExporting} variant="outline" size="sm">
+                        {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseBackup className="mr-2 h-4 w-4" />}
+                        {isExporting ? 'Exporting...' : 'Export Data'}
+                    </Button>
+                </div>
+                 <div className="space-y-4 p-4 border rounded-lg">
+                     <div className="flex items-center gap-2">
+                        <Upload className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold">Import Data</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Restore data from a previously exported backup file. This will add to existing data.</p>
+                     <div className="space-y-2">
+                      <Label htmlFor="import-file" className="sr-only">Backup File (.json)</Label>
+                      <Input id="import-file" type="file" accept=".json" onChange={handleFileChange} disabled={isImporting} />
+                  </div>
+                    <Button onClick={handleImportData} disabled={!fileToImport || isImporting} size="sm">
+                        {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        {isImporting ? 'Importing...' : 'Import Data'}
+                    </Button>
+                </div>
+            </CardContent>
+             <CardFooter>
+                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Warning</AlertTitle>
                     <AlertDescription>
-                      Importing data will add to your existing records, not replace them.
+                      Importing data will add to your existing records, not replace them. Use with caution to avoid duplicates.
                     </AlertDescription>
                   </Alert>
-                  <div className="space-y-2">
-                      <Label htmlFor="import-file">Backup File (.json)</Label>
-                      <Input id="import-file" type="file" accept=".json" onChange={handleFileChange} disabled={isImporting} />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={handleImportData} disabled={!fileToImport || isImporting}>
-                      {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                      {isImporting ? 'Importing...' : 'Import Data'}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-            
-             <Card className="lg:row-span-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Send className="h-5 w-5"/> Initiate a New Transfer
-                    </CardTitle>
-                    <CardDescription>Enter the recipient's code and select the data you wish to send.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="recipient-code">Recipient's User Code</Label>
-                      <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                          <Label htmlFor="data-type">Data Type</Label>
-                          <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
-                              <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="Full Class Data">Full Class Data</SelectItem>
-                                  <SelectItem value="Single Student Record">Single Student Record</SelectItem>
-                                  <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-                      <div className="space-y-2">
-                          <Label htmlFor="data-item">Specific Item</Label>
-                          <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
-                              <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
-                              <SelectContent>
-                              {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
-                      </div>
-                  </div>
-                  </CardContent>
-                  <CardFooter>
-                  <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
-                      {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
-                  </Button>
-                  </CardFooter>
-              </Card>
-
-          </div>
-
-           <Card>
-                <CardHeader>
-                <CardTitle>Transfer History</CardTitle>
-                <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
-                    ))
-                ) : combinedTransfers.length > 0 ? (
-                    combinedTransfers.map((transfer) => (
-                        <TransferHistoryItem key={transfer.id} transfer={transfer} />
-                    ))
-                ) : (
-                    <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
-                        <p>No transfer history yet.</p>
-                    </div>
-                )}
-                </CardContent>
-            </Card>
+            </CardFooter>
+          </Card>
       </div>
 
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
