@@ -170,7 +170,7 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
             </div>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <Popover>
                     <PopoverTrigger asChild>
                     <Button
@@ -190,17 +190,17 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
                     />
                     </PopoverContent>
                 </Popover>
-                <div className="flex-1 flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0}>
                         <Save className="mr-2 h-4 w-4" />
-                        Save Attendance
+                        Save
                     </Button>
-                     <div className="flex flex-1 justify-end gap-2">
+                    <div className="flex gap-2">
                         <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Present')} disabled={attendance.length === 0}>
-                            <CheckCircle className="mr-2 h-4 w-4" /> Mark All Present
+                            <CheckCircle className="mr-2 h-4 w-4" /> All Present
                         </Button>
                         <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Absent')} disabled={attendance.length === 0}>
-                            <XCircle className="mr-2 h-4 w-4" /> Mark All Absent
+                            <XCircle className="mr-2 h-4 w-4" /> All Absent
                         </Button>
                     </div>
                 </div>
@@ -211,36 +211,65 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
                     {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
                 </div>
             ) : attendance.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Student</TableHead>
-                            <TableHead className="text-right">Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {attendance.map(record => (
-                            <TableRow key={record.studentId}>
-                                <TableCell>
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="h-9 w-9">
-                                            <AvatarImage src={record.avatarUrl} alt={record.name} />
-                                            <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-medium">{record.name}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex flex-row gap-2 justify-end max-w-xs ml-auto">
-                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
-                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
-                                        <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
-                                    </div>
-                                </TableCell>
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
+                    {attendance.map(record => (
+                      <Card key={record.studentId} className="border-l-4 border-primary">
+                        <CardHeader className="p-4 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                    <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{record.name}</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                            <div className="flex flex-row gap-2 justify-end">
+                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
+                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
+                                <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
+                            </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Student</TableHead>
+                                <TableHead className="text-right w-[280px]">Status</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {attendance.map(record => (
+                                <TableRow key={record.studentId}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9">
+                                                <AvatarImage src={record.avatarUrl} alt={record.name} />
+                                                <AvatarFallback>{record.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-medium">{record.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-row gap-2 justify-end">
+                                            <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
+                                            <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
+                                            <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                  </div>
+                </>
             ) : (
                 <div className="text-center h-48 flex items-center justify-center text-muted-foreground">
                     <p>No students in this class.</p>
@@ -292,3 +321,5 @@ export default function AttendancePage() {
   
   return <ClassSelector onSelectClass={setSelectedClass} />;
 }
+
+    
