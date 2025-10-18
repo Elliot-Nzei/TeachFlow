@@ -14,17 +14,17 @@ import ClassDetailsContent from '@/app/(app)/class-details-content';
 import type { Class } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
     <SheetTrigger asChild key={cls.id}>
-        <div onClick={onClick}>
+        <div onClick={onClick} className="group">
             <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col">
                 <CardHeader>
                     <div className="flex justify-between items-start">
@@ -126,7 +126,7 @@ export default function ClassesPage() {
                 <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input id="name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g., Primary 5A" className="col-span-3" />
+                    <Input id="name" value={newClassName} onChange={(e) => setNewClassName(toTitleCase(e.target.value))} placeholder="e.g., Primary 5A" className="col-span-3" />
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="category" className="text-right">Category</Label>

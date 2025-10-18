@@ -20,6 +20,7 @@ import Image from 'next/image';
 import type { Student } from '@/lib/types';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toTitleCase } from '@/lib/utils';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -115,7 +116,8 @@ export default function StudentsPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { id, value } = e.target;
-      setNewStudent(prev => ({...prev, [id]: value }));
+      const formattedValue = (id === 'name' || id === 'guardianName') ? toTitleCase(value) : value;
+      setNewStudent(prev => ({...prev, [id]: formattedValue }));
   }
 
   const handleClassSelect = (value: string) => {
@@ -344,5 +346,3 @@ export default function StudentsPage() {
     </>
   );
 }
-
-    

@@ -8,7 +8,7 @@ import { BookCopy, PlusCircle, Trash2, X, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import { useCollection, useFirebase, useUser, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc, query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -96,7 +96,7 @@ export default function AcademicsPage() {
                 <Input
                   placeholder="New subject name..."
                   value={newSubject}
-                  onChange={(e) => setNewSubject(e.target.value)}
+                  onChange={(e) => setNewSubject(toTitleCase(e.target.value))}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
                 />
                 <Button onClick={handleAddSubject} size="icon">
