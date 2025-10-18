@@ -201,39 +201,44 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
     try {
         const batch = writeBatch(firestore);
 
+        // 1. Delete the student document itself
         const studentRef = doc(firestore, 'users', user.uid, 'students', studentId);
         batch.delete(studentRef);
 
-        const collectionsToDelete = ['grades', 'attendance', 'traits'];
+        // 2. Query and delete all associated sub-collection documents
+        const collectionsToDelete = ['grades', 'attendance', 'traits', 'payments'];
         for (const coll of collectionsToDelete) {
-            const snapshot = await getDocs(query(collection(firestore, 'users', user.uid, coll), where('studentId', '==', studentId)));
+            const q = query(collection(firestore, 'users', user.uid, coll), where('studentId', '==', studentId));
+            const snapshot = await getDocs(q);
             snapshot.forEach(docToDelete => {
                 batch.delete(docToDelete.ref);
             });
         }
 
+        // 3. Remove student from their class's student list
         if (student.classId) {
             const classRef = doc(firestore, 'users', user.uid, 'classes', student.classId);
-            await updateDoc(classRef, {
+            batch.update(classRef, {
                 students: arrayRemove(studentId)
             });
         }
         
+        // 4. Commit all batched writes at once
         await batch.commit();
 
         toast({
             title: 'Student Deleted',
-            description: `${student.name} has been removed from the system.`,
+            description: `${student.name} and all associated records have been permanently removed.`,
         });
 
         router.push('/students'); // Redirect to student list
 
     } catch (error) {
-        console.error("Error deleting student:", error);
+        console.error("Error deleting student and their data:", error);
         toast({
             variant: 'destructive',
-            title: 'Error',
-            description: 'Could not delete the student. Please try again.',
+            title: 'Deletion Failed',
+            description: 'Could not completely delete the student and their records. Please try again.',
         });
     } finally {
         setIsDeleting(false);
@@ -479,3 +484,5 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 }
 
 export default StudentProfileContent;
+
+    
