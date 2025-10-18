@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { BookCopy, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check, Lock } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import ClassDetailsContent from '@/app/(app)/class-details-content';
 import type { Class } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -300,3 +300,5 @@ export default function ClassesPage() {
     </>
   );
 }
+
+    
