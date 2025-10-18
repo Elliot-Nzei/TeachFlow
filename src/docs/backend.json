@@ -51,6 +51,16 @@
         "studentCounter": {
           "type": "number",
           "description": "A counter to generate unique student IDs."
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["free_trial", "basic", "prime"],
+          "description": "The user's current subscription plan."
+        },
+        "trialStartedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the free trial started."
         }
       },
       "required": [
@@ -489,5 +499,3 @@
     }
   }
 }
-
-    

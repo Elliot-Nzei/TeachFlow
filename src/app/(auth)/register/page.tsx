@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link"
 import Image from "next/image"
@@ -9,7 +8,7 @@ import { Logo } from "@/components/logo"
 import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -45,7 +44,9 @@ export default function RegisterPage() {
                     profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`,
                     studentCounter: 0,
                     currentTerm: 'First Term',
-                    currentSession: '2023/2024'
+                    currentSession: '2023/2024',
+                    plan: 'free_trial',
+                    trialStartedAt: serverTimestamp(),
                 });
 
                 router.push('/dashboard');

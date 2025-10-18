@@ -1,8 +1,7 @@
-
 'use client';
 import React, { createContext, useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, type Timestamp } from 'firebase/firestore';
 
 type Settings = {
     name: string;
@@ -15,6 +14,8 @@ type Settings = {
     currentSession: string;
     userCode: string;
     studentCounter?: number;
+    plan?: 'free_trial' | 'basic' | 'prime';
+    trialStartedAt?: Timestamp;
 }
 
 type SettingsContextType = {
