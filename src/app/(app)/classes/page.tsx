@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check, Lock } from 'lucide-react';
+import { BookCopy, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check, Lock } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassDetailsContent from '@/app/(app)/class-details-content';
 import type { Class } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -26,36 +26,36 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
-    <SheetTrigger asChild key={cls.id}>
-        <div onClick={onClick} className="group">
-            <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col">
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <CardTitle className="font-headline text-xl group-hover:text-primary transition-colors">{cls.name}</CardTitle>
-                        <Badge variant="secondary">{cls.category}</Badge>
+    <div onClick={onClick} className="group">
+        <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col">
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <CardTitle className="font-headline text-xl group-hover:text-primary transition-colors">{cls.name}</CardTitle>
+                    <Badge variant="secondary">{cls.category}</Badge>
+                </div>
+                <CardDescription>Grade {cls.grade}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                        <Users className="h-4 w-4" />
+                        <span>{cls.students?.length || 0} Students</span>
                     </div>
-                    <CardDescription>Grade {cls.grade}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                            <Users className="h-4 w-4" />
-                            <span>{cls.students?.length || 0} Students</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <BookOpen className="h-4 w-4" />
-                            <span>{cls.subjects?.length || 0} Subjects</span>
-                        </div>
+                    <div className="flex items-center gap-1.5">
+                        <BookCopy className="h-4 w-4" />
+                        <span>{cls.subjects?.length || 0} Subjects</span>
                     </div>
-                </CardContent>
-                <CardFooter>
+                </div>
+            </CardContent>
+            <CardFooter>
+                 <SheetTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-full justify-center text-primary hover:text-primary">
                         View Details <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
-                </CardFooter>
-            </Card>
-        </div>
-    </SheetTrigger>
+                </SheetTrigger>
+            </CardFooter>
+        </Card>
+    </div>
 );
 
 type ClassCategory = 'Early Years' | 'Primary' | 'Junior Secondary' | 'Senior Secondary';
@@ -293,12 +293,10 @@ export default function ClassesPage() {
                 View the students and subjects for this class.
                 </SheetDescription>
             </SheetHeader>
-            {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
+            {selectedClassId && <ClassDetailsContent classId={selectedClassId} onClose={() => setSelectedClassId(null)} />}
         </SheetContent>
         </Sheet>
        </Tabs>
     </>
   );
 }
-
-    

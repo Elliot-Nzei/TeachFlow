@@ -15,16 +15,12 @@ export default function StudentDetailsPage({ params }: { params: { studentId: st
   // This prevents race conditions where the query is created with a null user ID.
   if (isUserLoading || !user || !firestore) {
     return (
-      <div className="space-y-8 p-6">
-        <div className="grid gap-8 md:grid-cols-3">
-          <div className="md:col-span-1 space-y-8">
+      <div className="space-y-8 p-4 md:p-6">
+          <Skeleton className="h-32 w-full" />
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-1/3" />
             <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-40 w-full" />
           </div>
-          <div className="md:col-span-2">
-            <Skeleton className="h-96 w-full" />
-          </div>
-        </div>
       </div>
     );
   }

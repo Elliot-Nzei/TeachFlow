@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   ArrowRightLeft,
-  BookOpen,
+  BookCopy,
   ClipboardList,
   LayoutDashboard,
   LogOut,
@@ -14,7 +14,6 @@ import {
   Moon,
   Sun,
   Notebook,
-  BookCopy,
   CalendarCheck,
   FileQuestion,
   DollarSign,
@@ -63,7 +62,7 @@ const menuItems = [
   { href: '/academics', label: 'Academics', icon: BookCopy },
   { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { href: '/timetable', label: 'Timetable', icon: CalendarDays },
-  { href: '/grades', label: 'Grades', icon: BookOpen },
+  { href: '/grades', label: 'Grades', icon: Notebook },
   { href: '/payments', label: 'Payments', icon: DollarSign },
   { href: '/billing', label: 'Billing', icon: CreditCard },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
