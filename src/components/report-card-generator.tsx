@@ -263,6 +263,12 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   const allAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance')) : null, [firestore, user]);
   const { data: allAttendance, isLoading: isLoadingAttendance } = useCollection<any>(allAttendanceQuery);
 
+  const canGenerate = useMemo(() => {
+    if (!features.canUseAdvancedAI) return false;
+    if (features.aiGenerations === 'Unlimited') return true;
+    return aiUsage.reportCardGenerations < features.aiGenerations;
+  }, [features, aiUsage]);
+
 
   const studentsInClass = useMemo(() => {
     return selectedClass ? (allStudents || []).filter(s => s.classId === selectedClass.id) : [];
@@ -326,12 +332,6 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     return true;
   }, [settings, toast]);
   
-  const canGenerate = useMemo(() => {
-    if (!features.canUseAdvancedAI) return false;
-    if (features.aiGenerations === 'Unlimited') return true;
-    return aiUsage.reportCardGenerations < features.aiGenerations;
-  }, [features, aiUsage]);
-
 
   const handleGenerateReports = async () => {
     const finalSelectedStudent = studentId ? allStudents?.find(s => s.id === studentId) : selectedStudent;
@@ -348,7 +348,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     if (!validateSettings() || !allGrades) {
       return;
     }
-
+    
     if (!canGenerate) {
         toast({
             variant: 'destructive',
@@ -652,16 +652,16 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
               <CardDescription>Choose a class or an individual student.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <Alert variant={canGenerate ? 'default' : 'destructive'}>
-                {canGenerate ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
-                <AlertDescription>
-                    {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
-                     features.canUseAdvancedAI ? `You have ${generationsLeft} report card generations left this month.` :
-                     'Upgrade to a Basic or Prime plan to use this feature.'
-                    }
-                </AlertDescription>
-               </Alert>
+                <Alert variant={canGenerate ? 'default' : 'destructive'}>
+                    {canGenerate ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
+                    <AlertDescription>
+                        {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
+                        features.canUseAdvancedAI ? `You have ${generationsLeft} report card generations left this month.` :
+                        'Upgrade to a Basic or Prime plan to use this feature.'
+                        }
+                    </AlertDescription>
+                </Alert>
                <div className="space-y-2">
                  <Popover open={classPopoverOpen} onOpenChange={setClassPopoverOpen}>
                     <PopoverTrigger asChild>

@@ -48,7 +48,7 @@ export default function LessonGeneratorPage() {
   const [hasCopied, setHasCopied] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
   const { toast } = useToast();
-  const { features } = usePlan();
+  const { features, aiUsage, incrementUsage } = usePlan();
 
   const { firestore, user } = useFirebase();
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -56,6 +56,12 @@ export default function LessonGeneratorPage() {
   
   const subjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'subjects')) : null, [firestore, user]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
+
+  const canGenerate = useMemo(() => {
+    if (!features.canUseAdvancedAI) return false;
+    if (features.aiGenerations === 'Unlimited') return true;
+    return aiUsage.lessonNoteGenerations < features.aiGenerations;
+  }, [features, aiUsage]);
 
   /**
    * Fixed and cleaner text-based PDF generation using jsPDF.
@@ -230,6 +236,10 @@ export default function LessonGeneratorPage() {
       });
       return;
     }
+    if (!canGenerate) {
+        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You have used all your AI lesson note generations for this month.' });
+        return;
+    }
 
     setIsLoading(true);
     setGeneratedNote(null);
@@ -251,6 +261,7 @@ export default function LessonGeneratorPage() {
         setGeneratedNote(fullNote);
       }
       
+      incrementUsage('lessonNote');
       saveNoteToHistory(formState, fullNote);
       toast({
         title: 'Generation Complete!',
@@ -328,6 +339,8 @@ export default function LessonGeneratorPage() {
     window.print();
   };
 
+  const generationsLeft = features.aiGenerations === 'Unlimited' ? 'Unlimited' : features.aiGenerations - aiUsage.lessonNoteGenerations;
+
   return (
     <>
       <div className="flex items-center justify-between print:hidden">
@@ -352,11 +365,14 @@ export default function LessonGeneratorPage() {
                 <CardDescription>Provide the details for your lesson note.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                 <Alert variant={features.canUseAdvancedAI ? 'default' : 'destructive'}>
-                  {features.canUseAdvancedAI ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                 <Alert variant={canGenerate ? 'default' : 'destructive'}>
+                  {canGenerate ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
                   <AlertDescription>
-                    {features.canUseAdvancedAI ? 'Your plan includes unlimited AI generations.' : 'Upgrade to a Basic or Prime plan to use this feature.'}
+                    {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
+                     features.canUseAdvancedAI ? `You have ${generationsLeft} lesson note generations left this month.` :
+                     'Upgrade to a Basic or Prime plan to use this feature.'
+                    }
                   </AlertDescription>
                 </Alert>
                 <div className="space-y-2">
@@ -421,15 +437,15 @@ export default function LessonGeneratorPage() {
                  <Tooltip>
                     <TooltipTrigger asChild>
                         <div className="w-full">
-                             <Button type="submit" disabled={isLoading || !isFormValid() || !features.canUseAdvancedAI} className="w-full">
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !features.canUseAdvancedAI ? <Lock className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                             <Button type="submit" disabled={isLoading || !isFormValid() || !canGenerate} className="w-full">
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !canGenerate ? <Lock className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
                                 {isLoading ? 'Generating...' : 'Generate Lesson Note'}
                             </Button>
                         </div>
                     </TooltipTrigger>
-                    {!features.canUseAdvancedAI && (
+                    {!canGenerate && (
                         <TooltipContent>
-                            <p>Upgrade to a paid plan to use this feature.</p>
+                             <p>{features.canUseAdvancedAI ? 'You have reached your monthly generation limit.' : 'Upgrade to a paid plan to use this feature.'}</p>
                         </TooltipContent>
                     )}
                 </Tooltip>

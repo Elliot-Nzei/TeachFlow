@@ -41,7 +41,7 @@ export default function ExamQuestionGeneratorPage() {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const { settings } = useContext(SettingsContext);
-  const { features } = usePlan();
+  const { features, aiUsage, incrementUsage } = usePlan();
 
   // Fetch classes & subjects
   const classesQuery = useMemoFirebase(
@@ -120,9 +120,19 @@ export default function ExamQuestionGeneratorPage() {
 
   const totalQuestions = (generatedExam?.objectiveQuestions?.length || 0) + (generatedExam?.essayQuestions?.length || 0);
 
+  const canGenerate = useMemo(() => {
+    if (!features.canUseAdvancedAI) return false;
+    if (features.aiGenerations === 'Unlimited') return true;
+    return aiUsage.examGenerations < features.aiGenerations;
+  }, [features, aiUsage]);
+
   // Submit: call AI
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!canGenerate) {
+        toast({ variant: 'destructive', title: 'Limit Reached', description: 'You have used all your AI exam generations for this month.' });
+        return;
+    }
     const { isValid, errors, finalInput } = formValidation;
     if (!isValid) {
       toast({
@@ -140,6 +150,7 @@ export default function ExamQuestionGeneratorPage() {
 
     try {
       const result = await generateExamQuestions(finalInput);
+      incrementUsage('exam');
       setGeneratedExam(result);
       if (result.objectiveQuestions?.length) {
         setAnswerKey(result.objectiveQuestions.map(q => {
@@ -361,11 +372,12 @@ export default function ExamQuestionGeneratorPage() {
     }
   };
 
-
   const handlePrint = useCallback(() => {
     // Keep simple: print the preview container (browser print)
     window.print();
   }, []);
+
+  const generationsLeft = features.aiGenerations === 'Unlimited' ? 'Unlimited' : features.aiGenerations - aiUsage.examGenerations;
 
   // Render UI (form + preview)
   return (
@@ -387,11 +399,14 @@ export default function ExamQuestionGeneratorPage() {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                 <Alert variant={features.canUseAdvancedAI ? 'default' : 'destructive'}>
-                  {features.canUseAdvancedAI ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                 <Alert variant={canGenerate ? 'default' : 'destructive'}>
+                  {canGenerate ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
                   <AlertDescription>
-                    {features.canUseAdvancedAI ? 'Your plan includes unlimited AI generations.' : 'Upgrade to a Basic or Prime plan to use this feature.'}
+                    {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
+                     features.canUseAdvancedAI ? `You have ${generationsLeft} exam generations left this month.` :
+                     'Upgrade to a Basic or Prime plan to use this feature.'
+                    }
                   </AlertDescription>
                 </Alert>
                 <div className="grid grid-cols-2 gap-4">
@@ -478,15 +493,15 @@ export default function ExamQuestionGeneratorPage() {
                  <Tooltip>
                     <TooltipTrigger asChild>
                         <div className="w-full">
-                             <Button type="submit" disabled={!formValidation.isValid || isProcessing || !features.canUseAdvancedAI} className="w-full">
-                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !features.canUseAdvancedAI ? <Lock className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                             <Button type="submit" disabled={!formValidation.isValid || isProcessing || !canGenerate} className="w-full">
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !canGenerate ? <Lock className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
                                 {isGenerating ? 'Generating...' : 'Generate Questions'}
                             </Button>
                         </div>
                     </TooltipTrigger>
-                    {!features.canUseAdvancedAI && (
+                    {!canGenerate && (
                         <TooltipContent>
-                            <p>Upgrade to a paid plan to use this feature.</p>
+                           <p>{features.canUseAdvancedAI ? 'You have reached your monthly generation limit.' : 'Upgrade to a paid plan to use this feature.'}</p>
                         </TooltipContent>
                     )}
                 </Tooltip>
