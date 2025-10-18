@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -55,21 +54,21 @@ import PlanStatusBanner from '@/components/plan-status-banner';
 import UpgradeModal from '@/components/upgrade-modal';
 
 
-const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/classes', label: 'Classes', icon: Users },
-  { href: '/students', label: 'Students', icon: User },
-  { href: '/academics', label: 'Academics', icon: BookCopy },
-  { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
-  { href: '/timetable', label: 'Timetable', icon: CalendarDays },
-  { href: '/grades', label: 'Grades', icon: Notebook },
-  { href: '/payments', label: 'Payments', icon: DollarSign },
-  { href: '/billing', label: 'Billing', icon: CreditCard },
-  { href: '/reports', label: 'Report Cards', icon: ClipboardList },
-  { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },
-  { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion },
-  { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft },
-  { href: '/system', label: 'System', icon: Database },
+const allMenuItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/classes', label: 'Classes', icon: Users, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/students', label: 'Students', icon: User, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/academics', label: 'Academics', icon: BookCopy, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/attendance', label: 'Attendance', icon: CalendarCheck, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/timetable', label: 'Timetable', icon: CalendarDays, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/grades', label: 'Grades', icon: Notebook, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/payments', label: 'Payments', icon: DollarSign, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft, plans: ['prime'] },
+  { href: '/system', label: 'System', icon: Database, plans: ['prime'] },
+  { href: '/billing', label: 'Billing', icon: CreditCard, plans: ['free_trial', 'basic', 'prime'] },
 ];
 
 function UserProfileDisplay() {
@@ -134,7 +133,10 @@ function UserProfileDisplay() {
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isLocked } = usePlan();
+  const { isLocked, plan } = usePlan();
+
+  const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
+
 
   return (
     <SidebarProvider>

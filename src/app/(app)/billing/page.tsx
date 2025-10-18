@@ -19,7 +19,6 @@ const plans = [
       'Up to 25 Students',
       'Up to 5 Classes',
       'Basic Gradebook',
-      'AI Lesson Note Generator (3 per month)',
       'Community Support',
     ],
     isFeatured: false,
@@ -28,11 +27,11 @@ const plans = [
   {
     name: 'Basic Plan',
     id: 'basic',
-    price: '₦5,000',
+    price: '₦1,500',
     description: 'Ideal for individual teachers managing multiple classes.',
     features: [
       'Up to 150 Students',
-      'Up to 20 Classes',
+      'Unlimited Classes',
       'Full Gradebook & Reporting',
       'AI Report Card Generator',
       'AI Lesson Note Generator (Unlimited)',
@@ -45,14 +44,14 @@ const plans = [
   {
     name: 'Prime Plan',
     id: 'prime',
-    price: '₦12,000',
+    price: '₦3,500',
     description: 'For power users or small schools needing full capabilities.',
     features: [
       'Unlimited Students',
       'Unlimited Classes',
       'All features from Basic Plan',
       'Data Transfer between Users',
-      'Data Export/Import',
+      'Data Export/Import (System Page)',
       'Priority Support',
     ],
     isFeatured: false,
@@ -107,7 +106,7 @@ export default function BillingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto items-start">
         {plans.map((plan) => (
           <Card
             key={plan.name}
@@ -121,14 +120,12 @@ export default function BillingPage() {
                   <div className="mb-4 text-sm font-bold text-primary">RECOMMENDED</div>
               )}
               <CardTitle className="text-2xl font-headline">{plan.name}</CardTitle>
-              <div className="h-10">
-                <CardDescription>
-                  <div className="flex justify-center items-baseline">
+              <CardDescription>
+                  <div className="flex justify-center items-baseline h-10">
                       <span className="text-4xl font-bold">{plan.price}</span>
                       <span className="text-muted-foreground"> / month</span>
                   </div>
                 </CardDescription>
-              </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
               <p className="text-center text-sm text-muted-foreground h-10">{plan.description}</p>

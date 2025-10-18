@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useContext, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -65,7 +64,7 @@ export default function TransferPage() {
         toast({
             variant: 'destructive',
             title: 'Upgrade Required',
-            description: 'You need to upgrade to the Prime plan to use data transfer.'
+            description: 'You need to upgrade to the Prime plan to use this feature.'
         });
     }
   }, [features.canUseDataTransfer, router, toast]);
@@ -281,7 +280,7 @@ export default function TransferPage() {
                 finalStudentDocId = existingStudentSnap.docs[0].id;
             } else {
                 studentCounter++;
-                const schoolAcronym = (userProfile.schoolName || 'SPS').split(' ').map(w => w[0]).join('').toUpperCase();
+                const schoolAcronym = userProfile.userCode ? userProfile.userCode.split('-')[0] : 'SPS';
                 const newStudentId = `${schoolAcronym}-${String(studentCounter).padStart(3, '0')}`;
                 
                 const newStudentRef = doc(recipientStudentsRef);
@@ -801,5 +800,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-    

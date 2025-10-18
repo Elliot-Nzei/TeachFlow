@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -46,7 +45,7 @@ export default function SystemPage() {
         toast({
             variant: 'destructive',
             title: 'Upgrade Required',
-            description: 'You need to upgrade to the Prime plan to access the system management page.'
+            description: 'You need to upgrade to the Prime plan to access this page.'
         });
     }
   }, [features.canUseSystemExport, router, toast]);
@@ -229,5 +228,3 @@ export default function SystemPage() {
     </>
   );
 }
-
-    

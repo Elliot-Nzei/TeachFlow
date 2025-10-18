@@ -1,4 +1,3 @@
-
 'use client';
 import React, { createContext, useState, useEffect, useContext, ReactNode, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
@@ -92,7 +91,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
           canUseDataTransfer: false,
           canUseSystemExport: false,
           studentLimit: 150,
-          classLimit: 20,
+          classLimit: 'Unlimited' as const,
         };
       default: // free_trial or null
         return {
