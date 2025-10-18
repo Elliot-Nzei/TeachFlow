@@ -630,8 +630,8 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                <div className="space-y-2">
                  <Popover open={classPopoverOpen} onOpenChange={setClassPopoverOpen}>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" aria-expanded={classPopoverOpen} className="w-full justify-between">
-                            {selectedClass ? selectedClass.name : "Select a class..."}
+                        <Button variant="outline" role="combobox" aria-expanded={classPopoverOpen} className="w-full justify-between" disabled={isLoadingClasses}>
+                            {isLoadingClasses ? 'Loading classes...' : (selectedClass ? selectedClass.name : "Select a class...")}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
@@ -665,8 +665,8 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                  <div className="space-y-2">
                      <Popover open={studentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" aria-expanded={studentPopoverOpen} className="w-full justify-between">
-                                {selectedStudent ? selectedStudent.name : "Select a student..."}
+                            <Button variant="outline" role="combobox" aria-expanded={studentPopoverOpen} className="w-full justify-between" disabled={isLoadingStudents}>
+                                {isLoadingStudents ? 'Loading students...' : (selectedStudent ? selectedStudent.name : "Select a student...")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
