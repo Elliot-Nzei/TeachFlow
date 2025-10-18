@@ -42,9 +42,7 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
                             </div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-10 w-10">
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </Button>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
                 </CardContent>
             </Card>
         </div>
@@ -101,7 +99,7 @@ export default function ClassesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold font-headline">Classes</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -179,20 +177,22 @@ export default function ClassesPage() {
         </Dialog>
       </div>
 
-       <Tabs defaultValue="All" className="mt-6">
-        <TabsList className="w-full md:w-auto">
-            <TabsTrigger value="All">All</TabsTrigger>
-            {classCategories.map(cat => (
-                <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
-                    {cat}
-                </TabsTrigger>
-            ))}
-        </TabsList>
+       <Tabs defaultValue="All">
+        <div className="overflow-x-auto pb-2 -mb-2">
+            <TabsList className="inline-flex">
+                <TabsTrigger value="All">All</TabsTrigger>
+                {classCategories.map(cat => (
+                    <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
+                        {cat}
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+        </div>
 
         <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
         {['All', ...classCategories].map(category => (
-            <TabsContent key={category} value={category}>
-                <div className="mt-8 space-y-4">
+            <TabsContent key={category} value={category} className="mt-6">
+                <div className="space-y-4">
                     {isLoading ? Array.from({length: 3}).map((_, i) => (
                         <Card key={i}>
                             <CardContent className="p-4 flex items-center gap-4">
