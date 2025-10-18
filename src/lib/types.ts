@@ -27,7 +27,7 @@ export type Student = {
 export type Class = {
   id: string;
   name: string;
-  level: number;
+  grade: number;
   students: string[];
   subjects: string[];
   createdAt?: any;
@@ -168,5 +168,3 @@ export type Timetable = {
   className: string;
   schedule: TimetableSchedule;
 };
-
-    

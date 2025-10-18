@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user in the Nigerian School Management System.",
+      "description": "Represents a user in the TeachFlow School Management System.",
       "properties": {
         "name": {
           "type": "string",
@@ -70,9 +70,9 @@
           "type": "string",
           "description": "The name of the class (e.g., Primary 3A)."
         },
-        "level": {
+        "grade": {
           "type": "number",
-          "description": "The academic level of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
+          "description": "The academic grade of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
         },
         "subjects": {
           "type": "array",
@@ -95,7 +95,7 @@
       },
       "required": [
         "name",
-        "level"
+        "grade"
       ]
     },
     "Student": {
@@ -119,6 +119,23 @@
         "avatarUrl": {
           "type": "string",
           "format": "uri"
+        },
+        "address": {
+          "type": "string",
+          "description": "The student's residential address."
+        },
+        "guardianName": {
+            "type": "string",
+            "description": "Full name of the parent or guardian."
+        },
+        "guardianPhone": {
+            "type": "string",
+            "description": "Phone number of the parent or guardian."
+        },
+        "guardianEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address of the parent or guardian."
         },
         "promotionHistory": {
           "type": "array",
@@ -174,8 +191,21 @@
         "session": {
           "type": "string"
         },
-        "score": {
-          "type": "number"
+        "ca1": {
+            "type": "number",
+            "description": "Score for Continuous Assessment 1."
+        },
+        "ca2": {
+            "type": "number",
+            "description": "Score for Continuous Assessment 2."
+        },
+        "exam": {
+            "type": "number",
+            "description": "Score for the exam."
+        },
+        "total": {
+            "type": "number",
+            "description": "The total score (ca1 + ca2 + exam)."
         },
         "studentName": {
           "type": "string"
@@ -194,7 +224,7 @@
         "subject",
         "term",
         "session",
-        "score",
+        "total",
         "studentName",
         "className",
         "grade"
@@ -359,6 +389,49 @@
         "status",
         "createdAt"
       ]
+    },
+    "Timetable": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Timetable",
+      "type": "object",
+      "description": "Represents the weekly timetable for a class.",
+      "properties": {
+        "classId": {
+          "type": "string",
+          "description": "The ID of the class this timetable belongs to."
+        },
+        "className": {
+          "type": "string",
+          "description": "The name of the class."
+        },
+        "schedule": {
+          "type": "object",
+          "description": "An object containing the schedule for each day of the week.",
+          "properties": {
+            "Monday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Tuesday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Wednesday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Thursday": { "$ref": "#/entities/Timetable/definitions/daySchedule" },
+            "Friday": { "$ref": "#/entities/Timetable/definitions/daySchedule" }
+          }
+        }
+      },
+      "required": ["classId", "className", "schedule"],
+      "definitions": {
+        "daySchedule": {
+          "type": "array",
+          "description": "An array of periods for a single day.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startTime": { "type": "string", "format": "time", "description": "e.g., 08:00" },
+              "endTime": { "type": "string", "format": "time", "description": "e.g., 08:40" },
+              "subject": { "type": "string", "description": "The subject for this period." }
+            },
+            "required": ["startTime", "endTime", "subject"]
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -368,6 +441,30 @@
     ]
   },
   "firestore": {
+    "/users/{userId}/classes/{classId}": {
+      "schema": { "$ref": "#/entities/Class" },
+      "description": "Stores classes for a user."
+    },
+    "/users/{userId}/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Stores students for a user."
+    },
+    "/users/{userId}/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "Stores master subject list for a user."
+    },
+    "/users/{userId}/grades/{gradeId}": {
+      "schema": { "$ref": "#/entities/Grade" },
+      "description": "Stores student grade records."
+    },
+    "/users/{userId}/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/Attendance" },
+      "description": "Stores student attendance records."
+    },
+    "/users/{userId}/traits/{traitId}": {
+      "schema": { "$ref": "#/entities/Trait" },
+      "description": "Stores student behavioral trait records."
+    },
     "/users/{userId}/incomingTransfers/{transferId}": {
       "schema": { "$ref": "#/entities/Transfer" },
       "description": "Stores incoming data transfer requests for a user."
@@ -379,6 +476,10 @@
     "/users/{userId}/payments/{paymentId}": {
       "schema": { "$ref": "#/entities/Payment" },
       "description": "Stores student payment records for a term."
+    },
+     "/users/{userId}/timetables/{timetableId}": {
+      "schema": { "$ref": "#/entities/Timetable" },
+      "description": "Stores the weekly timetable for a specific class."
     }
   }
 }

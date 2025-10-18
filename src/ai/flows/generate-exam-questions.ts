@@ -12,7 +12,7 @@ import { z } from 'genkit';
 // ============================================================================
 
 const GenerateExamInputSchema = z.object({
-  classLevel: z.string().min(1, 'Class level is required'),
+  classGrade: z.string().min(1, 'Class grade is required'),
   subject: z.string().min(1, 'Subject is required'),
   topics: z.string().min(1, 'Topics are required'),
   questionType: z.enum(['Objective', 'Essay', 'Both']),
@@ -90,7 +90,7 @@ const prompt = ai.definePrompt({
 **TASK:** Generate a set of exam questions based on the specifications below.
 
 **EXAM SPECIFICATIONS:**
-- Class Level: {{{classLevel}}}
+- Class Grade: {{{classGrade}}}
 - Subject: {{{subject}}}
 - Topics: {{{topics}}}
 - Question Type: {{{questionType}}}
@@ -105,7 +105,7 @@ const prompt = ai.definePrompt({
 3.  If 'questionType' is "Both": Generate approximately 60% objective and 40% essay questions, with the total number of questions equaling {{{questionCount}}}.
 
 **QUALITY STANDARDS:**
--   Questions must be clear, unambiguous, and age-appropriate for {{{classLevel}}}.
+-   Questions must be clear, unambiguous, and age-appropriate for {{{classGrade}}}.
 -   Use Nigerian context, examples, and terminology where relevant.
 -   For objective questions:
     *   All 4 options must be plausible distractors.
@@ -162,5 +162,3 @@ export async function generateExamQuestions(input: GenerateExamInput): Promise<G
 
   return generateExamQuestionsFlow(input);
 }
-
-    

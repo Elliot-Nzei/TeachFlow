@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useContext, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import { generateExamQuestions, type GenerateExamInput, type GenerateExamOutput 
 type LoadingState = 'idle' | 'generating' | 'downloading';
 
 const initialFormState: Omit<GenerateExamInput, 'questionCount'> = {
-  classLevel: '',
+  classGrade: '',
   subject: '',
   topics: '',
   questionType: 'Both',
@@ -54,11 +55,11 @@ export default function ExamQuestionGeneratorPage() {
   const { data: allSubjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
   const subjectsForClass = useMemo(() => {
-    if (!formState.classLevel || !classes || !allSubjects) return allSubjects || [];
-    const selectedClass = classes.find(c => c.name === formState.classLevel);
+    if (!formState.classGrade || !classes || !allSubjects) return allSubjects || [];
+    const selectedClass = classes.find(c => c.name === formState.classGrade);
     if (!selectedClass?.subjects) return allSubjects || [];
     return allSubjects.filter(s => selectedClass.subjects.includes(s.name));
-  }, [formState.classLevel, classes, allSubjects]);
+  }, [formState.classGrade, classes, allSubjects]);
 
   // Handlers
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -69,7 +70,7 @@ export default function ExamQuestionGeneratorPage() {
 
   const handleSelectChange = useCallback((name: keyof typeof initialFormState, value: string) => {
     setFormState(prev => ({ ...prev, [name]: value }));
-    if (name === 'classLevel') setFormState(prev => ({ ...prev, subject: '' }));
+    if (name === 'classGrade') setFormState(prev => ({ ...prev, subject: '' }));
     setGenerationError(null);
   }, []);
 
@@ -93,7 +94,7 @@ export default function ExamQuestionGeneratorPage() {
     const errors: string[] = [];
     const count = parseInt(questionCount || '0', 10);
 
-    if (!formState.classLevel) errors.push('Class level is required');
+    if (!formState.classGrade) errors.push('Class grade is required');
     if (!formState.subject) errors.push('Subject is required');
     if (!formState.topics.trim()) errors.push('Topics are required');
     if (isNaN(count) || count < 1 || count > 50) errors.push('Question count must be between 1 and 50');
@@ -196,7 +197,7 @@ export default function ExamQuestionGeneratorPage() {
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'normal');
-        const examLine = `${formState.subject} — ${formState.classLevel}`;
+        const examLine = `${formState.subject} — ${formState.classGrade}`;
         doc.text(examLine, pageWidth / 2, currentY, { align: 'center' });
         currentY += 14 * ptToMm * lineHeightMultiplier * 0.8;
         
@@ -345,7 +346,7 @@ export default function ExamQuestionGeneratorPage() {
       }
       
       const safeSubject = formState.subject ? formState.subject.replace(/\s+/g, '_') : 'Exam';
-      const safeClass = formState.classLevel ? formState.classLevel.replace(/\s+/g, '_') : 'Class';
+      const safeClass = formState.classGrade ? formState.classGrade.replace(/\s+/g, '_') : 'Class';
       const filename = `${safeSubject}_${safeClass}_Exam${includeAnswers ? '_with_Answers' : ''}.pdf`;
       doc.save(filename);
 
@@ -386,13 +387,13 @@ export default function ExamQuestionGeneratorPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="classLevel">Class *</Label>
+                    <Label htmlFor="classGrade">Class *</Label>
                     <Select
-                      value={formState.classLevel}
-                      onValueChange={(value) => handleSelectChange('classLevel', value)}
+                      value={formState.classGrade}
+                      onValueChange={(value) => handleSelectChange('classGrade', value)}
                       disabled={isLoadingClasses || isProcessing}
                     >
-                      <SelectTrigger id="classLevel">
+                      <SelectTrigger id="classGrade">
                         <SelectValue placeholder="Select class..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -407,7 +408,7 @@ export default function ExamQuestionGeneratorPage() {
                     <Select
                       value={formState.subject}
                       onValueChange={(value) => handleSelectChange('subject', value)}
-                      disabled={!formState.classLevel || isLoadingSubjects || isProcessing}
+                      disabled={!formState.classGrade || isLoadingSubjects || isProcessing}
                     >
                       <SelectTrigger id="subject">
                         <SelectValue placeholder="Select subject..." />
@@ -515,7 +516,7 @@ export default function ExamQuestionGeneratorPage() {
                     <div className="exam-paper space-y-4">
                       <div className="text-center border-b-2 border-black pb-2 mb-4">
                         <h1 className="text-base font-bold uppercase">{settings?.schoolName || 'School Name'}</h1>
-                        <h2 className="text-sm font-semibold">{formState.subject} - {formState.classLevel}</h2>
+                        <h2 className="text-sm font-semibold">{formState.subject} - {formState.classGrade}</h2>
                         <p className="text-xs">{settings?.currentTerm}, {settings?.currentSession}</p>
                       </div>
 

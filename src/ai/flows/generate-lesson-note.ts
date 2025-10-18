@@ -11,7 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateLessonNoteInputSchema = z.object({
-  classLevel: z.string().describe('The class level for the lesson note (e.g., Primary 4, JSS 2).'),
+  classGrade: z.string().describe('The class grade for the lesson note (e.g., Primary 4, JSS 2).'),
   subject: z.string().describe('The subject for the lesson note (e.g., English, Mathematics).'),
   schemeOfWork: z.string().describe('The scheme of work or topic outline.'),
   weeks: z.number().min(1).max(12).describe('The number of weeks or lessons to generate (1-12).'),
@@ -26,7 +26,7 @@ const GenerateLessonNoteOutputSchema = z.object({
   note: z.string().describe('The generated lesson note in Markdown format for the requested week(s).'),
   metadata: z.object({
     generatedAt: z.string(),
-    classLevel: z.string(),
+    classGrade: z.string(),
     subject: z.string(),
   }),
 });
@@ -40,8 +40,8 @@ export type GenerateLessonNoteOutput = z.infer<typeof GenerateLessonNoteOutputSc
  */
 export async function generateLessonNote(input: GenerateLessonNoteInput): Promise<GenerateLessonNoteOutput> {
   // Input validation
-  if (!input.classLevel?.trim()) {
-    throw new Error('Class level is required');
+  if (!input.classGrade?.trim()) {
+    throw new Error('Class grade is required');
   }
   if (!input.subject?.trim()) {
     throw new Error('Subject is required');
@@ -59,7 +59,7 @@ export async function generateLessonNote(input: GenerateLessonNoteInput): Promis
       note: result.note,
       metadata: {
         generatedAt: new Date().toISOString(),
-        classLevel: input.classLevel,
+        classGrade: input.classGrade,
         subject: input.subject,
       },
     };
@@ -95,7 +95,7 @@ Example:
 
 ## LESSON NOTE DETAILS
 
-**Class Level**: {{{classLevel}}}
+**Class Grade**: {{{classGrade}}}
 **Subject**: {{{subject}}}
 **Scheme of Work**: {{{schemeOfWork}}}
 **Current Week to Generate**: Week {{{currentWeek}}}
@@ -111,7 +111,7 @@ Example:
 
 1. **Generate ONLY for Week {{{currentWeek}}}**: Your entire output should be just the lesson note for this single week.
 2. **No Repetition**: The content for Week {{{currentWeek}}} must be unique and build upon previous weeks if context is provided.
-3. **Age-Appropriate**: Ensure language and activities match the cognitive level of {{{classLevel}}}.
+3. **Age-Appropriate**: Ensure language and activities match the cognitive grade of {{{classGrade}}}.
 4. **Nigerian Context**: Use examples, names, and scenarios relevant to Nigerian students.
 5. **Curriculum Alignment**: Follow NERDC curriculum standards for {{{subject}}}.
 
@@ -211,5 +211,3 @@ const generateLessonNoteFlow = ai.defineFlow(
     return { note: output.note };
   }
 );
-
-    

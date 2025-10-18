@@ -23,7 +23,7 @@ const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
             <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="font-headline">{cls.name}</CardTitle>
-                <CardDescription>Level {cls.level}</CardDescription>
+                <CardDescription>Grade {cls.grade}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 flex-grow">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -50,7 +50,7 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
                 <p className="font-semibold font-headline">{cls.name}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                     <div className="flex items-center gap-1.5">
-                         <Badge variant="outline">Level {cls.level}</Badge>
+                         <Badge variant="outline">Grade {cls.grade}</Badge>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" />
@@ -73,27 +73,27 @@ export default function ClassesPage() {
     const { user } = useUser();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
-    const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
+    const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading } = useCollection<Class>(classesQuery);
 
-    const classLevels = Array.from({length: 12}, (_, i) => i + 1);
+    const classGrades = Array.from({length: 12}, (_, i) => i + 1);
 
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (newClassName.trim() && selectedLevel !== null && user) {
+        if (newClassName.trim() && selectedGrade !== null && user) {
             const classesCollection = collection(firestore, 'users', user.uid, 'classes');
             addDocumentNonBlocking(classesCollection, {
                 name: newClassName,
-                level: selectedLevel,
+                grade: selectedGrade,
                 students: [],
                 subjects: [],
                 createdAt: serverTimestamp(),
             });
             setNewClassName('');
-            setSelectedLevel(null);
+            setSelectedGrade(null);
             setIsDialogOpen(false);
         }
     };
@@ -116,7 +116,7 @@ export default function ClassesPage() {
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>
-                Enter the name for the new class and assign its academic level.
+                Enter the name for the new class and assign its academic grade.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddClass}>
@@ -126,31 +126,31 @@ export default function ClassesPage() {
                     <Input id="name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g., Primary 5A" className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="level" className="text-right">Level</Label>
+                    <Label htmlFor="grade" className="text-right">Grade</Label>
                     <div className="col-span-3">
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {selectedLevel !== null ? `Level ${selectedLevel}` : "Select level..."}
+                                    {selectedGrade !== null ? `Grade ${selectedGrade}` : "Select grade..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width)] p-0">
                                 <Command>
-                                <CommandInput placeholder="Search level..." />
+                                <CommandInput placeholder="Search grade..." />
                                 <CommandList>
-                                    <CommandEmpty>No level found.</CommandEmpty>
+                                    <CommandEmpty>No grade found.</CommandEmpty>
                                     <CommandGroup>
-                                    {classLevels.map((level) => (
+                                    {classGrades.map((grade) => (
                                         <CommandItem
-                                        key={level}
-                                        value={String(level)}
+                                        key={grade}
+                                        value={String(grade)}
                                         onSelect={() => {
-                                            setSelectedLevel(level);
+                                            setSelectedGrade(grade);
                                         }}
                                         >
-                                         <Check className={cn("mr-2 h-4 w-4", selectedLevel === level ? "opacity-100" : "opacity-0")} />
-                                        Level {level}
+                                         <Check className={cn("mr-2 h-4 w-4", selectedGrade === grade ? "opacity-100" : "opacity-0")} />
+                                        Grade {grade}
                                         </CommandItem>
                                     ))}
                                     </CommandGroup>
@@ -173,7 +173,7 @@ export default function ClassesPage() {
         <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
           {isLoading ? Array.from({length: 4}).map((_, i) => (
               <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
-          )) : (classes || []).sort((a,b) => a.level - b.level).map((cls) => (
+          )) : (classes || []).sort((a,b) => a.grade - b.grade).map((cls) => (
             <ClassCard key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
           ))}
         </div>
@@ -187,7 +187,7 @@ export default function ClassesPage() {
                     <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
                 </div>
               </div>
-          )) : (classes || []).sort((a,b) => a.level - b.level).map((cls) => (
+          )) : (classes || []).sort((a,b) => a.grade - b.grade).map((cls) => (
              <ClassListItem 
                 key={cls.id}
                 cls={cls}

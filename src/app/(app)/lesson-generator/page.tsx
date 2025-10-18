@@ -28,7 +28,7 @@ type SavedNote = {
 };
 
 const initialFormState: GenerateLessonNoteInput = {
-  classLevel: '',
+  classGrade: '',
   subject: '',
   schemeOfWork: '',
   weeks: 4,
@@ -104,7 +104,7 @@ export default function LessonGeneratorPage() {
   
       // Header on first page
       const title = `Lesson Note${formState.subject ? ' — ' + formState.subject : ''}`;
-      const meta = `Class: ${formState.classLevel || '—'}    Topic: ${formState.schemeOfWork || '—'}`;
+      const meta = `Class: ${formState.classGrade || '—'}    Topic: ${formState.schemeOfWork || '—'}`;
       let cursorY = margin;
   
       pdf.setFontSize(13);
@@ -213,7 +213,7 @@ export default function LessonGeneratorPage() {
   };
   
   const isFormValid = () => {
-    return formState.classLevel && formState.subject && formState.schemeOfWork && formState.weeks > 0;
+    return formState.classGrade && formState.subject && formState.schemeOfWork && formState.weeks > 0;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -349,9 +349,9 @@ export default function LessonGeneratorPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="classLevel">Class Level</Label>
-                  <Select onValueChange={(value) => handleSelectChange('classLevel', value)} value={formState.classLevel}>
-                    <SelectTrigger id="classLevel">
+                  <Label htmlFor="classGrade">Class Grade</Label>
+                  <Select onValueChange={(value) => handleSelectChange('classGrade', value)} value={formState.classGrade}>
+                    <SelectTrigger id="classGrade">
                       <SelectValue placeholder="Select a class" />
                     </SelectTrigger>
                     <SelectContent>
@@ -446,7 +446,7 @@ export default function LessonGeneratorPage() {
                     <div>
                         <CardTitle>Generated Lesson Note</CardTitle>
                         <CardDescription>
-                            For {formState.classLevel} - {formState.subject}
+                            For {formState.classGrade} - {formState.subject}
                         </CardDescription>
                     </div>
                   <div className="flex gap-2 flex-wrap">
