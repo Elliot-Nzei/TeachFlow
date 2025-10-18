@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { getNextClassName } from '@/lib/utils';
-import { Input } from './ui/input';
+import { Input } from '@/components/ui/input';
 
 
 function ClassDetailsContent({ classId }: { classId: string }) {
@@ -127,7 +127,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
       const average = totalScore / studentGrades.length;
 
       if (average >= 50) { // Passed
-        const nextClassName = getNextClassName(classDetails.name, allClasses.map(c => ({ name: c.name, level: c.level })));
+        const nextClassName = getNextClassName(classDetails.name, allClasses.map(c => ({ name: c.name, grade: c.grade })));
         const nextClass = allClasses.find(c => c.name === nextClassName);
 
         if (nextClass) {
@@ -284,7 +284,7 @@ function ClassDetailsContent({ classId }: { classId: string }) {
           <CardHeader>
             <CardTitle>Promote Class</CardTitle>
             <CardDescription>
-              At the end of the third term, you can promote eligible students to the next class level based on their average performance.
+              At the end of the third term, you can promote eligible students to the next class grade based on their average performance.
             </CardDescription>
           </CardHeader>
           <CardContent>

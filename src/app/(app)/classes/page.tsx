@@ -10,7 +10,7 @@ import { BookOpen, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check } from
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import ClassDetailsContent from '@/components/class-details-content';
+import ClassDetailsContent from '@/app/(app)/class-details-content';
 import type { Class } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -27,7 +27,7 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
             <Card className="cursor-pointer hover:shadow-md transition-shadow group">
                 <CardContent className="p-4 flex items-center gap-4">
                     <div className="flex-1">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                             <p className="font-bold font-headline text-lg group-hover:text-primary transition-colors">{cls.name}</p>
                             <Badge variant="secondary">{cls.category}</Badge>
                         </div>
@@ -180,8 +180,8 @@ export default function ClassesPage() {
       </div>
 
        <Tabs defaultValue="All" className="mt-6">
-        <TabsList>
-            <TabsTrigger value="All">All Classes</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:w-auto md:grid-cols-5">
+            <TabsTrigger value="All">All</TabsTrigger>
             {classCategories.map(cat => (
                 <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
                     {cat}
@@ -192,20 +192,20 @@ export default function ClassesPage() {
         <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
         {['All', ...classCategories].map(category => (
             <TabsContent key={category} value={category}>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-8">
-                {isLoading ? Array.from({length: 6}).map((_, i) => (
-                    <Card key={i}>
-                        <CardContent className="p-4 flex items-center gap-4">
-                             <div className="flex-1 space-y-3">
-                                 <Skeleton className="h-5 w-3/5 rounded" />
-                                 <Skeleton className="h-4 w-4/5 rounded" />
-                             </div>
-                             <Skeleton className="h-10 w-10 rounded" />
-                        </CardContent>
-                    </Card>
-                )) : filteredClasses(category).map((cls) => (
-                    <ClassListItem key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
-                ))}
+                <div className="mt-8 space-y-4">
+                    {isLoading ? Array.from({length: 3}).map((_, i) => (
+                        <Card key={i}>
+                            <CardContent className="p-4 flex items-center gap-4">
+                                <div className="flex-1 space-y-3">
+                                    <Skeleton className="h-5 w-3/5 rounded" />
+                                    <Skeleton className="h-4 w-4/5 rounded" />
+                                </div>
+                                <Skeleton className="h-10 w-10 rounded" />
+                            </CardContent>
+                        </Card>
+                    )) : filteredClasses(category).map((cls) => (
+                        <ClassListItem key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
+                    ))}
                 </div>
 
                 {!isLoading && filteredClasses(category).length === 0 && (
@@ -230,5 +230,3 @@ export default function ClassesPage() {
     </>
   );
 }
-
-    
