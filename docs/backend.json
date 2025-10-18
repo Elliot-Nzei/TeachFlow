@@ -70,9 +70,14 @@
           "type": "string",
           "description": "The name of the class (e.g., Primary 3A)."
         },
-        "level": {
+        "grade": {
           "type": "number",
-          "description": "The academic level of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
+          "description": "The academic grade of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the class.",
+          "enum": ["Early Years", "Primary", "Junior Secondary", "Senior Secondary"]
         },
         "subjects": {
           "type": "array",
@@ -95,7 +100,8 @@
       },
       "required": [
         "name",
-        "level"
+        "grade",
+        "category"
       ]
     },
     "Student": {
@@ -483,5 +489,3 @@
     }
   }
 }
-
-    

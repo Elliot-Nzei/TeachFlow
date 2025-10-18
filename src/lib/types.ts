@@ -28,6 +28,7 @@ export type Class = {
   id: string;
   name: string;
   grade: number;
+  category: 'Early Years' | 'Primary' | 'Junior Secondary' | 'Senior Secondary';
   students: string[];
   subjects: string[];
   createdAt?: any;

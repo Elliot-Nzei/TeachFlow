@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
     <SheetTrigger asChild key={cls.id}>
@@ -23,7 +25,9 @@ const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
             <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="font-headline">{cls.name}</CardTitle>
-                <CardDescription>Grade {cls.grade}</CardDescription>
+                <CardDescription>
+                  <Badge variant="outline">{cls.category}</Badge>
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 flex-grow">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -50,7 +54,7 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
                 <p className="font-semibold font-headline">{cls.name}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                     <div className="flex items-center gap-1.5">
-                         <Badge variant="outline">Grade {cls.grade}</Badge>
+                         <Badge variant="secondary">{cls.category}</Badge>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" />
@@ -67,6 +71,10 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
     </SheetTrigger>
 );
 
+type ClassCategory = 'Early Years' | 'Primary' | 'Junior Secondary' | 'Senior Secondary';
+
+const classCategories: ClassCategory[] = ['Early Years', 'Primary', 'Junior Secondary', 'Senior Secondary'];
+
 
 export default function ClassesPage() {
     const { firestore } = useFirebase();
@@ -74,6 +82,7 @@ export default function ClassesPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
     const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<ClassCategory | ''>('');
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -83,23 +92,31 @@ export default function ClassesPage() {
 
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (newClassName.trim() && selectedGrade !== null && user) {
+        if (newClassName.trim() && selectedGrade !== null && selectedCategory && user) {
             const classesCollection = collection(firestore, 'users', user.uid, 'classes');
             addDocumentNonBlocking(classesCollection, {
                 name: newClassName,
                 grade: selectedGrade,
+                category: selectedCategory,
                 students: [],
                 subjects: [],
                 createdAt: serverTimestamp(),
             });
             setNewClassName('');
             setSelectedGrade(null);
+            setSelectedCategory('');
             setIsDialogOpen(false);
         }
     };
 
     const handleCardClick = (classId: string) => {
       setSelectedClassId(classId);
+    };
+    
+    const filteredClasses = (category: string) => {
+        const sorted = (classes || []).sort((a,b) => a.grade - b.grade);
+        if (category === 'All') return sorted;
+        return sorted.filter(c => c.category === category);
     };
 
   return (
@@ -116,7 +133,7 @@ export default function ClassesPage() {
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>
-                Enter the name for the new class and assign its academic grade.
+                Enter the name for the new class and assign its academic details.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddClass}>
@@ -124,6 +141,19 @@ export default function ClassesPage() {
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">Name</Label>
                     <Input id="name" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g., Primary 5A" className="col-span-3" />
+                </div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="category" className="text-right">Category</Label>
+                    <div className="col-span-3">
+                         <Select onValueChange={(value: ClassCategory) => setSelectedCategory(value)} value={selectedCategory}>
+                            <SelectTrigger id="category">
+                                <SelectValue placeholder="Select category..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {classCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="grade" className="text-right">Grade</Label>
@@ -168,44 +198,64 @@ export default function ClassesPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
-        {/* Desktop Grid View */}
-        <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
-          {isLoading ? Array.from({length: 4}).map((_, i) => (
-              <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
-          )) : (classes || []).sort((a,b) => a.grade - b.grade).map((cls) => (
-            <ClassCard key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
-          ))}
-        </div>
 
-        {/* Mobile List View */}
-        <div className="md:hidden space-y-3 mt-8">
-           {isLoading ? Array.from({length: 3}).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
-                <div className="flex-1 space-y-2">
-                    <div className="h-5 w-3/4 rounded bg-muted animate-pulse" />
-                    <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
+       <Tabs defaultValue="All" className="mt-6">
+        <TabsList>
+            <TabsTrigger value="All">All Classes</TabsTrigger>
+            {classCategories.map(cat => (
+                <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
+                    {cat}
+                </TabsTrigger>
+            ))}
+        </TabsList>
+
+        <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
+        {['All', ...classCategories].map(category => (
+            <TabsContent key={category} value={category}>
+                <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
+                {isLoading ? Array.from({length: 4}).map((_, i) => (
+                    <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
+                )) : filteredClasses(category).map((cls) => (
+                    <ClassCard key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
+                ))}
                 </div>
-              </div>
-          )) : (classes || []).sort((a,b) => a.grade - b.grade).map((cls) => (
-             <ClassListItem 
-                key={cls.id}
-                cls={cls}
-                onClick={() => handleCardClick(cls.id)}
-            />
-          ))}
-        </div>
+
+                <div className="md:hidden space-y-3 mt-8">
+                {isLoading ? Array.from({length: 3}).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
+                        <div className="flex-1 space-y-2">
+                            <div className="h-5 w-3/4 rounded bg-muted animate-pulse" />
+                            <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
+                        </div>
+                    </div>
+                )) : filteredClasses(category).map((cls) => (
+                    <ClassListItem 
+                        key={cls.id}
+                        cls={cls}
+                        onClick={() => handleCardClick(cls.id)}
+                    />
+                ))}
+                </div>
+
+                {!isLoading && filteredClasses(category).length === 0 && (
+                    <div className="text-center text-muted-foreground pt-16">
+                        No classes in this category yet.
+                    </div>
+                )}
+            </TabsContent>
+        ))}
 
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Class Details</SheetTitle>
-            <SheetDescription>
-              View the students and subjects for this class.
-            </SheetDescription>
-          </SheetHeader>
-          {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
+            <SheetHeader>
+                <SheetTitle>Class Details</SheetTitle>
+                <SheetDescription>
+                View the students and subjects for this class.
+                </SheetDescription>
+            </SheetHeader>
+            {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
         </SheetContent>
-      </Sheet>
+        </Sheet>
+       </Tabs>
     </>
   );
 }
