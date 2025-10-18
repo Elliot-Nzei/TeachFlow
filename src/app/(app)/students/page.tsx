@@ -19,6 +19,7 @@ import StudentProfileContent from '@/components/student-profile-content';
 import Image from 'next/image';
 import type { Student } from '@/lib/types';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -215,6 +216,7 @@ export default function StudentsPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAddStudent}>
+                      <ScrollArea className="h-[60vh] -mx-6 px-6">
                         <div className="grid gap-4 py-4">
                             <div className="flex items-center gap-4">
                                  <Avatar className="h-24 w-24">
@@ -272,7 +274,8 @@ export default function StudentsPage() {
                                 </div>
                             </div>
                         </div>
-                        <DialogFooter>
+                      </ScrollArea>
+                        <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => setAddStudentOpen(false)}>Cancel</Button>
                             <Button type="submit">Save Student</Button>
                         </DialogFooter>
@@ -335,5 +338,3 @@ export default function StudentsPage() {
     </>
   );
 }
-
-    
