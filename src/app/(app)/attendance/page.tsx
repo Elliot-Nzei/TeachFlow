@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar as CalendarIcon, Save, Users, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Save, Users, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Class, Student, Attendance } from '@/lib/types';
 import { useCollection, useFirebase, useUser as useAuthUser, useMemoFirebase, useDoc } from '@/firebase';
@@ -78,6 +78,14 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setAttendance(prev => prev.map(rec => rec.studentId === studentId ? { ...rec, status } : rec));
+  };
+  
+  const handleMarkAll = (status: AttendanceStatus) => {
+    setAttendance(prev => prev.map(rec => ({ ...rec, status })));
+    toast({
+        title: `All Marked as ${status}`,
+        description: `All students have been marked as ${status}. Click "Save Attendance" to confirm.`,
+    });
   };
 
   const handleSaveAttendance = async () => {
@@ -162,30 +170,40 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
             </div>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className="w-full sm:w-[280px] justify-start text-left font-normal"
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className="w-full sm:w-[280px] justify-start text-left font-normal"
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={setDate}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0} className="w-full sm:w-auto">
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Attendance
                     </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                    />
-                    </PopoverContent>
-                </Popover>
-                <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0} className="w-full sm:w-auto">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Attendance
-                </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Present')} disabled={attendance.length === 0}>
+                        <CheckCircle className="mr-2 h-4 w-4" /> Mark All Present
+                    </Button>
+                     <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Absent')} disabled={attendance.length === 0}>
+                        <XCircle className="mr-2 h-4 w-4" /> Mark All Absent
+                    </Button>
+                </div>
             </div>
 
             {isLoading ? (
@@ -274,5 +292,3 @@ export default function AttendancePage() {
   
   return <ClassSelector onSelectClass={setSelectedClass} />;
 }
-
-    
