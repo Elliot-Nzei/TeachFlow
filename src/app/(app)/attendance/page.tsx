@@ -148,7 +148,7 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
         <Button 
             variant={variant}
             size="sm"
-            className={cn("w-full sm:w-auto", colors)}
+            className={cn("flex-1", colors)}
             onClick={() => handleStatusChange(studentId, status)}
         >
             {status}
@@ -231,7 +231,7 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                                    <div className="flex flex-row gap-2 justify-end max-w-xs ml-auto">
                                         <StatusButton studentId={record.studentId} currentStatus={record.status} status="Present" />
                                         <StatusButton studentId={record.studentId} currentStatus={record.status} status="Absent" />
                                         <StatusButton studentId={record.studentId} currentStatus={record.status} status="Late" />
