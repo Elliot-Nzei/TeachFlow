@@ -134,17 +134,9 @@ function UserProfileDisplay() {
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { plan, isTrial, trialTimeRemaining, isLocked } = usePlan();
+  const { plan, isLocked } = usePlan();
 
   const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
-
-  const formatTime = (seconds: number) => {
-    const clampedSeconds = Math.max(0, seconds);
-    const minutes = Math.floor(clampedSeconds / 60);
-    const remainingSeconds = clampedSeconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-  };
-
 
   return (
     <SidebarProvider>
@@ -198,8 +190,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
             <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
                 <div className="ml-auto flex items-center gap-4">
                     {plan && (
-                       <Badge variant={isTrial ? 'destructive' : 'outline'}>
-                         {isTrial ? `Trial: ${formatTime(trialTimeRemaining)}` : toTitleCase(plan.replace('_', ' '))}
+                       <Badge variant={plan === 'free_trial' ? 'destructive' : 'outline'}>
+                         {toTitleCase(plan.replace('_', ' '))}
                        </Badge>
                     )}
                     <NotificationBell />

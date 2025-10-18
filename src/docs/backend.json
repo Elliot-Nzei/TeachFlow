@@ -61,6 +61,16 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp when the free trial started."
+        },
+        "subscriptionCycle": {
+            "type": "string",
+            "enum": ["monthly", "annually"],
+            "description": "The billing cycle for the subscription."
+        },
+        "subscriptionStartDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The start date of the current subscription period."
         }
       },
       "required": [

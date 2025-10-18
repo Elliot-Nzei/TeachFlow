@@ -1,3 +1,4 @@
+
 'use client';
 import React, { createContext, useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
@@ -16,6 +17,8 @@ type Settings = {
     studentCounter?: number;
     plan?: 'free_trial' | 'basic' | 'prime';
     trialStartedAt?: Timestamp;
+    subscriptionCycle?: 'monthly' | 'annually';
+    subscriptionStartDate?: Timestamp;
 }
 
 type SettingsContextType = {

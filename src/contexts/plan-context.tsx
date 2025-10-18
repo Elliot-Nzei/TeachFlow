@@ -5,16 +5,19 @@ import { usePathname } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { SettingsContext } from './settings-context';
 import type { User } from 'firebase/auth';
+import { add, differenceInDays } from 'date-fns';
 
-const TRIAL_DURATION_SECONDS = 30;
+const TRIAL_DURATION_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 type Plan = 'free_trial' | 'basic' | 'prime' | null;
+type BillingCycle = 'monthly' | 'annually' | null;
 
 interface PlanContextType {
   plan: Plan;
   isTrial: boolean;
-  isTrialExpired: boolean;
-  trialTimeRemaining: number;
+  subscriptionCycle: BillingCycle;
+  renewalDate: Date | null;
+  daysRemaining: number;
   isLocked: boolean;
   features: {
     canUseAdvancedAI: boolean;
@@ -33,52 +36,55 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
   
   const [plan, setPlan] = useState<Plan>(null);
-  const [trialTimeRemaining, setTrialTimeRemaining] = useState(TRIAL_DURATION_SECONDS);
-
-  const trialStartedAt = settings?.trialStartedAt;
+  const [subscriptionCycle, setSubscriptionCycle] = useState<BillingCycle>(null);
+  const [renewalDate, setRenewalDate] = useState<Date | null>(null);
+  const [daysRemaining, setDaysRemaining] = useState(0);
 
   useEffect(() => {
     if (isUserLoading || isSettingsLoading || !settings) {
         return;
     }
     setPlan(settings.plan || 'free_trial');
+    setSubscriptionCycle(settings.subscriptionCycle || null);
   }, [settings, isUserLoading, isSettingsLoading]);
 
 
   useEffect(() => {
-    if (plan !== 'free_trial' || !trialStartedAt) {
-      setTrialTimeRemaining(0);
-      return;
+    if (!settings) return;
+
+    if (plan === 'free_trial') {
+        const trialStartDate = settings.trialStartedAt?.toDate();
+        if (trialStartDate) {
+            const endDate = add(trialStartDate, { seconds: TRIAL_DURATION_SECONDS });
+            setRenewalDate(endDate);
+            setDaysRemaining(differenceInDays(endDate, new Date()));
+        }
+    } else {
+        const subStartDate = settings.subscriptionStartDate?.toDate();
+        if (subStartDate && subscriptionCycle) {
+            const duration = subscriptionCycle === 'annually' ? { years: 1 } : { months: 1 };
+            const endDate = add(subStartDate, duration);
+            setRenewalDate(endDate);
+            setDaysRemaining(differenceInDays(endDate, new Date()));
+        }
     }
 
-    const trialStartMs = trialStartedAt.toMillis();
-
-    const interval = setInterval(() => {
-      const nowMs = Date.now();
-      const elapsedSeconds = Math.floor((nowMs - trialStartMs) / 1000);
-      const remaining = TRIAL_DURATION_SECONDS - elapsedSeconds;
-      setTrialTimeRemaining(remaining < 0 ? 0 : remaining);
-
-      if (remaining <= 0) {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [plan, trialStartedAt]);
+  }, [plan, subscriptionCycle, settings]);
   
-  const isTrialExpired = useMemo(() => {
-    if (plan !== 'free_trial' || !trialStartedAt) return false;
-    const trialStartMs = trialStartedAt.toMillis();
-    const nowMs = Date.now();
-    const elapsedSeconds = Math.floor((nowMs - trialStartMs) / 1000);
-    return elapsedSeconds >= TRIAL_DURATION_SECONDS;
-  }, [plan, trialStartedAt, trialTimeRemaining]); // Depends on trialTimeRemaining to re-evaluate
+  const isSubscriptionExpired = useMemo(() => {
+    if (plan === 'free_trial') {
+        return daysRemaining < 0;
+    }
+    // For paid plans, check if the subscription has expired
+    if (plan === 'basic' || plan === 'prime') {
+        return daysRemaining < 0;
+    }
+    return false; // Not expired if no plan or still in trial with time left
+  }, [plan, daysRemaining]);
   
   const isLocked = useMemo(() => {
-    // The app is locked if the trial is expired AND the user is not on the billing page.
-    return isTrialExpired && pathname !== '/billing';
-  }, [isTrialExpired, pathname]);
+    return isSubscriptionExpired && pathname !== '/billing';
+  }, [isSubscriptionExpired, pathname]);
 
   const features = useMemo(() => {
     switch (plan) {
@@ -112,8 +118,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const value: PlanContextType = {
     plan,
     isTrial: plan === 'free_trial',
-    isTrialExpired,
-    trialTimeRemaining,
+    subscriptionCycle,
+    renewalDate,
+    daysRemaining,
     isLocked,
     features,
   };

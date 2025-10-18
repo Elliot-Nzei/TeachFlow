@@ -2,15 +2,16 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Zap, Infinity, Lock } from 'lucide-react';
+import { CheckCircle2, XCircle, Zap, Infinity, Lock, BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { format } from 'date-fns';
 
 const plansData = [
   {
@@ -84,6 +85,8 @@ const PlanCard = ({ plan, cycle, currentPlanId }: { plan: typeof plansData[0], c
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, {
                 plan: newPlanId,
+                subscriptionCycle: cycle,
+                subscriptionStartDate: serverTimestamp(),
             });
             toast({
                 title: 'Plan Updated!',
@@ -110,13 +113,13 @@ const PlanCard = ({ plan, cycle, currentPlanId }: { plan: typeof plansData[0], c
             <Button 
                 className="w-full" 
                 variant={plan.isFeatured ? 'default' : 'outline'}
-                disabled={isUpgrading}
+                disabled={isUpgrading || plan.id === 'free_trial'}
                 onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
             >
                 {isUpgrading ? 'Upgrading...' : (
                     <>
                         {plan.id !== 'free_trial' && <Zap className="mr-2 h-4 w-4" />}
-                        Upgrade to {plan.name}
+                        {plan.id === 'free_trial' ? 'Included' : `Upgrade to ${plan.name}`}
                     </>
                 )}
             </Button>
@@ -163,6 +166,46 @@ const PlanCard = ({ plan, cycle, currentPlanId }: { plan: typeof plansData[0], c
     );
 };
 
+const SubscriptionStatusCard = () => {
+    const { plan, isTrial, subscriptionCycle, renewalDate, daysRemaining } = usePlan();
+
+    if (isTrial || !plan || !renewalDate) {
+        return null; // Don't show this card for free trial users or if data is missing
+    }
+
+    const planName = useMemo(() => {
+        if (!plan) return 'Free';
+        return plan.charAt(0).toUpperCase() + plan.slice(1);
+    }, [plan]);
+
+    return (
+        <Card className="bg-primary text-primary-foreground">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><BadgeCheck /> Your Current Plan</CardTitle>
+                <CardDescription className="text-primary-foreground/80">
+                    You are currently subscribed to the {planName} plan.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                <div className="bg-primary-foreground/10 p-3 rounded-lg">
+                    <p className="text-sm text-primary-foreground/80">Plan</p>
+                    <p className="text-xl font-bold">{planName}</p>
+                </div>
+                <div className="bg-primary-foreground/10 p-3 rounded-lg">
+                    <p className="text-sm text-primary-foreground/80">Billing Cycle</p>
+                    <p className="text-xl font-bold">{subscriptionCycle === 'annually' ? 'Annual' : 'Monthly'}</p>
+                </div>
+                <div className="bg-primary-foreground/10 p-3 rounded-lg col-span-2 md:col-span-1">
+                    <p className="text-sm text-primary-foreground/80">
+                        {daysRemaining > 0 ? `Renews on` : `Expired on`}
+                    </p>
+                    <p className="text-xl font-bold">{format(renewalDate, 'PPP')}</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function BillingPage() {
   const { plan: currentPlanId } = usePlan();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
@@ -174,20 +217,23 @@ export default function BillingPage() {
             <p className="text-muted-foreground mt-2">
                 Unlock more features and power up your school. Select the plan that fits your needs.
             </p>
-             <div className="flex items-center justify-center space-x-2 mt-6">
-                <Label htmlFor="billing-cycle">Monthly</Label>
-                <Switch
-                    id="billing-cycle"
-                    checked={billingCycle === 'annually'}
-                    onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')}
-                />
-                <Label htmlFor="billing-cycle" className="flex items-center">
-                    Annually
-                    <span className="ml-2 inline-block rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
-                        Save 2 Months!
-                    </span>
-                </Label>
-            </div>
+        </div>
+
+        <SubscriptionStatusCard />
+        
+        <div className="flex items-center justify-center space-x-2">
+            <Label htmlFor="billing-cycle">Monthly</Label>
+            <Switch
+                id="billing-cycle"
+                checked={billingCycle === 'annually'}
+                onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')}
+            />
+            <Label htmlFor="billing-cycle" className="flex items-center">
+                Annually
+                <span className="ml-2 inline-block rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
+                    Save 2 Months!
+                </span>
+            </Label>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
