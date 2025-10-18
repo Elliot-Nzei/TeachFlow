@@ -53,12 +53,26 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionCycle, setSubscriptionCycle] = useState<BillingCycle>(null);
   const [renewalDate, setRenewalDate] = useState<Date | null>(null);
   const [daysRemaining, setDaysRemaining] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   const [aiUsage, setAiUsage] = useState({
     reportCardGenerations: 0,
     lessonNoteGenerations: 0,
     examGenerations: 0,
     usageCycleStartDate: null as Date | null,
   });
+
+  useEffect(() => {
+    // Set up a timer that updates the current time every second.
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    // Clean up the timer when the component unmounts.
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (isUserLoading || isSettingsLoading || !settings) {
@@ -112,8 +126,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   
   const isSubscriptionExpired = useMemo(() => {
     if (isSettingsLoading || isUserLoading || !renewalDate) return false;
-    return isAfter(new Date(), renewalDate);
-  }, [renewalDate, isSettingsLoading, isUserLoading]);
+    // Re-calculate whenever currentTime updates.
+    return isAfter(currentTime, renewalDate);
+  }, [renewalDate, isSettingsLoading, isUserLoading, currentTime]);
   
   const isLocked = useMemo(() => {
     return isSubscriptionExpired && pathname !== '/billing';
