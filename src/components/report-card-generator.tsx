@@ -12,7 +12,7 @@ import { Button, ButtonProps } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School, Lock } from 'lucide-react';
+import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School, Lock, CheckCircle2 } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Logo } from './logo';
@@ -627,6 +627,13 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
               <CardDescription>Choose a class or an individual student.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+               <Alert variant={features.canUseAdvancedAI ? 'default' : 'destructive'}>
+                {features.canUseAdvancedAI ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
+                <AlertDescription>
+                    {features.canUseAdvancedAI ? 'Your plan includes unlimited AI generations.' : 'Upgrade to a Basic or Prime plan to use this feature.'}
+                </AlertDescription>
+               </Alert>
                <div className="space-y-2">
                  <Popover open={classPopoverOpen} onOpenChange={setClassPopoverOpen}>
                     <PopoverTrigger asChild>

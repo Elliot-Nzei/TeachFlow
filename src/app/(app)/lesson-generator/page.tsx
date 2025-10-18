@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook, ArrowLeft, Lock } from 'lucide-react';
+import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook, ArrowLeft, Lock, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLessonNote, type GenerateLessonNoteInput } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
@@ -21,6 +21,7 @@ import type { Class, Subject } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 type SavedNote = {
   id: string;
@@ -351,6 +352,13 @@ export default function LessonGeneratorPage() {
                 <CardDescription>Provide the details for your lesson note.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                 <Alert variant={features.canUseAdvancedAI ? 'default' : 'destructive'}>
+                  {features.canUseAdvancedAI ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                  <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
+                  <AlertDescription>
+                    {features.canUseAdvancedAI ? 'Your plan includes unlimited AI generations.' : 'Upgrade to a Basic or Prime plan to use this feature.'}
+                  </AlertDescription>
+                </Alert>
                 <div className="space-y-2">
                   <Label htmlFor="classGrade">Class Grade</Label>
                   <Select onValueChange={(value) => handleSelectChange('classGrade', value)} value={formState.classGrade}>

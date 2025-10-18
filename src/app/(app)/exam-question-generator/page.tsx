@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FileDown, Printer, AlertCircle, Lock } from 'lucide-react';
+import { Loader2, Sparkles, FileDown, Printer, AlertCircle, Lock, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import jsPDF from 'jspdf';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -387,6 +387,13 @@ export default function ExamQuestionGeneratorPage() {
               </CardHeader>
 
               <CardContent className="space-y-4">
+                 <Alert variant={features.canUseAdvancedAI ? 'default' : 'destructive'}>
+                  {features.canUseAdvancedAI ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                  <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
+                  <AlertDescription>
+                    {features.canUseAdvancedAI ? 'Your plan includes unlimited AI generations.' : 'Upgrade to a Basic or Prime plan to use this feature.'}
+                  </AlertDescription>
+                </Alert>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="classGrade">Class *</Label>
