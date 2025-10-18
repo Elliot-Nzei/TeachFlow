@@ -7,57 +7,60 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar, HelpCircle, Lock } from 'lucide-react';
+import { Send, Loader2, Check, X, AlertCircle, Calendar, HelpCircle, Lock, DatabaseBackup, Upload, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { useCollection, useFirebase, FirestorePermissionError, errorEmitter, useMemoFirebase } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, setDoc, limit, type DocumentReference, increment, type WriteBatch } from 'firebase/firestore';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { usePlan } from '@/contexts/plan-context';
-
+import { Alert, AlertTitle } from '@/components/ui/alert';
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
 
-export default function TransferPage() {
+type FullBackup = {
+  version: string;
+  exportedAt: string;
+  data: {
+    classes: any[];
+    students: any[];
+    subjects: any[];
+    grades: any[];
+    attendance: any[];
+    traits: any[];
+    payments: any[];
+  };
+};
+
+const collectionsToBackup = ['classes', 'students', 'subjects', 'grades', 'attendance', 'traits', 'payments'];
+
+
+export default function DataManagementPage() {
   const { firestore, user } = useFirebase();
   const { settings: userProfile, isLoading: isLoadingProfile, setSettings } = useContext(SettingsContext);
   const { toast } = useToast();
   const { features } = usePlan();
   const router = useRouter();
   
+  // State for Data Transfer
   const [recipientCode, setRecipientCode] = useState('');
   const [dataType, setDataType] = useState<DataType | ''>('');
   const [dataItem, setDataItem] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
   const [processingTransferId, setProcessingTransferId] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ 
-    open: boolean; 
-    transfer: DataTransfer | null; 
-    action: 'accept' | 'reject' | null;
-  }>({ open: false, transfer: null, action: null });
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; transfer: DataTransfer | null; action: 'accept' | 'reject' | null;}>({ open: false, transfer: null, action: null });
   const [lessonNotesHistory, setLessonNotesHistory] = useState<LessonNote[]>([]);
+
+  // State for Import/Export
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [fileToImport, setFileToImport] = useState<File | null>(null);
+
 
   useEffect(() => {
     if (!features.canUseDataTransfer) {
@@ -149,6 +152,102 @@ export default function TransferPage() {
 
       return results;
   }
+
+  const handleExportData = async () => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to export data.' });
+      return;
+    }
+    setIsExporting(true);
+    toast({ title: 'Starting Export...', description: 'Gathering all your school data. This may take a moment.' });
+
+    try {
+      const backupData: FullBackup['data'] = {
+        classes: [], students: [], subjects: [], grades: [], attendance: [], traits: [], payments: []
+      };
+
+      for (const collectionName of collectionsToBackup) {
+        const collRef = collection(firestore, 'users', user.uid, collectionName);
+        const snapshot = await getDocs(collRef);
+        backupData[collectionName as keyof FullBackup['data']] = snapshot.docs.map(doc => doc.data());
+      }
+      
+      const fullBackup: FullBackup = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        data: backupData
+      };
+
+      const jsonString = JSON.stringify(fullBackup, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      link.download = `TeachFlow_backup_${userProfile?.schoolName?.replace(/\s+/g, '_') || 'school'}_${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Export Successful', description: 'Your data has been downloaded.' });
+
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast({ variant: 'destructive', title: 'Export Failed', description: 'Could not export your data.' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setFileToImport(event.target.files[0]);
+    }
+  };
+
+  const handleImportData = async () => {
+    if (!fileToImport || !user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a backup file to import.' });
+      return;
+    }
+    
+    setIsImporting(true);
+    toast({ title: 'Starting Import...', description: 'Please do not navigate away from this page.' });
+
+    try {
+      const fileContent = await fileToImport.text();
+      const backup: FullBackup = JSON.parse(fileContent);
+
+      if (backup.version !== '1.0' || !backup.data) {
+        throw new Error('Invalid or corrupted backup file format.');
+      }
+
+      const batch = writeBatch(firestore);
+
+      for (const collectionName of collectionsToBackup) {
+        const dataArray = backup.data[collectionName as keyof FullBackup['data']];
+        if (dataArray && dataArray.length > 0) {
+            const collRef = collection(firestore, 'users', user.uid, collectionName);
+            dataArray.forEach(itemData => {
+                const newDocRef = doc(collRef);
+                batch.set(newDocRef, itemData);
+            });
+        }
+      }
+
+      await batch.commit();
+      toast({ title: 'Import Complete!', description: 'All data has been successfully restored. Please reload the page.' });
+
+    } catch (error) {
+        console.error('Import failed:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        toast({ variant: 'destructive', title: 'Import Failed', description: `Could not import data. Error: ${errorMessage}` });
+    } finally {
+        setIsImporting(false);
+        setFileToImport(null);
+    }
+  };
 
 
   const handleTransfer = async () => {
@@ -262,7 +361,7 @@ export default function TransferPage() {
     let studentCounter = userProfile.studentCounter || 0;
     
     try {
-        const studentIdMap = new Map<string, string>(); // Maps original student ID to new/existing student doc ID
+        const studentIdMap = new Map<string, string>(); 
         const recipientStudentsRef = collection(firestore, 'users', user.uid, 'students');
 
         const processStudent = async (student: Student) => {
@@ -314,7 +413,7 @@ export default function TransferPage() {
             const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
             const classQuerySnap = await getDocs(q);
 
-            let classRef: DocumentReference;
+            let classRef;
             const studentDocIdsToMerge = Array.from(studentIdMap.values());
 
             if (classQuerySnap.empty) {
@@ -359,7 +458,6 @@ export default function TransferPage() {
         }
         
         const upsertSubcollectionData = async (
-          batch: WriteBatch,
           subcollectionName: 'grades' | 'attendance' | 'traits',
           dataArray: any[] | undefined
         ) => {
@@ -406,9 +504,9 @@ export default function TransferPage() {
             }
         };
 
-        await upsertSubcollectionData(batch, 'grades', transfer.grades);
-        await upsertSubcollectionData(batch, 'attendance', transfer.attendance);
-        await upsertSubcollectionData(batch, 'traits', transfer.traits);
+        await upsertSubcollectionData('grades', transfer.grades);
+        await upsertSubcollectionData('attendance', transfer.attendance);
+        await upsertSubcollectionData('traits', transfer.traits);
         
         const timestamp = serverTimestamp();
         const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
@@ -522,18 +620,14 @@ export default function TransferPage() {
   
   const copyCode = async (textToCopy: string) => {
         try {
-            // Modern method
             await navigator.clipboard.writeText(textToCopy);
             toast({
                 title: 'Copied to Clipboard',
-                description: 'Your transfer code is copied to clipboard.',
+                description: 'Your user code is copied to clipboard.',
             });
         } catch (err) {
-            // Fallback for older browsers or restricted environments
             const textArea = document.createElement("textarea");
             textArea.value = textToCopy;
-            
-            // Make the textarea invisible
             textArea.style.position = "fixed";
             textArea.style.top = "0";
             textArea.style.left = "0";
@@ -544,7 +638,6 @@ export default function TransferPage() {
             textArea.style.outline = "none";
             textArea.style.boxShadow = "none";
             textArea.style.background = "transparent";
-
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
@@ -553,7 +646,7 @@ export default function TransferPage() {
                 document.execCommand('copy');
                  toast({
                     title: 'Copied to Clipboard',
-                    description: 'Your transfer code is copied to clipboard.',
+                    description: 'Your user code is copied to clipboard.',
                 });
             } catch (copyErr) {
                  toast({
@@ -618,7 +711,7 @@ export default function TransferPage() {
                     <CardDescription>This feature is available on the Prime plan.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p>Upgrade to the Prime plan to securely transfer data with other users.</p>
+                    <p>Upgrade to the Prime plan to securely manage and transfer your school data.</p>
                 </CardContent>
                 <CardFooter>
                     <Button onClick={() => router.push('/billing')} className="w-full">View Plans</Button>
@@ -630,143 +723,148 @@ export default function TransferPage() {
 
   return (
     <>
-      <div className="flex items-center gap-4 mb-8">
-        <h1 className="text-3xl font-bold font-headline">Data Transfer</h1>
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <HelpCircle className="h-5 w-5 text-muted-foreground" />
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="font-bold mb-2">About Data Transfer</DialogTitle>
-                    <DialogDescription>
-                        This feature allows you to securely share school data with another registered TeachFlow user.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 text-sm">
-                    <p>You can transfer three types of data:</p>
-                    <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                        <li>
-                            <strong className="text-foreground">Full Class Data:</strong>
-                             Transfers a class, its subjects, and its full student roster including all their academic records (grades, attendance, traits).
-                        </li>
-                        <li>
-                            <strong className="text-foreground">Single Student Record:</strong>
-                             Transfers an individual student's complete profile and academic records.
-                        </li>
-                        <li>
-                            <strong className="text-foreground">Lesson Note:</strong>
-                             Shares a lesson note from your generation history.
-                        </li>
-                    </ul>
-                </div>
-            </DialogContent>
-        </Dialog>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold font-headline">Data Management</h1>
+        <p className="text-muted-foreground">Export, import, and transfer your school data.</p>
       </div>
 
       <div className="space-y-8">
           {userProfile?.userCode && (
-            <div className="rounded-lg border bg-card p-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div className='flex-1'>
-                        <span className="text-sm text-muted-foreground mr-2">Your Code:</span>
-                        <span className="font-mono font-bold text-primary">{userProfile.userCode}</span>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            if(userProfile.userCode) {
-                                copyCode(userProfile.userCode);
-                            }
-                        }}
-                    >
-                        Copy
-                    </Button>
-                </div>
-            </div>
+            <Card className="bg-muted/50">
+              <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div className='flex-1'>
+                      <span className="text-sm text-muted-foreground mr-2">Your Unique Transfer Code:</span>
+                      <span className="font-mono font-bold text-primary text-lg">{userProfile.userCode}</span>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyCode(userProfile.userCode)}>
+                      Copy Code
+                  </Button>
+              </CardContent>
+            </Card>
           )}
 
-        <Tabs defaultValue="new-transfer">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="new-transfer">New Transfer</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-            <TabsContent value="new-transfer">
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Initiate a New Transfer</CardTitle>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-8">
+               <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DatabaseBackup className="h-5 w-5" /> Export All Data
+                  </CardTitle>
+                  <CardDescription>
+                    Download a full backup of all your data into a single JSON file.
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter>
+                  <Button onClick={handleExportData} disabled={isExporting}>
+                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseBackup className="mr-2 h-4 w-4" />}
+                    {isExporting ? 'Exporting...' : 'Export Data'}
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" /> Import Data
+                  </CardTitle>
+                  <CardDescription>
+                    Restore data from a previously exported backup file.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Warning</AlertTitle>
+                    <AlertDescription>
+                      Importing data will add to your existing records, not replace them.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-2">
+                      <Label htmlFor="import-file">Backup File (.json)</Label>
+                      <Input id="import-file" type="file" accept=".json" onChange={handleFileChange} disabled={isImporting} />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleImportData} disabled={!fileToImport || isImporting}>
+                      {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                      {isImporting ? 'Importing...' : 'Import Data'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+            
+             <Card className="lg:row-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Send className="h-5 w-5"/> Initiate a New Transfer
+                    </CardTitle>
                     <CardDescription>Enter the recipient's code and select the data you wish to send.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="recipient-code">Recipient's User Code</Label>
-                        <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="recipient-code">Recipient's User Code</Label>
+                      <Input id="recipient-code" placeholder="NSMS-XXXXX" value={recipientCode} onChange={e => setRecipientCode(e.target.value.toUpperCase())} disabled={isTransferring} />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                          <Label htmlFor="data-type">Data Type</Label>
+                          <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
+                              <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="Full Class Data">Full Class Data</SelectItem>
+                                  <SelectItem value="Single Student Record">Single Student Record</SelectItem>
+                                  <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="data-item">Specific Item</Label>
+                          <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
+                              <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
+                              <SelectContent>
+                              {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
+                      </div>
+                  </div>
+                  </CardContent>
+                  <CardFooter>
+                  <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
+                      {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
+                  </Button>
+                  </CardFooter>
+              </Card>
+
+          </div>
+
+           <Card>
+                <CardHeader>
+                <CardTitle>Transfer History</CardTitle>
+                <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
+                    ))
+                ) : combinedTransfers.length > 0 ? (
+                    combinedTransfers.map((transfer) => (
+                        <TransferHistoryItem key={transfer.id} transfer={transfer} />
+                    ))
+                ) : (
+                    <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                        <p>No transfer history yet.</p>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="data-type">Data Type</Label>
-                            <Select onValueChange={(v: DataType) => { setDataType(v); setDataItem(''); }} value={dataType} disabled={isTransferring || isLoading}>
-                                <SelectTrigger id="data-type"><SelectValue placeholder="Select data type" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Full Class Data">Full Class Data</SelectItem>
-                                    <SelectItem value="Single Student Record">Single Student Record</SelectItem>
-                                    <SelectItem value="Lesson Note">Lesson Note History</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="data-item">Specific Item</Label>
-                            <Select onValueChange={setDataItem} value={dataItem} disabled={!dataType || isTransferring || isLoading}>
-                                <SelectTrigger id="data-item"><SelectValue placeholder={isLoading ? "Loading..." : "Select item"} /></SelectTrigger>
-                                <SelectContent>
-                                {dataItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    </CardContent>
-                    <CardFooter>
-                    <Button onClick={handleTransfer} disabled={isTransferring || !recipientCode || !dataType || !dataItem || isLoading}>
-                        {isTransferring ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Send className="mr-2 h-4 w-4" /> Send Transfer Request</>}
-                    </Button>
-                    </CardFooter>
-                </Card>
-            </TabsContent>
-            <TabsContent value="history">
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Transfer History</CardTitle>
-                    <CardDescription>A log of your recent sent and received data transfers.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                    {isLoading ? (
-                        Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={`skeleton-${i}`} className="h-20 w-full" />
-                        ))
-                    ) : combinedTransfers.length > 0 ? (
-                        combinedTransfers.map((transfer) => (
-                            <TransferHistoryItem key={transfer.id} transfer={transfer} />
-                        ))
-                    ) : (
-                        <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
-                            <p>No transfer history yet.</p>
-                        </div>
-                    )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
+                )}
+                </CardContent>
+            </Card>
       </div>
 
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmDialog.action === 'accept' ? 'Accept & Merge Transfer?' : 'Reject Transfer?'}</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
+            <AlertDialogDescription>
                 {confirmDialog.action === 'accept' ? (
                   <>
                     You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>.
@@ -780,7 +878,6 @@ export default function TransferPage() {
                 ) : (
                   <>Are you sure you want to reject this transfer? This action cannot be undone.</>
                 )}
-              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -801,5 +898,3 @@ export default function TransferPage() {
     </>
   );
 }
-
-    

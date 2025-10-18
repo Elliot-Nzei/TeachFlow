@@ -68,8 +68,7 @@ const allMenuItems = [
   { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['basic', 'prime'] },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['basic', 'prime'] },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['basic', 'prime'] },
-  { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft, plans: ['prime'] },
-  { href: '/system', label: 'System', icon: Database, plans: ['prime'] },
+  { href: '/transfer', label: 'Data Management', icon: Database, plans: ['prime'] },
   { href: '/billing', label: 'Billing', icon: CreditCard, plans: ['free_trial', 'basic', 'prime'] },
 ];
 
