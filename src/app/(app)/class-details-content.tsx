@@ -422,3 +422,5 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
 }
 
 export default ClassDetailsContent;
+
+    

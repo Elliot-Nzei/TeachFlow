@@ -54,7 +54,7 @@ export interface InternalQuery extends Query<DocumentData> {
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined,
+    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | InternalQuery | null | undefined,
 ): UseCollectionResult<T> {
   const { isUserLoading } = useFirebase();
   type ResultItemType = WithId<T>;
@@ -114,3 +114,5 @@ export function useCollection<T = any>(
 
   return { data, isLoading, error };
 }
+
+    
