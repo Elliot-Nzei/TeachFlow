@@ -266,20 +266,25 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
   const classAverages = useMemo(() => {
     if (!allGrades || !selectedClass) return [];
+    
+    // Filter grades to only include those from the selected class for the current term/session
+    const relevantGrades = allGrades.filter(
+        g => g.classId === selectedClass.id &&
+             g.session === settings?.currentSession &&
+             g.term === settings?.currentTerm
+    );
+
+    // Calculate averages for students in the selected class
     return studentsInClass
       .map(student => {
-        const studentGrades = allGrades.filter(
-          g => g.studentId === student.id && 
-               g.session === settings?.currentSession && 
-               g.term === settings?.currentTerm && 
-               typeof g.total === 'number'
-        );
+        const studentGrades = relevantGrades.filter(g => g.studentId === student.id && typeof g.total === 'number');
         if (studentGrades.length === 0) return { studentId: student.id, average: 0 };
+
         const totalScore = studentGrades.reduce((sum, g) => sum + g.total, 0);
         return { studentId: student.id, average: totalScore / studentGrades.length };
       })
       .sort((a, b) => b.average - a.average);
-  }, [allGrades, studentsInClass, settings?.currentSession, settings?.currentTerm, selectedClass]);
+  }, [allGrades, studentsInClass, selectedClass, settings?.currentSession, settings?.currentTerm]);
 
   const handleClearSelection = useCallback(() => {
     setSelectedClass(null);
@@ -648,11 +653,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                     </PopoverContent>
                  </Popover>
                </div>
-               <div className="flex items-center">
-                    <div className="flex-grow border-t border-muted-foreground"></div>
-                    <span className="flex-shrink mx-2 text-xs text-muted-foreground">OR</span>
-                    <div className="flex-grow border-t border-muted-foreground"></div>
-                </div>
+               <Separator>OR</Separator>
                  <div className="space-y-2">
                      <Popover open={studentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -673,7 +674,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                                                 value={student.name}
                                                 onSelect={() => {
                                                     setSelectedStudent(student);
-                                                    setSelectedClass(null);
+                                                    setSelectedClass(allClasses?.find(c => c.id === student.classId) || null);
                                                     setStudentPopoverOpen(false);
                                                 }}
                                             >
