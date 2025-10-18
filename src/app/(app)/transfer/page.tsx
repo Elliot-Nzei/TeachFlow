@@ -608,7 +608,7 @@ export default function TransferPage() {
                 <DialogHeader>
                     <DialogTitle className="font-bold mb-2">About Data Transfer</DialogTitle>
                     <DialogDescription>
-                        This feature allows you to securely share school data with another registered PeerPrep user.
+                        This feature allows you to securely share school data with another registered TeachFlow user.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 text-sm">

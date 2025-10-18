@@ -76,7 +76,7 @@ export default function RegisterPage() {
       <div className="hidden bg-primary lg:flex items-center justify-center p-12 text-center">
         <div className="text-primary-foreground">
             <h2 className="text-4xl font-bold font-headline mb-4">A Modern Toolkit for Today's Teacher</h2>
-            <p className="text-lg max-w-md mx-auto">From AI-powered lesson plans to seamless data sharing, PeerPrep is designed to simplify your administrative tasks.</p>
+            <p className="text-lg max-w-md mx-auto">From AI-powered lesson plans to seamless data sharing, TeachFlow is designed to simplify your administrative tasks.</p>
         </div>
       </div>
       <div className="flex items-center justify-center py-12">

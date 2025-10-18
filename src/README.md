@@ -1,8 +1,8 @@
-# 📘 PeerPrep: Your Complete User Guide
+# 📘 TeachFlow: Your Complete User Guide
 
 ## 1. Introduction
 
-Welcome to PeerPrep! This guide provides a comprehensive overview of the entire platform, explaining how to use each feature to manage your school's administrative tasks efficiently. From initial setup to generating AI-powered reports, this document is your single source of truth.
+Welcome to TeachFlow! This guide provides a comprehensive overview of the entire platform, explaining how to use each feature to manage your school's administrative tasks efficiently. From initial setup to generating AI-powered reports, this document is your single source of truth.
 
 ---
 
@@ -14,7 +14,7 @@ Before you dive in, it's crucial to configure your school's details. All reports
 
 1.  **School Information**:
     *   Fill in your `Full Name`, `School Name`, `School Motto`, and `School Address`.
-    *   Your unique `User Code` is displayed here. You will need this to receive data from other PeerPrep users.
+    *   Your unique `User Code` is displayed here. You will need this to receive data from other TeachFlow users.
 
 2.  **Academic Settings (Very Important!)**:
     *   **Current Term**: Select the academic term you are currently in (e.g., "First Term"). All new grades, attendance, and payments will be recorded for this term.
@@ -160,7 +160,7 @@ Promotions are a critical year-end task.
 ### Data Transfer
 **Go to [Data Transfer](/transfer)**
 
-This feature allows you to securely share data with another teacher or administrator using PeerPrep.
+This feature allows you to securely share data with another teacher or administrator using TeachFlow.
 
 1.  **Initiate Transfer**:
     *   Enter the recipient's unique `User Code`.

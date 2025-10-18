@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'PeerPrep',
+  title: 'TeachFlow',
   description: 'A Nigerian School Management System',
 };
 

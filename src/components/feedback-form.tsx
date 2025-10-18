@@ -58,7 +58,7 @@ export default function FeedbackForm() {
       
       toast({
         title: 'Feedback Received!',
-        description: "Thank you for helping us improve PeerPrep.",
+        description: "Thank you for helping us improve TeachFlow.",
       });
       form.reset();
 

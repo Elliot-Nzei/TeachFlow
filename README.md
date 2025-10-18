@@ -1,6 +1,6 @@
-# PeerPrep: Nigerian School Management System
+# TeachFlow: Nigerian School Management System
 
-PeerPrep is a modern, web-based school management system designed specifically for the Nigerian educational landscape. It empowers educators with a suite of tools to manage classes, students, grades, and academic records efficiently. The system leverages AI to streamline administrative tasks like generating report cards and lesson notes, allowing teachers to focus more on education.
+TeachFlow is a modern, web-based school management system designed specifically for the Nigerian educational landscape. It empowers educators with a suite of tools to manage classes, students, grades, and academic records efficiently. The system leverages AI to streamline administrative tasks like generating report cards and lesson notes, allowing teachers to focus more on education.
 
 ## Core Features
 

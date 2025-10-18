@@ -117,7 +117,7 @@ export default function Home() {
               The Smart Way to Manage Your School
             </h1>
             <p className="max-w-[700px] mx-auto md:text-xl drop-shadow">
-              PeerPrep empowers Nigerian educators with AI-driven tools for class management, grade tracking, report generation, and secure data sharing.
+              TeachFlow empowers Nigerian educators with AI-driven tools for class management, grade tracking, report generation, and secure data sharing.
             </p>
             <div className="flex flex-col gap-4 min-[400px]:flex-row justify-center">
               <Link href="/register" passHref>
@@ -141,7 +141,7 @@ export default function Home() {
                 <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Built for Efficiency and Collaboration</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  From generating report cards to planning lessons, PeerPrep simplifies your administrative tasks so you can focus on teaching.
+                  From generating report cards to planning lessons, TeachFlow simplifies your administrative tasks so you can focus on teaching.
                 </p>
               </div>
             </div>
@@ -161,9 +161,9 @@ export default function Home() {
         
         <section id="video-guide" className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6 text-center">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">See PeerPrep in Action</h2>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">See TeachFlow in Action</h2>
             <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl mb-8">
-              Watch this short video to see how PeerPrep can transform your school's administration.
+              Watch this short video to see how TeachFlow can transform your school's administration.
             </p>
             <div className="mx-auto max-w-4xl aspect-video bg-muted rounded-xl overflow-hidden border">
               <iframe
@@ -171,7 +171,7 @@ export default function Home() {
                 src="https://drive.google.com/file/d/1UPKXUpBC2rZ22zkJ4PkMaLJi6T7CugvL/preview"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
-                title="PeerPrep Video Guide"
+                title="TeachFlow Video Guide"
               ></iframe>
             </div>
           </div>
@@ -205,13 +205,13 @@ export default function Home() {
                         <div className="md:col-span-2 p-8 md:p-12 space-y-4">
                            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
                            <p>
-                             Hi, I'm Elliot Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built PeerPrep to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
+                             Hi, I'm Elliot Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built TeachFlow to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
                            </p>
                             <p>
                              With a strong background in computer science, system automation, and AI integration, I focus on developing intelligent digital tools that simplify complex administrative tasks. My goal is to bridge the gap between traditional education systems and modern technology through reliable, user-friendly solutions that empower teachers and improve learning outcomes.
                            </p>
                             <p>
-                             PeerPrep reflects my belief that innovation in education starts with better tools — and I’m committed to building platforms that make that vision a reality.
+                             TeachFlow reflects my belief that innovation in education starts with better tools — and I’m committed to building platforms that make that vision a reality.
                            </p>
                         </div>
                     </div>
@@ -221,7 +221,7 @@ export default function Home() {
 
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 PeerPrep. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link className="text-xs hover:underline underline-offse-4" href="#">
             Terms of Service
