@@ -1,3 +1,4 @@
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,7 +86,7 @@ const SubscriptionStatusCard = () => {
                 clearInterval(interval);
                 return;
             }
-
+            
             const hours = Math.floor(secondsRemaining / 3600);
             const minutes = Math.floor((secondsRemaining % 3600) / 60);
             const seconds = secondsRemaining % 60;
@@ -95,6 +96,8 @@ const SubscriptionStatusCard = () => {
             } else {
               setTimeLeft(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
             }
+
+
         }, 1000);
 
         return () => clearInterval(interval);
@@ -103,21 +106,24 @@ const SubscriptionStatusCard = () => {
     if (isTrial || !plan || !renewalDate) {
         return null; // Don't show for trial users or if data is missing
     }
-
-    const planName = toTitleCase(plan.replace('_', ' '));
+    
+    const planName = useMemo(() => {
+        if (!plan) return 'Free';
+        return plan.charAt(0).toUpperCase() + plan.slice(1);
+    }, [plan]);
 
     return (
         <Card className="bg-primary text-primary-foreground">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Zap /> Your Current Plan</CardTitle>
                  <CardDescription className="text-primary-foreground/80">
-                    You are currently subscribed to the {planName} plan.
+                    You are currently subscribed to the {toTitleCase(plan)} plan.
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                 <div className="bg-primary-foreground/10 p-3 rounded-lg">
                     <p className="text-sm text-primary-foreground/80">Plan</p>
-                    <p className="text-xl font-bold">{planName}</p>
+                    <p className="text-xl font-bold">{toTitleCase(plan)}</p>
                 </div>
                 <div className="bg-primary-foreground/10 p-3 rounded-lg">
                     <p className="text-sm text-primary-foreground/80">Billing Cycle</p>
@@ -135,7 +141,7 @@ const SubscriptionStatusCard = () => {
 }
 
 export default function BillingPage() {
-  const { plan: currentPlanId, subscriptionCycle: currentCycle } = usePlan();
+  const { plan: currentPlanId, subscriptionCycle: currentCycle, isLocked } = usePlan();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -221,7 +227,7 @@ export default function BillingPage() {
                         </ul>
                     </CardContent>
                     <CardFooter>
-                       {currentPlanId === plan.id ? (
+                       {currentPlanId === plan.id && !isLocked ? (
                             <Button className="w-full" variant="outline" disabled>Your Current Plan</Button>
                         ) : (
                             <Button
@@ -230,7 +236,12 @@ export default function BillingPage() {
                                 disabled={plan.id === 'free_trial'}
                                 onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
                             >
-                                {plan.id === 'free_trial' ? 'Included' : `Upgrade to ${plan.name}`}
+                                {plan.id === 'free_trial' 
+                                    ? 'Included' 
+                                    : currentPlanId === plan.id && isLocked
+                                        ? 'Renew Plan'
+                                        : `Upgrade to ${plan.name}`
+                                }
                             </Button>
                         )}
                     </CardFooter>
