@@ -51,8 +51,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsProvider } from '@/contexts/settings-context';
 import { PlanProvider, usePlan } from '@/contexts/plan-context';
 import NotificationBell from '@/components/notification-bell';
-import PlanStatusBanner from '@/components/plan-status-banner';
 import UpgradeModal from '@/components/upgrade-modal';
+import { Badge } from '@/components/ui/badge';
+import { toTitleCase } from '@/lib/utils';
 
 
 const allMenuItems = [
@@ -64,7 +65,7 @@ const allMenuItems = [
   { href: '/timetable', label: 'Timetable', icon: CalendarDays, plans: ['free_trial', 'basic', 'prime'] },
   { href: '/grades', label: 'Grades', icon: Notebook, plans: ['free_trial', 'basic', 'prime'] },
   { href: '/payments', label: 'Payments', icon: DollarSign, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['basic', 'prime'] },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['basic', 'prime'] },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['basic', 'prime'] },
   { href: '/transfer', label: 'Data Transfer', icon: ArrowRightLeft, plans: ['prime'] },
@@ -134,9 +135,16 @@ function UserProfileDisplay() {
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isLocked, plan } = usePlan();
+  const { plan, isTrial, trialTimeRemaining, isLocked } = usePlan();
 
   const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
+
+  const formatTime = (seconds: number) => {
+    const clampedSeconds = Math.max(0, seconds);
+    const minutes = Math.floor(clampedSeconds / 60);
+    const remainingSeconds = clampedSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  };
 
 
   return (
@@ -189,13 +197,17 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
             <SidebarTrigger className="md:hidden" />
             <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex items-center gap-4">
+                    {plan && (
+                       <Badge variant={isTrial ? 'destructive' : 'outline'}>
+                         {isTrial ? `Trial: ${formatTime(trialTimeRemaining)}` : toTitleCase(plan.replace('_', ' '))}
+                       </Badge>
+                    )}
                     <NotificationBell />
                     <UserProfileDisplay />
                 </div>
             </div>
           </header>
-          <PlanStatusBanner />
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             {children}
           </main>
