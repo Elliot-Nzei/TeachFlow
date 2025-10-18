@@ -170,39 +170,39 @@ function AttendanceTaker({ selectedClass, onBack }: { selectedClass: Class, onBa
             </div>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className="w-full sm:w-[280px] justify-start text-left font-normal"
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
+            <div className="flex flex-col md:flex-row gap-4">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className="w-full md:w-[280px] justify-start text-left font-normal"
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+                <div className="flex-1 flex flex-col sm:flex-row gap-2">
                     <Button onClick={handleSaveAttendance} disabled={isLoading || attendance.length === 0} className="w-full sm:w-auto">
                         <Save className="mr-2 h-4 w-4" />
                         Save Attendance
                     </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Present')} disabled={attendance.length === 0}>
-                        <CheckCircle className="mr-2 h-4 w-4" /> Mark All Present
-                    </Button>
-                     <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Absent')} disabled={attendance.length === 0}>
-                        <XCircle className="mr-2 h-4 w-4" /> Mark All Absent
-                    </Button>
+                     <div className="flex flex-1 justify-end gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Present')} disabled={attendance.length === 0}>
+                            <CheckCircle className="mr-2 h-4 w-4" /> Mark All Present
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => handleMarkAll('Absent')} disabled={attendance.length === 0}>
+                            <XCircle className="mr-2 h-4 w-4" /> Mark All Absent
+                        </Button>
+                    </div>
                 </div>
             </div>
 
