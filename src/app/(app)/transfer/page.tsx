@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { usePlan } from '@/contexts/plan-context';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -380,7 +380,7 @@ export default function DataManagementPage() {
     if (!user || !transfer.fromUserId || !transfer.outgoingTransferId || !userProfile) return;
     
     setProcessingTransferId(transfer.id);
-    setSelectionDialog({ open: false, transfer: null, selections: {} });
+    setSelectionDialog({ open: false, transfer: null, selections: {} as any });
 
     const batch = writeBatch(firestore);
     let studentCounter = userProfile.studentCounter || 0;
@@ -850,7 +850,7 @@ export default function DataManagementPage() {
           </Card>
       </div>
 
-       <Dialog open={selectionDialog.open} onOpenChange={(open) => !open && setSelectionDialog({ open: false, transfer: null, selections: {} })}>
+       <Dialog open={selectionDialog.open} onOpenChange={(open) => !open && setSelectionDialog({ open: false, transfer: null, selections: initialSelectionState })}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Select Data to Import</DialogTitle>
@@ -886,3 +886,5 @@ export default function DataManagementPage() {
     </>
   );
 }
+
+    
