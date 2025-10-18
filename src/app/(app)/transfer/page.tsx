@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Check, X, AlertCircle, Calendar, HelpCircle, Lock, DatabaseBackup, Upload, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Send, Loader2, Check, X, AlertCircle, Calendar, HelpCircle, Lock, DatabaseBackup, Upload, ArrowUpRight, ArrowDownLeft, SlidersHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { usePlan } from '@/contexts/plan-context';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
 
@@ -40,6 +41,16 @@ type FullBackup = {
 
 const collectionsToBackup = ['classes', 'students', 'subjects', 'grades', 'attendance', 'traits', 'payments'];
 
+const initialSelectionState = {
+  classDetails: true,
+  students: true,
+  subjects: true,
+  grades: true,
+  attendance: true,
+  traits: true,
+};
+
+type SelectionCategory = keyof typeof initialSelectionState;
 
 export default function DataManagementPage() {
   const { firestore, user } = useFirebase();
@@ -54,7 +65,13 @@ export default function DataManagementPage() {
   const [dataItem, setDataItem] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
   const [processingTransferId, setProcessingTransferId] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; transfer: DataTransfer | null; action: 'accept' | 'reject' | null;}>({ open: false, transfer: null, action: null });
+  
+  const [selectionDialog, setSelectionDialog] = useState<{
+    open: boolean;
+    transfer: DataTransfer | null;
+    selections: Record<SelectionCategory, boolean>;
+  }>({ open: false, transfer: null, selections: initialSelectionState });
+
   const [lessonNotesHistory, setLessonNotesHistory] = useState<LessonNote[]>([]);
 
   // State for Import/Export
@@ -353,11 +370,18 @@ export default function DataManagementPage() {
       setIsTransferring(false);
     }
   };
+  
+  const handleAcceptTransfer = async (transfer: DataTransfer) => {
+    if (!user) return;
+    setSelectionDialog({ open: true, transfer, selections: initialSelectionState });
+  }
 
-  const processAcceptTransfer = async (transfer: DataTransfer) => {
-     if (!user || !transfer.fromUserId || !transfer.outgoingTransferId || !userProfile) return;
-    setProcessingTransferId(transfer.id);
+  const processSelectiveAccept = async (transfer: DataTransfer, selections: Record<SelectionCategory, boolean>) => {
+    if (!user || !transfer.fromUserId || !transfer.outgoingTransferId || !userProfile) return;
     
+    setProcessingTransferId(transfer.id);
+    setSelectionDialog({ open: false, transfer: null, selections: {} });
+
     const batch = writeBatch(firestore);
     let studentCounter = userProfile.studentCounter || 0;
     
@@ -375,7 +399,6 @@ export default function DataManagementPage() {
                 where('originalStudentDocId', '==', originalStudentDocId),
                 limit(1)
             );
-
             const existingStudentSnap = await getDocs(existingStudentQuery);
 
             if (!existingStudentSnap.empty) {
@@ -390,7 +413,7 @@ export default function DataManagementPage() {
                   ...studentData,
                   studentId: newStudentId,
                   transferredFrom: transfer.fromUserId,
-                  originalStudentDocId: originalStudentDocId, // Store the original ID
+                  originalStudentDocId: originalStudentDocId,
                   transferredAt: serverTimestamp(),
                 });
                 finalStudentDocId = newStudentRef.id;
@@ -398,18 +421,20 @@ export default function DataManagementPage() {
             studentIdMap.set(originalStudentDocId, finalStudentDocId);
         }
 
-        const studentsToProcess: Student[] = [];
-        if (transfer.dataType === 'Full Class Data' && transfer.students) {
-            studentsToProcess.push(...transfer.students);
-        } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
-            studentsToProcess.push(transfer.data as Student);
-        }
+        if (selections.students) {
+            const studentsToProcess: Student[] = [];
+            if (transfer.dataType === 'Full Class Data' && transfer.students) {
+                studentsToProcess.push(...transfer.students);
+            } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
+                studentsToProcess.push(transfer.data as Student);
+            }
 
-        for (const student of studentsToProcess) {
-            await processStudent(student);
+            for (const student of studentsToProcess) {
+                await processStudent(student);
+            }
         }
         
-        if (transfer.dataType === 'Full Class Data') {
+        if (transfer.dataType === 'Full Class Data' && selections.classDetails) {
             if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
             
             const classesRef = collection(firestore, 'users', user.uid, 'classes');
@@ -425,8 +450,8 @@ export default function DataManagementPage() {
             } else {
                 classRef = classQuerySnap.docs[0].ref;
                 batch.update(classRef, { 
-                    subjects: arrayUnion(...(transfer.data.subjects || [])),
-                    students: arrayUnion(...studentDocIdsToMerge),
+                    subjects: selections.subjects ? arrayUnion(...(transfer.data.subjects || [])) : undefined,
+                    students: selections.students ? arrayUnion(...studentDocIdsToMerge) : undefined,
                     transferredFrom: transfer.fromUserId, 
                     transferredAt: serverTimestamp() 
                 });
@@ -436,32 +461,22 @@ export default function DataManagementPage() {
                 const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
                 batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
             }
-            
-            if (transfer.data.subjects && transfer.data.subjects.length > 0) {
-              const subjectsRef = collection(firestore, 'users', user.uid, 'subjects');
-              const existingSubjectsSnap = await getDocs(subjectsRef);
-              const existingSubjectNames = existingSubjectsSnap.docs.map(d => d.data().name.toLowerCase());
-              
-              for (const subjectName of transfer.data.subjects) {
-                if (!existingSubjectNames.includes(subjectName.toLowerCase())) {
-                  batch.set(doc(subjectsRef), { name: subjectName });
-                }
-              }
-            }
+        }
         
-        } else if (transfer.dataType === 'Lesson Note') {
-            if (!transfer.lessonNote) throw new Error('Invalid lesson note in transfer.');
-            const currentHistory = JSON.parse(localStorage.getItem('lessonNotesHistory') || '[]');
-            const noteExists = currentHistory.some((n: LessonNote) => n.id === transfer.lessonNote?.id);
-            if (!noteExists) {
-                const newHistory = [transfer.lessonNote, ...currentHistory].slice(0, 20);
-                localStorage.setItem('lessonNotesHistory', JSON.stringify(newHistory));
-                setLessonNotesHistory(newHistory);
+        if (selections.subjects && transfer.dataType === 'Full Class Data' && transfer.data.subjects && transfer.data.subjects.length > 0) {
+            const subjectsRef = collection(firestore, 'users', user.uid, 'subjects');
+            const existingSubjectsSnap = await getDocs(subjectsRef);
+            const existingSubjectNames = existingSubjectsSnap.docs.map(d => d.data().name.toLowerCase());
+            
+            for (const subjectName of transfer.data.subjects) {
+              if (!existingSubjectNames.includes(subjectName.toLowerCase())) {
+                batch.set(doc(subjectsRef), { name: subjectName });
+              }
             }
         }
         
         const upsertSubcollectionData = async (
-          subcollectionName: keyof Pick<DataTransfer, 'grades' | 'attendance' | 'traits'>,
+          subcollectionName: 'grades' | 'attendance' | 'traits',
           dataArray: any[] | undefined
         ) => {
             if (!dataArray || !user) return;
@@ -470,27 +485,15 @@ export default function DataManagementPage() {
             for (const item of dataArray) {
                 const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
                 const newStudentDocId = studentIdMap.get(originalStudentId);
-                if (!newStudentDocId) continue;
+                if (!newStudentDocId) continue; // Skip if student wasn't imported
 
                 let uniquenessQuery;
                 if (subcollectionName === 'grades') {
-                    uniquenessQuery = query(subcollectionRef,
-                        where('studentId', '==', newStudentDocId),
-                        where('subject', '==', item.subject),
-                        where('term', '==', item.term),
-                        where('session', '==', item.session)
-                    );
+                    uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('subject', '==', item.subject), where('term', '==', item.term), where('session', '==', item.session));
                 } else if (subcollectionName === 'attendance') {
-                    uniquenessQuery = query(subcollectionRef,
-                        where('studentId', '==', newStudentDocId),
-                        where('date', '==', item.date)
-                    );
+                    uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('date', '==', item.date));
                 } else { // traits
-                    uniquenessQuery = query(subcollectionRef,
-                        where('studentId', '==', newStudentDocId),
-                        where('term', '==', item.term),
-                        where('session', '==', item.session)
-                    );
+                    uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('term', '==', item.term), where('session', '==', item.session));
                 }
 
                 if (!uniquenessQuery) continue;
@@ -507,9 +510,9 @@ export default function DataManagementPage() {
             }
         };
 
-        await upsertSubcollectionData('grades', transfer.grades);
-        await upsertSubcollectionData('attendance', transfer.attendance);
-        await upsertSubcollectionData('traits', transfer.traits);
+        if (selections.grades) await upsertSubcollectionData('grades', transfer.grades);
+        if (selections.attendance) await upsertSubcollectionData('attendance', transfer.attendance);
+        if (selections.traits) await upsertSubcollectionData('traits', transfer.traits);
         
         const timestamp = serverTimestamp();
         const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
@@ -531,7 +534,7 @@ export default function DataManagementPage() {
 
         toast({
             title: 'Transfer Accepted',
-            description: `Data for "${transfer.dataTransferred}" has been merged into your account.`,
+            description: `Data for "${transfer.dataTransferred}" has been selectively merged into your account.`,
         });
 
     } catch(error) {
@@ -547,46 +550,9 @@ export default function DataManagementPage() {
   }
 
 
-  const handleAcceptTransfer = async (transfer: DataTransfer) => {
-    if (!user) return;
-    
-    setProcessingTransferId(transfer.id);
-    setConfirmDialog({ open: false, transfer: null, action: null });
-
-    try {
-        if (transfer.dataType === 'Full Class Data' && transfer.data?.name) {
-            const classesRef = collection(firestore, 'users', user.uid, 'classes');
-            const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
-            const classSnap = await getDocs(q);
-
-            if (!classSnap.empty) {
-                setConfirmDialog({
-                    open: true,
-                    transfer: transfer,
-                    action: 'accept',
-                });
-                setProcessingTransferId(null);
-                return; 
-            }
-        }
-
-        await processAcceptTransfer(transfer);
-
-    } catch(error) {
-        console.error('Pre-accept check error:', error);
-        toast({
-            title: "Error",
-            description: error instanceof Error ? error.message : "An error occurred before accepting the transfer.",
-            variant: "destructive",
-        });
-        setProcessingTransferId(null);
-    }
-  };
-
   const handleRejectTransfer = async (transfer: DataTransfer) => {
     if (!user || !transfer.fromUserId || !transfer.outgoingTransferId) return;
     setProcessingTransferId(transfer.id);
-    setConfirmDialog({ open: false, transfer: null, action: null });
 
     try {
       const batch = writeBatch(firestore);
@@ -662,7 +628,6 @@ export default function DataManagementPage() {
         }
   }
 
-
   const TransferHistoryItem = ({ transfer }: { transfer: DataTransfer & {type: 'sent' | 'received'} }) => {
     const isProcessing = processingTransferId === transfer.id;
     const isSent = transfer.type === 'sent';
@@ -695,7 +660,7 @@ export default function DataManagementPage() {
                     <Button size="sm" variant="outline" onClick={() => handleAcceptTransfer(transfer)} disabled={isProcessing}>
                       {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Accept
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmDialog({ open: true, transfer, action: 'reject' })} disabled={isProcessing}>
+                    <Button size="sm" variant="outline" onClick={() => handleRejectTransfer(transfer)} disabled={isProcessing}>
                       <X className="mr-1 h-4 w-4" /> Reject
                     </Button>
                   </div>
@@ -704,6 +669,37 @@ export default function DataManagementPage() {
         </Card>
     );
   }
+
+  const selectionOptions: { id: SelectionCategory, label: string, description: string, dependsOn?: SelectionCategory }[] = [
+      { id: 'classDetails', label: 'Class Details', description: 'The main class information (name, grade, etc.).' },
+      { id: 'students', label: 'Student Roster', description: `The list of ${selectionDialog.transfer?.students?.length || 0} students.`, dependsOn: 'classDetails' },
+      { id: 'subjects', label: 'Subject Assignments', description: 'The subjects assigned to this class.', dependsOn: 'classDetails' },
+      { id: 'grades', label: 'Grade Records', description: `${selectionDialog.transfer?.grades?.length || 0} grade entries for these students.`, dependsOn: 'students' },
+      { id: 'attendance', label: 'Attendance Records', description: `${selectionDialog.transfer?.attendance?.length || 0} attendance entries.`, dependsOn: 'students' },
+      { id: 'traits', label: 'Behavioral Traits', description: `${selectionDialog.transfer?.traits?.length || 0} trait assessments.`, dependsOn: 'students' },
+  ];
+
+  const handleSelectionChange = (category: SelectionCategory, checked: boolean) => {
+    setSelectionDialog(prev => {
+        const newSelections = { ...prev.selections, [category]: checked };
+        // If a parent is unchecked, uncheck its children
+        if (!checked) {
+            selectionOptions.forEach(opt => {
+                if (opt.dependsOn === category) {
+                    newSelections[opt.id] = false;
+                }
+            });
+        }
+        // If a child is checked, ensure its parent is also checked
+        if (checked) {
+            const parent = selectionOptions.find(opt => opt.id === category)?.dependsOn;
+            if (parent) {
+                newSelections[parent] = true;
+            }
+        }
+        return { ...prev, selections: newSelections };
+    });
+  };
 
   if (!features.canUseDataTransfer) {
     return (
@@ -854,41 +850,39 @@ export default function DataManagementPage() {
           </Card>
       </div>
 
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, transfer: null, action: null })}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDialog.action === 'accept' ? 'Accept & Merge Transfer?' : 'Reject Transfer?'}</AlertDialogTitle>
-            <AlertDialogDescription>
-                {confirmDialog.action === 'accept' ? (
-                  <>
-                    You are about to accept <strong>{confirmDialog.transfer?.dataTransferred}</strong> from <strong>{confirmDialog.transfer?.fromUserCode}</strong>.
-                    {confirmDialog.transfer?.dataType === 'Full Class Data' && (
-                      <span className="mt-2 flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
-                        <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">A class with the same name already exists. Accepting will merge the incoming students and their academic records into your existing class. This action cannot be undone.</span>
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>Are you sure you want to reject this transfer? This action cannot be undone.</>
-                )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (!confirmDialog.transfer) return;
-                if (confirmDialog.action === 'accept') processAcceptTransfer(confirmDialog.transfer);
-                else handleRejectTransfer(confirmDialog.transfer);
-              }}
-              className={confirmDialog.action === 'accept' ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
-            >
-              {confirmDialog.action === 'accept' ? 'Yes, Accept & Merge' : 'Yes, Reject'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+       <Dialog open={selectionDialog.open} onOpenChange={(open) => !open && setSelectionDialog({ open: false, transfer: null, selections: {} })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Data to Import</DialogTitle>
+            <DialogDescription>
+              Choose which parts of the transfer "<strong>{selectionDialog.transfer?.dataTransferred}</strong>" you want to import.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+              {selectionOptions.map(option => (
+                  <div key={option.id} className="flex items-start space-x-3 rounded-md p-3 hover:bg-muted/50">
+                      <Checkbox
+                          id={option.id}
+                          checked={selectionDialog.selections[option.id]}
+                          onCheckedChange={(checked) => handleSelectionChange(option.id, !!checked)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                          <label htmlFor={option.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {option.label}
+                          </label>
+                          <p className="text-sm text-muted-foreground">{option.description}</p>
+                      </div>
+                  </div>
+              ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectionDialog(prev => ({...prev, open: false}))}>Cancel</Button>
+            <Button onClick={() => selectionDialog.transfer && processSelectiveAccept(selectionDialog.transfer, selectionDialog.selections)}>
+                <Check className="mr-2 h-4 w-4" /> Accept & Import Selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
