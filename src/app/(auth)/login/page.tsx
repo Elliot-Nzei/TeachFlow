@@ -12,6 +12,9 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
+import placeholderImages from '@/lib/placeholder-images.json';
+
+const loginImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -100,11 +103,17 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <div className="hidden bg-primary lg:flex items-center justify-center p-12 text-center">
-        <div className="text-primary-foreground">
-            <h2 className="text-4xl font-bold font-headline mb-4">A Modern Toolkit for Today's Teacher</h2>
-            <p className="text-lg max-w-md mx-auto">From AI-powered lesson plans to seamless data sharing, TeachFlow is designed to simplify your administrative tasks.</p>
-        </div>
+       <div className="hidden bg-muted lg:block">
+        {loginImage && (
+            <Image
+                src={loginImage.imageUrl}
+                alt={loginImage.description}
+                width="1920"
+                height="1080"
+                className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                data-ai-hint={loginImage.imageHint}
+            />
+        )}
       </div>
     </div>
   )
