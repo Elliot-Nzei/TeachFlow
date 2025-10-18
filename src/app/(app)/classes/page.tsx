@@ -24,26 +24,30 @@ import { Skeleton } from '@/components/ui/skeleton';
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
     <SheetTrigger asChild key={cls.id}>
         <div onClick={onClick}>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow group">
-                <CardContent className="p-4 flex items-center gap-4">
-                    <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <p className="font-bold font-headline text-lg group-hover:text-primary transition-colors">{cls.name}</p>
-                            <Badge variant="secondary">{cls.category}</Badge>
+            <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col">
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="font-headline text-xl group-hover:text-primary transition-colors">{cls.name}</CardTitle>
+                        <Badge variant="secondary">{cls.category}</Badge>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                            <Users className="h-4 w-4" />
+                            <span>{cls.students?.length || 0} Students</span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
-                            <div className="flex items-center gap-1.5">
-                                <Users className="h-4 w-4" />
-                                <span>{cls.students?.length || 0} Students</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <BookOpen className="h-4 w-4" />
-                                <span>{cls.subjects?.length || 0} Subjects</span>
-                            </div>
+                        <div className="flex items-center gap-1.5">
+                            <BookOpen className="h-4 w-4" />
+                            <span>{cls.subjects?.length || 0} Subjects</span>
                         </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
                 </CardContent>
+                <CardFooter>
+                    <Button variant="ghost" size="sm" className="w-full justify-center text-primary hover:text-primary">
+                        View Details <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
     </SheetTrigger>
@@ -192,16 +196,15 @@ export default function ClassesPage() {
         <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
         {['All', ...classCategories].map(category => (
             <TabsContent key={category} value={category} className="mt-6">
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {isLoading ? Array.from({length: 3}).map((_, i) => (
                         <Card key={i}>
-                            <CardContent className="p-4 flex items-center gap-4">
-                                <div className="flex-1 space-y-3">
-                                    <Skeleton className="h-5 w-3/5 rounded" />
-                                    <Skeleton className="h-4 w-4/5 rounded" />
-                                </div>
-                                <Skeleton className="h-10 w-10 rounded" />
-                            </CardContent>
+                           <CardHeader><Skeleton className="h-5 w-3/5" /></CardHeader>
+                           <CardContent className="space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-4/5" />
+                           </CardContent>
+                           <CardFooter><Skeleton className="h-8 w-full" /></CardFooter>
                         </Card>
                     )) : filteredClasses(category).map((cls) => (
                         <ClassListItem key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
