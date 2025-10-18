@@ -97,7 +97,7 @@ function UserProfileDisplay() {
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                    <AvatarImage src={userProfile?.profilePicture} alt={userProfile?.name} />
+                    <AvatarImage src={userProfile?.profilePicture || userProfile?.schoolLogo} alt={userProfile?.name} />
                     <AvatarFallback>{userProfile?.name?.split(' ').map((n:string) => n[0]).join('')}</AvatarFallback>
                 </Avatar>
             </Button>
