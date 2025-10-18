@@ -24,8 +24,7 @@ import { toTitleCase } from '@/lib/utils';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
-    <SheetTrigger asChild key={student.id}>
-        <div onClick={onClick} className="group cursor-pointer">
+    <div onClick={onClick} className="group cursor-pointer hidden md:block">
         <Card className="w-40 h-40 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
             <CardContent className="p-0 text-center flex flex-col h-full relative">
             {student.avatarUrl && (
@@ -46,24 +45,21 @@ const StudentCard = ({ student, index, onClick }: { student: Student, index: num
             </div>
             </CardContent>
         </Card>
-        </div>
-    </SheetTrigger>
+    </div>
 );
 
 const StudentListItem = ({ student, onClick }: { student: Student, onClick: () => void }) => (
-    <SheetTrigger asChild key={student.id}>
-        <div onClick={onClick} className="flex items-center gap-4 p-2 -mx-2 rounded-lg cursor-pointer hover:bg-muted">
-            <Avatar className="h-12 w-12">
-                <AvatarImage src={student.avatarUrl} alt={student.name} />
-                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-                <p className="font-semibold">{student.name}</p>
-                <p className="text-sm text-muted-foreground">{student.studentId} {student.className && `• ${student.className}`}</p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+    <div onClick={onClick} className="flex items-center gap-4 p-2 -mx-2 rounded-lg cursor-pointer hover:bg-muted md:hidden">
+        <Avatar className="h-12 w-12">
+            <AvatarImage src={student.avatarUrl} alt={student.name} />
+            <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+            <p className="font-semibold">{student.name}</p>
+            <p className="text-sm text-muted-foreground">{student.studentId} {student.className && `• ${student.className}`}</p>
         </div>
-    </SheetTrigger>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+    </div>
 );
 
 
@@ -294,45 +290,41 @@ export default function StudentsPage() {
       </div>
       <Sheet open={!!selectedStudentId} onOpenChange={(isOpen) => !isOpen && setSelectedStudentId(null)}>
         
-        {/* Desktop Grid View */}
-        <div className="hidden md:grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 md:space-y-0 space-y-2">
           {isLoadingStudents ? Array.from({length: 12}).map((_, i) => (
-              <Card key={i} className="w-40 h-40"><CardContent className="h-full bg-muted rounded-lg animate-pulse" /></Card>
-          )) : filteredStudents?.map((student, index) => (
-            <StudentCard 
-                key={student.id} 
-                student={student} 
-                index={index}
-                onClick={() => handleCardClick(student.id)} 
-            />
-          ))}
-        </div>
-
-        {/* Mobile List View */}
-        <div className="md:hidden space-y-2">
-           {isLoadingStudents ? Array.from({length: 12}).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-2">
-                <div className="h-12 w-12 rounded-full bg-muted animate-pulse" />
-                <div className="flex-1 space-y-2">
-                    <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
-                    <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+              <div key={i}>
+                <Card className="w-40 h-40 hidden md:block"><CardContent className="h-full bg-muted rounded-lg animate-pulse" /></Card>
+                <div className="flex items-center gap-4 p-2 md:hidden">
+                    <div className="h-12 w-12 rounded-full bg-muted animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                        <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                        <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                    </div>
                 </div>
               </div>
-          )) : filteredStudents?.map((student) => (
-             <StudentListItem 
-                key={student.id}
-                student={student}
-                onClick={() => handleCardClick(student.id)}
-            />
+          )) : filteredStudents?.map((student, index) => (
+             <SheetTrigger asChild key={student.id}>
+                <div>
+                    <StudentCard 
+                        student={student} 
+                        index={index}
+                        onClick={() => handleCardClick(student.id)} 
+                    />
+                    <StudentListItem 
+                        student={student}
+                        onClick={() => handleCardClick(student.id)}
+                    />
+                </div>
+            </SheetTrigger>
           ))}
         </div>
-
 
          {filteredStudents?.length === 0 && !isLoadingStudents && (
           <div className="text-center col-span-full py-12">
               <p className="text-muted-foreground">No students found matching your search.</p>
           </div>
         )}
+
         <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Student Profile</SheetTitle>
@@ -346,3 +338,5 @@ export default function StudentsPage() {
     </>
   );
 }
+
+    
