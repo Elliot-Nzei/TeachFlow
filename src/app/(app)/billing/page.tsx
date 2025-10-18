@@ -1,3 +1,4 @@
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,7 +70,8 @@ const plansData = [
 const SubscriptionStatusCard = () => {
     const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
     const [timeLeft, setTimeLeft] = useState('');
-
+    
+    // Call hooks unconditionally at the top
     const planName = useMemo(() => {
         if (!plan) return 'Free';
         return plan.charAt(0).toUpperCase() + plan.slice(1);
@@ -107,8 +109,9 @@ const SubscriptionStatusCard = () => {
         return () => clearInterval(interval);
     }, [renewalDate]);
 
+    // Conditional rendering after all hooks
     if (isTrial || !plan || !renewalDate) {
-        return null; // Don't show for trial users or if data is missing
+        return null;
     }
 
     return (
@@ -193,59 +196,65 @@ export default function BillingPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto items-start">
-            {plansData.map((plan) => (
-                <Card key={plan.id} className={cn("flex flex-col h-full", plan.isFeatured ? "border-primary border-2 shadow-lg" : "")}>
-                    <CardHeader className="relative">
-                        {plan.isFeatured && (
-                            <Badge className="absolute top-0 right-4 -mt-3 w-fit">RECOMMENDED</Badge>
-                        )}
-                        <CardTitle className="font-headline">{plan.name}</CardTitle>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-bold">
-                                {billingCycle === 'monthly' ? plan.price : plan.priceAnnually}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                                /{billingCycle === 'monthly' ? 'month' : 'year'}
-                            </span>
-                        </div>
-                        <CardDescription>{plan.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 space-y-4">
-                        <p className="font-semibold text-sm">Features include:</p>
-                        <ul className="space-y-3 text-sm">
-                            {plan.features.map((feature, index) => (
-                                <li key={index} className="flex items-start gap-3">
-                                    {feature.included !== false ? (
-                                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                    ) : (
-                                        <XCircle className="h-5 w-5 text-muted-foreground/70 flex-shrink-0 mt-0.5" />
-                                    )}
-                                    <span>{feature.text}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                    <CardFooter>
-                       {currentPlanId === plan.id && !isLocked ? (
-                            <Button className="w-full" variant="outline" disabled>Your Current Plan</Button>
-                        ) : (
-                            <Button
-                                className="w-full"
-                                variant={plan.isFeatured ? 'default' : 'outline'}
-                                disabled={plan.id === 'free_trial'}
-                                onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
-                            >
-                                {plan.id === 'free_trial' 
-                                    ? 'Included' 
-                                    : currentPlanId === plan.id && isLocked
-                                        ? 'Renew Plan'
-                                        : `Upgrade to ${plan.name}`
-                                }
-                            </Button>
-                        )}
-                    </CardFooter>
-                </Card>
-            ))}
+            {plansData.map((plan) => {
+                const isCurrentPlan = currentPlanId === plan.id;
+                const showRenewButton = isCurrentPlan && isLocked;
+                const showCurrentPlanButton = isCurrentPlan && !isLocked;
+
+                return (
+                    <Card key={plan.id} className={cn("flex flex-col h-full", plan.isFeatured ? "border-primary border-2 shadow-lg" : "")}>
+                        <CardHeader className="relative">
+                            {plan.isFeatured && (
+                                <Badge className="absolute top-0 right-4 -mt-3 w-fit">RECOMMENDED</Badge>
+                            )}
+                            <CardTitle className="font-headline">{plan.name}</CardTitle>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-4xl font-bold">
+                                    {billingCycle === 'monthly' ? plan.price : plan.priceAnnually}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                    /{billingCycle === 'monthly' ? 'month' : 'year'}
+                                </span>
+                            </div>
+                            <CardDescription>{plan.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 space-y-4">
+                            <p className="font-semibold text-sm">Features include:</p>
+                            <ul className="space-y-3 text-sm">
+                                {plan.features.map((feature, index) => (
+                                    <li key={index} className="flex items-start gap-3">
+                                        {feature.included !== false ? (
+                                            <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                        ) : (
+                                            <XCircle className="h-5 w-5 text-muted-foreground/70 flex-shrink-0 mt-0.5" />
+                                        )}
+                                        <span>{feature.text}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                        <CardFooter>
+                           {showCurrentPlanButton ? (
+                                <Button className="w-full" variant="outline" disabled>Your Current Plan</Button>
+                           ) : (
+                                <Button
+                                    className="w-full"
+                                    variant={plan.isFeatured ? 'default' : 'outline'}
+                                    disabled={plan.id === 'free_trial'}
+                                    onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
+                                >
+                                    {plan.id === 'free_trial' 
+                                        ? 'Included' 
+                                        : showRenewButton
+                                            ? 'Renew Plan'
+                                            : `Upgrade to ${plan.name}`
+                                    }
+                                </Button>
+                            )}
+                        </CardFooter>
+                    </Card>
+                );
+            })}
         </div>
     </div>
   );
