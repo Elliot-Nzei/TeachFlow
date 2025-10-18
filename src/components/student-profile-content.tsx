@@ -54,6 +54,7 @@ function TraitEditor({ student }: { student: any }) {
         if (traitsData && traitsData.length > 0) {
             setTraitRatings(traitsData[0].traits || {});
         } else {
+            // Set default ratings only if not loading and no data exists
             const initialRatings: Record<string, number> = {};
             allTraitsList.forEach(trait => initialRatings[trait] = 3);
             setTraitRatings(initialRatings);
@@ -338,38 +339,67 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     <CardDescription>Grades for all sessions.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Subject</TableHead>
-                            <TableHead>Term</TableHead>
-                            <TableHead>Session</TableHead>
-                            <TableHead>Total Score</TableHead>
-                            <TableHead className="text-right">Grade</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoadingGrades ? (
-                            <TableRow><TableCell colSpan={5}><Skeleton className="h-24 w-full" /></TableCell></TableRow> 
-                            ) : gradesForStudent && gradesForStudent.length > 0 ? (
-                                gradesForStudent.map((grade: any) => (
-                                    <TableRow key={grade.id}>
-                                        <TableCell className="font-medium">{grade.subject}</TableCell>
-                                        <TableCell>{grade.term}</TableCell>
-                                        <TableCell>{grade.session}</TableCell>
-                                        <TableCell>{grade.total}</TableCell>
-                                        <TableCell className="text-right font-bold">{grade.grade}</TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-3">
+                        {isLoadingGrades ? <Skeleton className="h-24 w-full" /> : 
+                        gradesForStudent && gradesForStudent.length > 0 ? (
+                            gradesForStudent.map((grade: any) => (
+                                <Card key={grade.id} className="border-l-4 border-primary">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base">{grade.subject}</CardTitle>
+                                        <CardDescription>{grade.term}, {grade.session}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex justify-between items-center">
+                                        <div>
+                                            <p className="text-muted-foreground text-sm">Total Score</p>
+                                            <p className="font-semibold">{grade.total}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground text-sm">Grade</p>
+                                            <p className="font-bold text-lg text-right">{grade.grade}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        ) : (
+                            <p className="text-center text-muted-foreground py-8">No grades recorded yet.</p>
+                        )}
+                    </div>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                    No grades recorded yet.
-                                    </TableCell>
+                                <TableHead>Subject</TableHead>
+                                <TableHead>Term</TableHead>
+                                <TableHead>Session</TableHead>
+                                <TableHead>Total Score</TableHead>
+                                <TableHead className="text-right">Grade</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoadingGrades ? (
+                                <TableRow><TableCell colSpan={5}><Skeleton className="h-24 w-full" /></TableCell></TableRow> 
+                                ) : gradesForStudent && gradesForStudent.length > 0 ? (
+                                    gradesForStudent.map((grade: any) => (
+                                        <TableRow key={grade.id}>
+                                            <TableCell className="font-medium">{grade.subject}</TableCell>
+                                            <TableCell>{grade.term}</TableCell>
+                                            <TableCell>{grade.session}</TableCell>
+                                            <TableCell>{grade.total}</TableCell>
+                                            <TableCell className="text-right font-bold">{grade.grade}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        No grades recorded yet.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -437,3 +467,5 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 }
 
 export default StudentProfileContent;
+
+    
