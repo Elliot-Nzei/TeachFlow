@@ -70,7 +70,7 @@ const plansData = [
 const SubscriptionStatusCard = () => {
     const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
     const [timeLeft, setTimeLeft] = useState('');
-    
+
     const planName = useMemo(() => {
         if (!plan) return 'Free';
         return plan.charAt(0).toUpperCase() + plan.slice(1);
@@ -108,7 +108,7 @@ const SubscriptionStatusCard = () => {
         return () => clearInterval(interval);
     }, [renewalDate]);
 
-    if (isTrial || !plan || !renewalDate) {
+    if (isTrial || !plan || !renewalDate || timeLeft === 'N/A') {
         return null;
     }
 
@@ -131,7 +131,7 @@ const SubscriptionStatusCard = () => {
                 </div>
                 <div className="bg-primary-foreground/10 p-3 rounded-lg col-span-2 md:col-span-1">
                     <p className="text-sm text-primary-foreground/80">
-                        Time Remaining
+                        {timeLeft === 'Expired' ? 'Status' : 'Time Remaining'}
                     </p>
                     <p className="text-xl font-bold font-mono">{timeLeft}</p>
                 </div>
@@ -141,7 +141,7 @@ const SubscriptionStatusCard = () => {
 }
 
 export default function BillingPage() {
-  const { plan: currentPlanId, isLocked } = usePlan();
+  const { plan: currentPlanId, isSubscriptionExpired } = usePlan();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -232,12 +232,12 @@ export default function BillingPage() {
                         <CardFooter>
                            <Button
                                 className="w-full"
-                                variant={isCurrentPlan && !isLocked ? 'outline' : (plan.isFeatured ? 'default' : 'outline')}
-                                disabled={(isCurrentPlan && !isLocked) || plan.id === 'free_trial'}
+                                variant={isCurrentPlan && !isSubscriptionExpired ? 'outline' : (plan.isFeatured ? 'default' : 'outline')}
+                                disabled={(isCurrentPlan && !isSubscriptionExpired) || plan.id === 'free_trial'}
                                 onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
                             >
-                                {isCurrentPlan && isLocked ? 'Renew Plan' 
-                                 : isCurrentPlan && !isLocked ? 'Your Current Plan'
+                                {isCurrentPlan && isSubscriptionExpired ? 'Renew Plan' 
+                                 : isCurrentPlan && !isSubscriptionExpired ? 'Your Current Plan'
                                  : plan.id === 'free_trial' ? 'Included'
                                  : `Upgrade to ${plan.name}`
                                 }
@@ -250,5 +250,3 @@ export default function BillingPage() {
     </div>
   );
 }
-
-    

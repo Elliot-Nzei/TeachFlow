@@ -24,6 +24,7 @@ interface PlanContextType {
   renewalDate: Date | null;
   daysRemaining: number;
   isLocked: boolean;
+  isSubscriptionExpired: boolean;
   features: {
     canUseAdvancedAI: boolean;
     canUseDataTransfer: boolean;
@@ -177,6 +178,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     renewalDate,
     daysRemaining,
     isLocked,
+    isSubscriptionExpired,
     features,
     aiUsage,
     incrementUsage,
