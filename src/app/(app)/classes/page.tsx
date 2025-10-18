@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
@@ -66,6 +67,8 @@ export default function ClassesPage() {
     const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<ClassCategory | ''>('');
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('All');
+    const isMobile = useIsMobile();
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading } = useCollection<Class>(classesQuery);
@@ -181,17 +184,33 @@ export default function ClassesPage() {
         </Dialog>
       </div>
 
-       <Tabs defaultValue="All">
-        <div className="overflow-x-auto pb-2 -mb-2">
-            <TabsList className="inline-flex">
-                <TabsTrigger value="All">All</TabsTrigger>
-                {classCategories.map(cat => (
-                    <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
-                        {cat}
-                    </TabsTrigger>
-                ))}
-            </TabsList>
-        </div>
+       <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {isMobile ? (
+             <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger className="w-full mb-4">
+                    <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="All">All Classes</SelectItem>
+                    {classCategories.map(cat => (
+                        <SelectItem key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
+                            {cat}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        ) : (
+            <div className="overflow-x-auto pb-2 -mb-2">
+                <TabsList className="inline-flex">
+                    <TabsTrigger value="All">All</TabsTrigger>
+                    {classCategories.map(cat => (
+                        <TabsTrigger key={cat} value={cat} disabled={filteredClasses(cat).length === 0}>
+                            {cat}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </div>
+        )}
 
         <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
         {['All', ...classCategories].map(category => (
