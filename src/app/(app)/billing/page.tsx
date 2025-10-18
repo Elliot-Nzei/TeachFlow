@@ -1,7 +1,7 @@
 
 'use client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Zap, Infinity, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
@@ -9,8 +9,8 @@ import { useFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const plansData = [
   {
@@ -18,16 +18,16 @@ const plansData = [
     id: 'free_trial',
     price: '₦0',
     priceAnnually: '₦0',
-    description: 'Perfect for getting started and managing a small classroom.',
-    buttonLabel: 'Your Current Plan',
+    description: 'For getting started and managing a small classroom.',
     isFeatured: false,
-    features: {
-      'Student Limit': 'Up to 25',
-      'Class Limit': 'Up to 5',
-      'AI Tools': false,
-      'Data Transfer': false,
-      'System Export': false,
-    },
+    features: [
+      { text: 'Up to 25 Students', included: true },
+      { text: 'Up to 5 Classes', included: true },
+      { text: 'AI Report Card Generation', included: false },
+      { text: 'AI Lesson Note Generation', included: false },
+      { text: 'Secure Data Transfer', included: false },
+      { text: 'Full System Export', included: false },
+    ],
   },
   {
     name: 'Basic',
@@ -35,15 +35,15 @@ const plansData = [
     price: '₦1,500',
     priceAnnually: '₦15,000',
     description: 'Ideal for individual teachers managing multiple classes.',
-    buttonLabel: 'Upgrade to Basic',
     isFeatured: true,
-    features: {
-      'Student Limit': 'Up to 150',
-      'Class Limit': 'Unlimited',
-      'AI Tools': true,
-      'Data Transfer': false,
-      'System Export': false,
-    },
+    features: [
+      { text: 'Up to 150 Students', included: true },
+      { text: 'Unlimited Classes', included: true },
+      { text: 'AI Report Card Generation', included: true },
+      { text: 'AI Lesson Note Generation', included: true },
+      { text: 'Secure Data Transfer', included: false },
+      { text: 'Full System Export', included: false },
+    ],
   },
   {
     name: 'Prime',
@@ -51,205 +51,150 @@ const plansData = [
     price: '₦3,500',
     priceAnnually: '₦35,000',
     description: 'For power users or small schools needing full capabilities.',
-    buttonLabel: 'Upgrade to Prime',
     isFeatured: false,
-    features: {
-      'Student Limit': 'Unlimited',
-      'Class Limit': 'Unlimited',
-      'AI Tools': true,
-      'Data Transfer': true,
-      'System Export': true,
-    },
+    features: [
+        { text: 'Unlimited Students', included: true },
+        { text: 'Unlimited Classes', included: true },
+        { text: 'AI Report Card Generation', included: true },
+        { text: 'AI Lesson Note Generation', included: true },
+        { text: 'Secure Data Transfer', included: true },
+        { text: 'Full System Export', included: true },
+    ],
   },
 ];
 
-const featureLabels: (keyof typeof plansData[0]['features'])[] = [
-    'Student Limit',
-    'Class Limit',
-    'AI Tools',
-    'Data Transfer',
-    'System Export',
-];
 
-const FeatureRow = ({ label, value }: { label: string, value: string | boolean }) => {
-    const renderValue = () => {
-        if (typeof value === 'boolean') {
-            return value ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-muted-foreground" />;
+const PlanCard = ({ plan, cycle, currentPlanId }: { plan: typeof plansData[0], cycle: 'monthly' | 'annually', currentPlanId: string | null}) => {
+    const { firestore, user } = useFirebase();
+    const { toast } = useToast();
+    const [isUpgrading, setIsUpgrading] = useState(false);
+
+    const handleUpgrade = async (newPlanId: 'basic' | 'prime') => {
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: 'Not Logged In',
+                description: 'You must be logged in to upgrade your plan.',
+            });
+            return;
         }
-        if (value === 'Unlimited') {
-            return <Infinity className="h-5 w-5 text-primary" />;
+
+        setIsUpgrading(true);
+        try {
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, {
+                plan: newPlanId,
+            });
+            toast({
+                title: 'Plan Updated!',
+                description: `You have successfully upgraded to the ${newPlanId.charAt(0).toUpperCase() + newPlanId.slice(1)} Plan.`,
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Upgrade Failed',
+                description: 'Could not update your plan. Please try again.',
+            });
+        } finally {
+            setIsUpgrading(false);
         }
-        return <span className="font-semibold">{value}</span>;
     };
+    
+    const isCurrentPlan = currentPlanId === plan.id;
+    let buttonContent;
 
+    if (isCurrentPlan) {
+        buttonContent = <Button className="w-full" variant="outline" disabled>Your Current Plan</Button>;
+    } else {
+        buttonContent = (
+            <Button 
+                className="w-full" 
+                variant={plan.isFeatured ? 'default' : 'outline'}
+                disabled={isUpgrading}
+                onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
+            >
+                {isUpgrading ? 'Upgrading...' : (
+                    <>
+                        {plan.id !== 'free_trial' && <Zap className="mr-2 h-4 w-4" />}
+                        Upgrade to {plan.name}
+                    </>
+                )}
+            </Button>
+        );
+    }
+    
     return (
-        <li className="flex items-center justify-between py-3 border-b">
-            <span className="text-muted-foreground">{label}</span>
-            {renderValue()}
-        </li>
+        <Card className={cn("flex flex-col", plan.isFeatured ? "border-primary border-2" : "")}>
+            <CardHeader className="relative">
+                 {plan.isFeatured && (
+                    <div className="absolute top-0 right-4 -mt-3 bg-primary text-primary-foreground text-xs font-bold rounded-full px-3 py-1">
+                        RECOMMENDED
+                    </div>
+                )}
+                <CardTitle className="font-headline">{plan.name}</CardTitle>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold">
+                        {cycle === 'monthly' ? plan.price : plan.priceAnnually}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                        /{cycle === 'monthly' ? 'month' : 'year'}
+                    </span>
+                </div>
+                <CardDescription>{plan.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+                <ul className="space-y-3 text-sm">
+                    {plan.features.map((feature, index) => (
+                        <li key={index} className="flex items-center gap-3">
+                            {feature.included ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                            ) : (
+                                <XCircle className="h-5 w-5 text-muted-foreground/70 flex-shrink-0" />
+                            )}
+                            <span>{feature.text}</span>
+                        </li>
+                    ))}
+                </ul>
+            </CardContent>
+            <CardFooter>
+               {buttonContent}
+            </CardFooter>
+        </Card>
     );
-}
+};
 
 export default function BillingPage() {
   const { plan: currentPlanId } = usePlan();
-  const { firestore, user } = useFirebase();
-  const { toast } = useToast();
-  const [isUpgrading, setIsUpgrading] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
-  const isMobile = useIsMobile();
 
-  const handleUpgrade = async (newPlanId: 'basic' | 'prime') => {
-    if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Not Logged In',
-        description: 'You must be logged in to upgrade your plan.',
-      });
-      return;
-    }
-
-    setIsUpgrading(newPlanId);
-    try {
-      const userRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userRef, {
-        plan: newPlanId,
-      });
-      toast({
-        title: 'Plan Updated!',
-        description: `You have successfully upgraded to the ${newPlanId.charAt(0).toUpperCase() + newPlanId.slice(1)} Plan.`,
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Upgrade Failed',
-        description: 'Could not update your plan. Please try again.',
-      });
-    } finally {
-      setIsUpgrading(null);
-    }
-  };
-
-  const PlanButton = ({ planId }: { planId: string }) => {
-     if (currentPlanId === planId) {
-        return <Button className="w-full" variant="outline" disabled>Your Current Plan</Button>;
-     }
-     const plan = plansData.find(p => p.id === planId);
-     if (!plan) return null;
-
-     return (
-        <Button 
-            className="w-full" 
-            disabled={isUpgrading !== null}
-            onClick={() => handleUpgrade(planId as 'basic' | 'prime')}
-        >
-            {isUpgrading === planId ? 'Upgrading...' : (
-                <>
-                    <Zap className="mr-2 h-4 w-4" />
-                    {plan.buttonLabel}
-                </>
-            )}
-        </Button>
-     );
-  }
-
-  // Mobile View
-  if (isMobile) {
-    return (
-        <div className="space-y-8">
-            <div className="text-center">
-                <h1 className="text-3xl font-bold font-headline">Choose Your Plan</h1>
-                <p className="text-muted-foreground mt-2">
-                Unlock more features and power up your school.
-                </p>
-            </div>
-            <Accordion type="single" collapsible defaultValue={currentPlanId || 'basic'}>
-                {plansData.map((plan) => (
-                    <AccordionItem value={plan.id} key={plan.id} className="border-0 mb-4">
-                        <Card className={cn("border-2", plan.isFeatured ? "border-primary" : "border-border")}>
-                            <AccordionTrigger className="p-4 hover:no-underline">
-                                <div className="flex-1 text-left">
-                                    <div className="flex justify-between items-center">
-                                      <h3 className="text-lg font-bold font-headline">{plan.name}</h3>
-                                      {plan.isFeatured && <div className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">RECOMMENDED</div>}
-                                    </div>
-                                    <p className="text-2xl font-bold">{billingCycle === 'monthly' ? plan.price : plan.priceAnnually}<span className="text-sm font-normal text-muted-foreground">/{billingCycle === 'monthly' ? 'month' : 'year'}</span></p>
-                                    <p className="text-xs text-muted-foreground">{plan.description}</p>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="px-4 pb-4">
-                                <ul className="space-y-2 text-sm mt-4">
-                                    {featureLabels.map(label => (
-                                        <FeatureRow key={label} label={label} value={plan.features[label]}/>
-                                    ))}
-                                </ul>
-                                <div className="mt-6">
-                                    <PlanButton planId={plan.id}/>
-                                </div>
-                            </AccordionContent>
-                        </Card>
-                    </AccordionItem>
-                ))}
-            </Accordion>
-        </div>
-    )
-  }
-
-  // Desktop View - Refactored with flexbox for responsiveness
   return (
-    <div className="space-y-6">
-        <div className="text-center">
+    <div className="space-y-8">
+        <div className="text-center max-w-2xl mx-auto">
             <h1 className="text-3xl md:text-4xl font-bold font-headline">Choose Your Plan</h1>
-            <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-            Unlock more features and power up your school. Select the plan that fits your needs.
+            <p className="text-muted-foreground mt-2">
+                Unlock more features and power up your school. Select the plan that fits your needs.
             </p>
+             <div className="flex items-center justify-center space-x-2 mt-6">
+                <Label htmlFor="billing-cycle">Monthly</Label>
+                <Switch
+                    id="billing-cycle"
+                    checked={billingCycle === 'annually'}
+                    onCheckedChange={(checked) => setBillingCycle(checked ? 'annually' : 'monthly')}
+                />
+                <Label htmlFor="billing-cycle" className="flex items-center">
+                    Annually
+                    <span className="ml-2 inline-block rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
+                        Save 2 Months!
+                    </span>
+                </Label>
+            </div>
         </div>
-
-        <Card>
-            <CardContent className="p-6">
-                <div className="flex w-full">
-                    {/* Feature labels column */}
-                    <div className="w-1/4 pr-6 border-r flex flex-col">
-                        <div className="h-32"></div>
-                        <div className="flex-grow flex flex-col">
-                            {featureLabels.map(label => (
-                                <div key={label} className="h-16 flex items-center text-sm font-medium">{label}</div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Plan columns */}
-                    <div className="w-3/4 flex">
-                        {plansData.map(plan => (
-                            <div key={plan.id} className={cn("flex-1 text-center p-6 flex flex-col rounded-lg", plan.isFeatured ? "bg-primary/5 border-2 border-primary" : "")}>
-                               <div className="h-32 flex flex-col justify-between">
-                                 <div>
-                                    {plan.isFeatured && <div className="mb-2 text-xs font-bold text-primary">RECOMMENDED</div>}
-                                    <h3 className="text-xl font-bold font-headline">{plan.name}</h3>
-                                    <p className="text-3xl font-bold my-2">{billingCycle === 'monthly' ? plan.price : plan.priceAnnually}<span className="text-sm font-normal text-muted-foreground">/{billingCycle === 'monthly' ? 'month' : 'year'}</span></p>
-                                    <p className="text-xs text-muted-foreground h-8">{plan.description}</p>
-                                 </div>
-                               </div>
-                               <div className="mt-auto pt-4">
-                                  <PlanButton planId={plan.id} />
-                               </div>
-                               
-                               <div className="flex-grow flex flex-col mt-6">
-                                 {featureLabels.map(label => (
-                                       <div key={label} className="h-16 flex items-center justify-center">
-                                           {typeof plan.features[label] === 'boolean' ? (
-                                               plan.features[label] ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : <XCircle className="h-6 w-6 text-muted-foreground/50" />
-                                           ) : (
-                                                plan.features[label] === 'Unlimited' ? <Infinity className="h-6 w-6 text-primary"/> : <span className="font-bold text-lg">{plan.features[label]}</span>
-                                           )}
-                                       </div>
-                                   ))}
-                               </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {plansData.map((plan) => (
+                <PlanCard key={plan.id} plan={plan} cycle={billingCycle} currentPlanId={currentPlanId} />
+            ))}
+        </div>
     </div>
   );
 }
