@@ -1,12 +1,10 @@
 
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
@@ -21,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { SettingsContext } from '@/contexts/settings-context';
+import { useRouter } from 'next/navigation';
 
 const TRAIT_DEFINITIONS = {
     affective: ['Punctuality', 'Neatness', 'Honesty', 'Cooperation', 'Attentiveness'],

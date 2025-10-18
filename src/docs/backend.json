@@ -74,6 +74,11 @@
           "type": "number",
           "description": "The academic grade of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
         },
+        "category": {
+          "type": "string",
+          "description": "The category of the class.",
+          "enum": ["Early Years", "Primary", "Junior Secondary", "Senior Secondary"]
+        },
         "subjects": {
           "type": "array",
           "description": "List of subject names offered in this class.",
@@ -95,7 +100,8 @@
       },
       "required": [
         "name",
-        "grade"
+        "grade",
+        "category"
       ]
     },
     "Student": {
@@ -483,3 +489,5 @@
     }
   }
 }
+
+    
