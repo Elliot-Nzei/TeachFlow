@@ -77,6 +77,7 @@ export default function StudentsPage() {
   const [newStudent, setNewStudent] = useState({
       name: '',
       classId: '',
+      address: '',
       guardianName: '',
       guardianPhone: '',
       guardianEmail: ''
@@ -108,7 +109,7 @@ export default function StudentsPage() {
   };
   
   const resetForm = () => {
-      setNewStudent({ name: '', classId: '', guardianName: '', guardianPhone: '', guardianEmail: '' });
+      setNewStudent({ name: '', classId: '', address: '', guardianName: '', guardianPhone: '', guardianEmail: '' });
       setPreviewImage('');
   }
 
@@ -142,6 +143,7 @@ export default function StudentsPage() {
             const studentData = {
                 studentId: newStudentId,
                 name: newStudent.name,
+                address: newStudent.address || '',
                 className: studentClass?.name || '',
                 classId: studentClass?.id || '',
                 avatarUrl: previewImage || placeholderImages.placeholderImages.find(img => img.id === 'hero-students')?.imageUrl || `https://picsum.photos/seed/student-${newStudentCount}/200/200`,
@@ -241,6 +243,10 @@ export default function StudentsPage() {
                                     <Input id="name" value={newStudent.name} onChange={handleInputChange} placeholder="e.g., John Doe" required />
                                 </div>
                                 <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="address">Residential Address</Label>
+                                    <Input id="address" value={newStudent.address} onChange={handleInputChange} placeholder="e.g., 123 Main Street, Lagos" />
+                                </div>
+                                <div className="space-y-2 col-span-2">
                                     <Label htmlFor="classId">Class (Optional)</Label>
                                     <Select onValueChange={handleClassSelect} value={newStudent.classId}>
                                         <SelectTrigger id="classId">
@@ -338,3 +344,5 @@ export default function StudentsPage() {
     </>
   );
 }
+
+    

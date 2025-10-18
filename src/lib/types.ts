@@ -14,6 +14,7 @@ export type Student = {
   className: string;
   classId: string;
   avatarUrl: string;
+  address?: string;
   age?: number;
   gender?: 'Male' | 'Female';
   createdAt?: any;

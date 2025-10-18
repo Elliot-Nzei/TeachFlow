@@ -120,6 +120,10 @@
           "type": "string",
           "format": "uri"
         },
+        "address": {
+          "type": "string",
+          "description": "The student's residential address."
+        },
         "guardianName": {
             "type": "string",
             "description": "Full name of the parent or guardian."

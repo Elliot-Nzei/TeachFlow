@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2 } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -293,6 +293,21 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                 </AlertDialogContent>
             </AlertDialog>
         </div>
+          <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Personal Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {student.address ? (
+                    <div className="text-sm">
+                        <p className="text-muted-foreground">Address</p>
+                        <p className="font-medium">{student.address}</p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No residential address provided.</p>
+                )}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><UserCircle2 className="h-5 w-5" /> Parent/Guardian Information</CardTitle>
