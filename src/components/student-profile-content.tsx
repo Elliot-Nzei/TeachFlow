@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,9 +49,8 @@ function TraitEditor({ student }: { student: any }) {
 
     const [traitRatings, setTraitRatings] = useState<Record<string, number>>({});
 
-    const allTraitsList = [...TRAIT_DEFINITIONS.affective, ...TRAIT_DEFINITIONS.psychomotor];
-
-    useMemo(() => {
+    useEffect(() => {
+        const allTraitsList = [...TRAIT_DEFINITIONS.affective, ...TRAIT_DEFINITIONS.psychomotor];
         if (traitsData && traitsData.length > 0) {
             setTraitRatings(traitsData[0].traits || {});
         } else {
@@ -59,7 +58,7 @@ function TraitEditor({ student }: { student: any }) {
             allTraitsList.forEach(trait => initialRatings[trait] = 3);
             setTraitRatings(initialRatings);
         }
-    }, [traitsData, allTraitsList]);
+    }, [traitsData]);
     
 
     const handleRatingChange = (trait: string, value: number[]) => {
@@ -125,7 +124,7 @@ function TraitEditor({ student }: { student: any }) {
                         <Slider 
                             id={trait}
                             min={1} max={5} step={1}
-                            defaultValue={[traitRatings[trait] || 3]}
+                            value={[traitRatings[trait] || 3]}
                             onValueChange={(val) => handleRatingChange(trait, val)}
                         />
                     </div>
@@ -142,7 +141,7 @@ function TraitEditor({ student }: { student: any }) {
                         <Slider 
                             id={trait}
                             min={1} max={5} step={1}
-                            defaultValue={[traitRatings[trait] || 3]}
+                            value={[traitRatings[trait] || 3]}
                             onValueChange={(val) => handleRatingChange(trait, val)}
                         />
                     </div>
@@ -438,5 +437,3 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 }
 
 export default StudentProfileContent;
-
-    
