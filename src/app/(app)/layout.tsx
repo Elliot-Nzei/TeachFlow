@@ -20,6 +20,7 @@ import {
   DollarSign,
   Database,
   CalendarDays,
+  CreditCard,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -60,6 +61,7 @@ const menuItems = [
   { href: '/timetable', label: 'Timetable', icon: CalendarDays },
   { href: '/grades', label: 'Grades', icon: BookOpen },
   { href: '/payments', label: 'Payments', icon: DollarSign },
+  { href: '/billing', label: 'Billing', icon: CreditCard },
   { href: '/reports', label: 'Report Cards', icon: ClipboardList },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion },
