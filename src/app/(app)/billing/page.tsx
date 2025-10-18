@@ -71,7 +71,6 @@ const SubscriptionStatusCard = () => {
     const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
     const [timeLeft, setTimeLeft] = useState('');
     
-    // Call hooks unconditionally at the top
     const planName = useMemo(() => {
         if (!plan) return 'Free';
         return plan.charAt(0).toUpperCase() + plan.slice(1);
@@ -109,7 +108,6 @@ const SubscriptionStatusCard = () => {
         return () => clearInterval(interval);
     }, [renewalDate]);
 
-    // Conditional rendering after all hooks
     if (isTrial || !plan || !renewalDate) {
         return null;
     }
@@ -143,7 +141,7 @@ const SubscriptionStatusCard = () => {
 }
 
 export default function BillingPage() {
-  const { plan: currentPlanId, subscriptionCycle: currentCycle, isLocked } = usePlan();
+  const { plan: currentPlanId, isLocked } = usePlan();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -198,9 +196,7 @@ export default function BillingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto items-start">
             {plansData.map((plan) => {
                 const isCurrentPlan = currentPlanId === plan.id;
-                const showRenewButton = isCurrentPlan && isLocked;
-                const showCurrentPlanButton = isCurrentPlan && !isLocked;
-
+                
                 return (
                     <Card key={plan.id} className={cn("flex flex-col h-full", plan.isFeatured ? "border-primary border-2 shadow-lg" : "")}>
                         <CardHeader className="relative">
@@ -234,23 +230,18 @@ export default function BillingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                           {showCurrentPlanButton ? (
-                                <Button className="w-full" variant="outline" disabled>Your Current Plan</Button>
-                           ) : (
-                                <Button
-                                    className="w-full"
-                                    variant={plan.isFeatured ? 'default' : 'outline'}
-                                    disabled={plan.id === 'free_trial'}
-                                    onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
-                                >
-                                    {plan.id === 'free_trial' 
-                                        ? 'Included' 
-                                        : showRenewButton
-                                            ? 'Renew Plan'
-                                            : `Upgrade to ${plan.name}`
-                                    }
-                                </Button>
-                            )}
+                           <Button
+                                className="w-full"
+                                variant={isCurrentPlan && !isLocked ? 'outline' : (plan.isFeatured ? 'default' : 'outline')}
+                                disabled={(isCurrentPlan && !isLocked) || plan.id === 'free_trial'}
+                                onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
+                            >
+                                {isCurrentPlan && isLocked ? 'Renew Plan' 
+                                 : isCurrentPlan && !isLocked ? 'Your Current Plan'
+                                 : plan.id === 'free_trial' ? 'Included'
+                                 : `Upgrade to ${plan.name}`
+                                }
+                            </Button>
                         </CardFooter>
                     </Card>
                 );
@@ -259,3 +250,5 @@ export default function BillingPage() {
     </div>
   );
 }
+
+    
