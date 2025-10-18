@@ -206,45 +206,47 @@ export default function BillingPage() {
 
         <Card>
             <CardContent className="p-6">
-                <div role="table" className="flex w-full">
+                <div className="flex w-full">
                     {/* Feature labels column */}
-                    <div role="rowgroup" className="flex flex-col flex-[1.5] pr-6 border-r">
-                        <div role="columnheader" className="h-32"></div>
-                        <div role="row" className="flex flex-col">
+                    <div className="w-1/4 pr-6 border-r flex flex-col">
+                        <div className="h-32"></div>
+                        <div className="flex-grow flex flex-col">
                             {featureLabels.map(label => (
-                                <div role="cell" key={label} className="h-16 flex items-center text-sm font-medium">{label}</div>
+                                <div key={label} className="h-16 flex items-center text-sm font-medium">{label}</div>
                             ))}
                         </div>
                     </div>
 
                     {/* Plan columns */}
-                    {plansData.map(plan => (
-                        <div key={plan.id} role="rowgroup" className={cn("flex flex-col flex-1 text-center p-6 rounded-lg", plan.isFeatured ? "bg-primary/5 border-2 border-primary" : "")}>
-                           <div role="columnheader" className="h-32 flex flex-col justify-between">
-                             <div>
-                                {plan.isFeatured && <div className="mb-2 text-xs font-bold text-primary">RECOMMENDED</div>}
-                                <h3 className="text-xl font-bold font-headline">{plan.name}</h3>
-                                <p className="text-3xl font-bold my-2">{billingCycle === 'monthly' ? plan.price : plan.priceAnnually}<span className="text-sm font-normal text-muted-foreground">/{billingCycle === 'monthly' ? 'month' : 'year'}</span></p>
-                                <p className="text-xs text-muted-foreground h-8">{plan.description}</p>
-                             </div>
-                              <div className="mt-4">
-                                <PlanButton planId={plan.id} />
-                              </div>
-                           </div>
-                           
-                           <div role="row" className="flex flex-col mt-6">
-                             {featureLabels.map(label => (
-                                   <div role="cell" key={label} className="h-16 flex items-center justify-center">
-                                       {typeof plan.features[label] === 'boolean' ? (
-                                           plan.features[label] ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : <XCircle className="h-6 w-6 text-muted-foreground/50" />
-                                       ) : (
-                                            plan.features[label] === 'Unlimited' ? <Infinity className="h-6 w-6 text-primary"/> : <span className="font-bold text-lg">{plan.features[label]}</span>
-                                       )}
-                                   </div>
-                               ))}
-                           </div>
-                        </div>
-                    ))}
+                    <div className="w-3/4 flex">
+                        {plansData.map(plan => (
+                            <div key={plan.id} className={cn("flex-1 text-center p-6 flex flex-col rounded-lg", plan.isFeatured ? "bg-primary/5 border-2 border-primary" : "")}>
+                               <div className="h-32 flex flex-col justify-between">
+                                 <div>
+                                    {plan.isFeatured && <div className="mb-2 text-xs font-bold text-primary">RECOMMENDED</div>}
+                                    <h3 className="text-xl font-bold font-headline">{plan.name}</h3>
+                                    <p className="text-3xl font-bold my-2">{billingCycle === 'monthly' ? plan.price : plan.priceAnnually}<span className="text-sm font-normal text-muted-foreground">/{billingCycle === 'monthly' ? 'month' : 'year'}</span></p>
+                                    <p className="text-xs text-muted-foreground h-8">{plan.description}</p>
+                                 </div>
+                               </div>
+                               <div className="mt-auto pt-4">
+                                  <PlanButton planId={plan.id} />
+                               </div>
+                               
+                               <div className="flex-grow flex flex-col mt-6">
+                                 {featureLabels.map(label => (
+                                       <div key={label} className="h-16 flex items-center justify-center">
+                                           {typeof plan.features[label] === 'boolean' ? (
+                                               plan.features[label] ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : <XCircle className="h-6 w-6 text-muted-foreground/50" />
+                                           ) : (
+                                                plan.features[label] === 'Unlimited' ? <Infinity className="h-6 w-6 text-primary"/> : <span className="font-bold text-lg">{plan.features[label]}</span>
+                                           )}
+                                       </div>
+                                   ))}
+                               </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </CardContent>
         </Card>
