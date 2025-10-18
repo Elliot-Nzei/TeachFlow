@@ -675,7 +675,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                                                 value={student.name}
                                                 onSelect={() => {
                                                     setSelectedStudent(student);
-                                                    setSelectedClass(allClasses?.find(c => c.id === student.classId) || null);
+                                                    setSelectedClass(classes?.find(c => c.id === student.classId) || null);
                                                     setStudentPopoverOpen(false);
                                                 }}
                                             >
