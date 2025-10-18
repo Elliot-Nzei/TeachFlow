@@ -142,8 +142,8 @@ export default function StudentsPage() {
     if (newStudent.name && user && settings) {
         const studentClass = classes?.find(c => c.id === newStudent.classId);
         
-        const userCodePrefix = settings.userCode
-          ? settings.userCode.split('-')[0]
+        const userCodePrefix = settings.schoolName
+          ? settings.schoolName.split(' ').map(n => n[0]).join('').toUpperCase()
           : 'SPS';
 
         const newStudentCount = (settings.studentCounter || 0) + 1;
@@ -363,5 +363,3 @@ export default function StudentsPage() {
     </>
   );
 }
-
-    

@@ -1,3 +1,4 @@
+
 'use client';
 import React, { createContext, useState, useEffect, useContext, ReactNode, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
@@ -67,8 +68,12 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   }, [plan, trialStartedAt]);
   
   const isTrialExpired = useMemo(() => {
-    return plan === 'free_trial' && trialTimeRemaining <= 0;
-  }, [plan, trialTimeRemaining]);
+    if (plan !== 'free_trial' || !trialStartedAt) return false;
+    const trialStartMs = trialStartedAt.toMillis();
+    const nowMs = Date.now();
+    const elapsedSeconds = Math.floor((nowMs - trialStartMs) / 1000);
+    return elapsedSeconds >= TRIAL_DURATION_SECONDS;
+  }, [plan, trialStartedAt, trialTimeRemaining]); // Depends on trialTimeRemaining to re-evaluate
   
   const isLocked = useMemo(() => {
     // The app is locked if the trial is expired AND the user is not on the billing page.
