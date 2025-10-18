@@ -34,7 +34,7 @@ const plans = [
       'AI Exam Question Generator',
       'Email & Chat Support',
     ],
-    isFeatured: false,
+    isFeatured: true,
     buttonLabel: 'Upgrade to Basic',
     buttonVariant: 'default',
   },
@@ -50,7 +50,7 @@ const plans = [
       'Data Export/Import',
       'Priority Support',
     ],
-    isFeatured: true,
+    isFeatured: false,
     buttonLabel: 'Upgrade to Prime',
     buttonVariant: 'default',
   },
@@ -81,8 +81,10 @@ export default function BillingPage() {
               )}
               <CardTitle className="text-2xl font-headline">{plan.name}</CardTitle>
               <CardDescription>
-                <span className="text-4xl font-bold">{plan.price}</span>
-                <span className="text-muted-foreground"> / month</span>
+                <div className="flex justify-center items-baseline">
+                    <span className="text-4xl font-bold">{plan.price}</span>
+                    <span className="text-muted-foreground"> / month</span>
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
