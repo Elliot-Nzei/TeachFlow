@@ -86,7 +86,7 @@ const PlanCard = ({ plan, cycle, currentPlanId }: { plan: typeof plansData[0], c
             await updateDoc(userRef, {
                 plan: newPlanId,
                 subscriptionCycle: cycle,
-                subscriptionStartDate: serverTimestamp(),
+                planStartDate: serverTimestamp(),
             });
             toast({
                 title: 'Plan Updated!',
@@ -199,7 +199,9 @@ const SubscriptionStatusCard = () => {
                     <p className="text-sm text-primary-foreground/80">
                         {daysRemaining > 0 ? `Renews on` : `Expired on`}
                     </p>
-                    <p className="text-xl font-bold">{format(renewalDate, 'PPP')}</p>
+                    {renewalDate && (
+                         <p className="text-xl font-bold">{format(renewalDate, 'PPP')}</p>
+                    )}
                 </div>
             </CardContent>
         </Card>

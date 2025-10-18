@@ -16,9 +16,8 @@ type Settings = {
     userCode: string;
     studentCounter?: number;
     plan?: 'free_trial' | 'basic' | 'prime';
-    trialStartedAt?: Timestamp;
+    planStartDate?: Timestamp;
     subscriptionCycle?: 'monthly' | 'annually';
-    subscriptionStartDate?: Timestamp;
 }
 
 type SettingsContextType = {

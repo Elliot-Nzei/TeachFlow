@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link"
 import Image from "next/image"
@@ -46,7 +47,7 @@ export default function RegisterPage() {
                     currentTerm: 'First Term',
                     currentSession: '2023/2024',
                     plan: 'free_trial',
-                    trialStartedAt: serverTimestamp(),
+                    planStartDate: serverTimestamp(),
                 });
 
                 router.push('/dashboard');

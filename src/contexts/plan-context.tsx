@@ -7,7 +7,7 @@ import { SettingsContext } from './settings-context';
 import type { User } from 'firebase/auth';
 import { add, differenceInDays } from 'date-fns';
 
-const TRIAL_DURATION_SECONDS = 30 * 24 * 60 * 60; // 30 days
+const TRIAL_DURATION_DAYS = 30;
 
 type Plan = 'free_trial' | 'basic' | 'prime' | null;
 type BillingCycle = 'monthly' | 'annually' | null;
@@ -50,39 +50,44 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    if (!settings) return;
+    if (!settings || !plan) return;
+
+    const startDate = settings.planStartDate?.toDate();
+    if (!startDate) {
+        setRenewalDate(null);
+        setDaysRemaining(0);
+        return;
+    }
+
+    let endDate: Date;
 
     if (plan === 'free_trial') {
-        const trialStartDate = settings.trialStartedAt?.toDate();
-        if (trialStartDate) {
-            const endDate = add(trialStartDate, { seconds: TRIAL_DURATION_SECONDS });
-            setRenewalDate(endDate);
-            setDaysRemaining(differenceInDays(endDate, new Date()));
-        }
+        endDate = add(startDate, { days: TRIAL_DURATION_DAYS });
     } else {
-        const subStartDate = settings.subscriptionStartDate?.toDate();
-        if (subStartDate && subscriptionCycle) {
-            const duration = subscriptionCycle === 'annually' ? { years: 1 } : { months: 1 };
-            const endDate = add(subStartDate, duration);
-            setRenewalDate(endDate);
-            setDaysRemaining(differenceInDays(endDate, new Date()));
+        if (subscriptionCycle === 'annually') {
+            endDate = add(startDate, { years: 1 });
+        } else { // 'monthly' or default for paid
+            endDate = add(startDate, { months: 1 });
         }
     }
+    
+    setRenewalDate(endDate);
+    setDaysRemaining(differenceInDays(endDate, new Date()));
 
   }, [plan, subscriptionCycle, settings]);
   
   const isSubscriptionExpired = useMemo(() => {
-    if (plan === 'free_trial') {
-        return daysRemaining < 0;
-    }
-    // For paid plans, check if the subscription has expired
-    if (plan === 'basic' || plan === 'prime') {
-        return daysRemaining < 0;
-    }
-    return false; // Not expired if no plan or still in trial with time left
-  }, [plan, daysRemaining]);
+    // Don't determine expiry until all data is loaded
+    if (isSettingsLoading || isUserLoading) return false;
+
+    // A plan is considered expired if there are negative days remaining.
+    // A positive or zero value means it's still active today.
+    return daysRemaining < 0;
+
+  }, [daysRemaining, isSettingsLoading, isUserLoading]);
   
   const isLocked = useMemo(() => {
+    // The app is locked if the subscription is expired AND the user is not on the billing page.
     return isSubscriptionExpired && pathname !== '/billing';
   }, [isSubscriptionExpired, pathname]);
 
