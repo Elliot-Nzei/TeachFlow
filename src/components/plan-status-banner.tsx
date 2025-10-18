@@ -1,3 +1,4 @@
+
 'use client';
 import { usePlan } from '@/contexts/plan-context';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +11,17 @@ export default function PlanStatusBanner() {
     return null; // Don't render anything if plan is not yet loaded
   }
 
+  const formatTime = (seconds: number) => {
+    const clampedSeconds = Math.max(0, seconds);
+    const minutes = Math.floor(clampedSeconds / 60);
+    const remainingSeconds = clampedSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  };
+
   if (isTrial && !isTrialExpired) {
     return (
       <div className="bg-blue-600 text-white text-center text-sm py-1.5">
-        Free Trial Active — Expires in {Math.max(0, trialTimeRemaining)} seconds. <Link href="/billing" className="underline font-bold">Upgrade Now</Link>
+        Free Trial Active — Expires in {formatTime(trialTimeRemaining)}. <Link href="/billing" className="underline font-bold">Upgrade Now</Link>
       </div>
     );
   }
@@ -24,3 +32,5 @@ export default function PlanStatusBanner() {
       </div>
   );
 }
+
+    

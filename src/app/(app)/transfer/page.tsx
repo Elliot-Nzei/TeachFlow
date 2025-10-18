@@ -1,13 +1,14 @@
 
 'use client';
 import { useState, useMemo, useContext, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar, HelpCircle } from 'lucide-react';
+import { Send, Loader2, Check, X, AlertCircle, ArrowUpRight, ArrowDownLeft, Calendar, HelpCircle, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, FirestorePermissionError, errorEmitter, useMemoFirebase } from '@/firebase';
@@ -34,6 +35,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { usePlan } from '@/contexts/plan-context';
 
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
@@ -42,6 +44,8 @@ export default function TransferPage() {
   const { firestore, user } = useFirebase();
   const { settings: userProfile, isLoading: isLoadingProfile, setSettings } = useContext(SettingsContext);
   const { toast } = useToast();
+  const { features } = usePlan();
+  const router = useRouter();
   
   const [recipientCode, setRecipientCode] = useState('');
   const [dataType, setDataType] = useState<DataType | ''>('');
@@ -54,6 +58,17 @@ export default function TransferPage() {
     action: 'accept' | 'reject' | null;
   }>({ open: false, transfer: null, action: null });
   const [lessonNotesHistory, setLessonNotesHistory] = useState<LessonNote[]>([]);
+
+  useEffect(() => {
+    if (!features.canUseDataTransfer) {
+        router.push('/billing');
+        toast({
+            variant: 'destructive',
+            title: 'Upgrade Required',
+            description: 'You need to upgrade to the Prime plan to use data transfer.'
+        });
+    }
+  }, [features.canUseDataTransfer, router, toast]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -594,6 +609,25 @@ export default function TransferPage() {
     );
   }
 
+  if (!features.canUseDataTransfer) {
+    return (
+        <div className="flex items-center justify-center h-full">
+            <Card className="max-w-md text-center">
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-center gap-2"><Lock className="h-5 w-5" /> Access Denied</CardTitle>
+                    <CardDescription>This feature is available on the Prime plan.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p>Upgrade to the Prime plan to securely transfer data with other users.</p>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={() => router.push('/billing')} className="w-full">View Plans</Button>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+  }
+
   return (
     <>
       <div className="flex items-center gap-4 mb-8">
@@ -767,3 +801,5 @@ export default function TransferPage() {
     </>
   );
 }
+
+    

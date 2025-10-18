@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check } from 'lucide-react';
+import { BookOpen, PlusCircle, Users, ChevronRight, ChevronsUpDown, Check, Lock } from 'lucide-react';
 import { useCollection, useFirebase, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, query, serverTimestamp } from 'firebase/firestore';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import { usePlan } from '@/contexts/plan-context';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
@@ -65,6 +67,7 @@ export default function ClassesPage() {
     const { firestore } = useFirebase();
     const { user } = useUser();
     const { toast } = useToast();
+    const { features } = usePlan();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
     const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
@@ -78,12 +81,26 @@ export default function ClassesPage() {
 
     const classGrades = Array.from({length: 12}, (_, i) => i + 1);
 
+    const atClassLimit = useMemo(() => {
+        if (features.classLimit === 'Unlimited' || !classes) return false;
+        return classes.length >= features.classLimit;
+    }, [classes, features.classLimit]);
+
     const normalizeClassName = (name: string) => {
         return name.toLowerCase().replace(/\s+/g, '');
     }
 
     const handleAddClass = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (atClassLimit) {
+            toast({
+                variant: 'destructive',
+                title: 'Class Limit Reached',
+                description: 'Please upgrade your plan to add more classes.',
+            });
+            return;
+        }
+
         if (newClassName.trim() && selectedGrade !== null && selectedCategory && user) {
             const normalizedNewName = normalizeClassName(newClassName);
             const isDuplicate = classes?.some(c => normalizeClassName(c.name) === normalizedNewName);
@@ -128,11 +145,23 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold font-headline">Classes</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add New Class
-            </Button>
-          </DialogTrigger>
+          <Tooltip>
+              <TooltipTrigger asChild>
+                <div tabIndex={atClassLimit ? 0 : undefined}>
+                    <DialogTrigger asChild>
+                        <Button disabled={atClassLimit}>
+                            {atClassLimit && <Lock className="mr-2 h-4 w-4" />}
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add New Class
+                        </Button>
+                    </DialogTrigger>
+                </div>
+              </TooltipTrigger>
+              {atClassLimit && (
+                <TooltipContent>
+                    <p>You have reached the class limit for your current plan.</p>
+                </TooltipContent>
+              )}
+          </Tooltip>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
@@ -264,10 +293,12 @@ export default function ClassesPage() {
                 View the students and subjects for this class.
                 </SheetDescription>
             </SheetHeader>
-            {selectedClassId && <ClassDetailsContent classId={selectedClassId} onClose={() => setSelectedClassId(null)} />}
+            {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
         </SheetContent>
         </Sheet>
        </Tabs>
     </>
   );
 }
+
+    

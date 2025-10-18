@@ -1,3 +1,4 @@
+
 'use client';
 import { useRouter } from 'next/navigation';
 import { usePlan } from '@/contexts/plan-context';
@@ -56,9 +57,4 @@ export default function UpgradeModal() {
   );
 }
 
-// Add hideCloseButton prop to DialogContent component
-declare module "@radix-ui/react-dialog" {
-    interface DialogContentProps {
-        hideCloseButton?: boolean;
-    }
-}
+    

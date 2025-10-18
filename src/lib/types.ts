@@ -1,4 +1,12 @@
 
+import { type DialogContentProps } from '@radix-ui/react-dialog';
+
+declare module "@radix-ui/react-dialog" {
+    interface DialogContentProps {
+        hideCloseButton?: boolean;
+    }
+}
+
 export type User = {
   id: string;
   name: string;
@@ -169,3 +177,5 @@ export type Timetable = {
   className: string;
   schedule: TimetableSchedule;
 };
+
+    

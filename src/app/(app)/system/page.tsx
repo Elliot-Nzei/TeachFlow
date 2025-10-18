@@ -1,17 +1,19 @@
 
 'use client';
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { DatabaseBackup, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { DatabaseBackup, Upload, Loader2, AlertCircle, Lock } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SettingsContext } from '@/contexts/settings-context';
+import { usePlan } from '@/contexts/plan-context';
 
 type FullBackup = {
   version: string;
@@ -30,10 +32,25 @@ type FullBackup = {
 export default function SystemPage() {
   const { firestore, user } = useFirebase();
   const { settings } = useContext(SettingsContext);
+  const { features } = usePlan();
   const { toast } = useToast();
+  const router = useRouter();
+
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [fileToImport, setFileToImport] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!features.canUseSystemExport) {
+        router.push('/billing');
+        toast({
+            variant: 'destructive',
+            title: 'Upgrade Required',
+            description: 'You need to upgrade to the Prime plan to access the system management page.'
+        });
+    }
+  }, [features.canUseSystemExport, router, toast]);
+
 
   const collectionsToBackup = ['classes', 'students', 'subjects', 'grades', 'attendance', 'traits', 'payments'];
 
@@ -135,6 +152,24 @@ export default function SystemPage() {
     }
   };
 
+  if (!features.canUseSystemExport) {
+    return (
+        <div className="flex items-center justify-center h-full">
+            <Card className="max-w-md text-center">
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-center gap-2"><Lock className="h-5 w-5" /> Access Denied</CardTitle>
+                    <CardDescription>This feature is available on the Prime plan.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p>Upgrade to the Prime plan to export and import your school data.</p>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={() => router.push('/billing')} className="w-full">View Plans</Button>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+  }
 
   return (
     <>
@@ -194,3 +229,5 @@ export default function SystemPage() {
     </>
   );
 }
+
+    

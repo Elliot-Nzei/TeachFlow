@@ -1,11 +1,11 @@
 
 'use client';
-import { useState, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, UserPlus, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, ChevronRight, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,8 @@ import type { Student } from '@/lib/types';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toTitleCase } from '@/lib/utils';
+import { usePlan } from '@/contexts/plan-context';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -68,6 +70,7 @@ export default function StudentsPage() {
   const { user } = useUser();
   const { settings, setSettings } = useContext(SettingsContext);
   const { toast } = useToast();
+  const { features } = usePlan();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStudentOpen, setAddStudentOpen] = useState(false);
   
@@ -87,6 +90,11 @@ export default function StudentsPage() {
 
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
   const { data: classes, isLoading: isLoadingClasses } = useCollection<any>(classesQuery);
+
+  const atStudentLimit = useMemo(() => {
+    if (features.studentLimit === 'Unlimited' || !students) return false;
+    return students.length >= features.studentLimit;
+  }, [students, features.studentLimit]);
 
   const filteredStudents = students?.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -122,15 +130,24 @@ export default function StudentsPage() {
 
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (atStudentLimit) {
+        toast({
+            variant: 'destructive',
+            title: 'Student Limit Reached',
+            description: 'Please upgrade your plan to add more students.',
+        });
+        return;
+    }
+
     if (newStudent.name && user && settings) {
         const studentClass = classes?.find(c => c.id === newStudent.classId);
         
-        const schoolAcronym = settings.userCode
+        const userCodePrefix = settings.userCode
           ? settings.userCode.split('-')[0]
           : 'SPS';
 
         const newStudentCount = (settings.studentCounter || 0) + 1;
-        const newStudentId = `${schoolAcronym}-${String(newStudentCount).padStart(3, '0')}`;
+        const newStudentId = `${userCodePrefix}-${String(newStudentCount).padStart(3, '0')}`;
         
         try {
             const studentsCollection = collection(firestore, 'users', user.uid, 'students');
@@ -199,11 +216,23 @@ export default function StudentsPage() {
               />
             </div>
             <Dialog open={isAddStudentOpen} onOpenChange={setAddStudentOpen}>
-                <DialogTrigger asChild>
-                    <Button className="w-full sm:w-auto">
-                        <UserPlus className="mr-2 h-4 w-4" /> Add Student
-                    </Button>
-                </DialogTrigger>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <div tabIndex={atStudentLimit ? 0 : undefined}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full sm:w-auto" disabled={atStudentLimit}>
+                                    {atStudentLimit && <Lock className="mr-2 h-4 w-4" />}
+                                    <UserPlus className="mr-2 h-4 w-4" /> Add Student
+                                </Button>
+                            </DialogTrigger>
+                        </div>
+                    </TooltipTrigger>
+                    {atStudentLimit && (
+                        <TooltipContent>
+                            <p>You have reached the student limit for your current plan.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Add New Student</DialogTitle>
@@ -334,3 +363,5 @@ export default function StudentsPage() {
     </>
   );
 }
+
+    
