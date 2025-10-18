@@ -1,34 +1,28 @@
 
+'use client';
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean>(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.innerWidth < MOBILE_BREAKPOINT;
-  });
+  const [isMobile, setIsMobile] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    
+    // This function will run only on the client, after the initial render.
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
 
-    // Initial check in case window size changed since initial render
-    checkScreenSize()
+    // Run the check once on mount.
+    checkScreenSize();
 
-    // Listen for resize events
-    window.addEventListener("resize", checkScreenSize)
-    
-    // Cleanup
-    return () => window.removeEventListener("resize", checkScreenSize)
-  }, [])
+    // Add event listener for window resize.
+    window.addEventListener("resize", checkScreenSize);
 
-  return isMobile
+    // Cleanup listener on component unmount.
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []); // Empty dependency array ensures this runs only once on the client after hydration.
+
+  return isMobile;
 }
