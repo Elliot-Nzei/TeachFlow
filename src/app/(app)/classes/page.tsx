@@ -31,6 +31,7 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
                         <CardTitle className="font-headline text-xl group-hover:text-primary transition-colors">{cls.name}</CardTitle>
                         <Badge variant="secondary">{cls.category}</Badge>
                     </div>
+                    <CardDescription>Grade {cls.grade}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow">
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -245,7 +246,7 @@ export default function ClassesPage() {
                 View the students and subjects for this class.
                 </SheetDescription>
             </SheetHeader>
-            {selectedClassId && <ClassDetailsContent classId={selectedClassId} />}
+            {selectedClassId && <ClassDetailsContent classId={selectedClassId} onClose={() => setSelectedClassId(null)} />}
         </SheetContent>
         </Sheet>
        </Tabs>

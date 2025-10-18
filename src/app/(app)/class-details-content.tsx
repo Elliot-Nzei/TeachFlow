@@ -3,7 +3,7 @@
 import { useState, useMemo, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Users, UserPlus, GraduationCap, Loader2, Search } from 'lucide-react';
+import { BookOpen, Users, UserPlus, GraduationCap, Loader2, Search, AlertTriangle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,13 +31,14 @@ import { getNextClassName } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
 
-function ClassDetailsContent({ classId }: { classId: string }) {
+function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: () => void }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const { toast } = useToast();
   const { settings } = useContext(SettingsContext);
   const [isStudentPopoverOpen, setStudentPopoverOpen] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
 
@@ -186,6 +187,60 @@ function ClassDetailsContent({ classId }: { classId: string }) {
     setIsPromoting(false);
   }
 
+  const handleDeleteClass = async () => {
+    if (!user || !classDetails || !studentsInClass) return;
+
+    setIsDeleting(true);
+
+    try {
+        const batch = writeBatch(firestore);
+
+        // 1. For each student, delete all their associated records
+        const studentIds = studentsInClass.map(s => s.id);
+        if (studentIds.length > 0) {
+            const collectionsToClean = ['grades', 'attendance', 'traits', 'payments'];
+            for (const coll of collectionsToClean) {
+                const q = query(collection(firestore, 'users', user.uid, coll), where('studentId', 'in', studentIds));
+                const snapshot = await getDocs(q);
+                snapshot.forEach(doc => batch.delete(doc.ref));
+            }
+        }
+        
+        // 2. Delete all student documents in the class
+        studentsInClass.forEach(student => {
+            const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+            batch.delete(studentRef);
+        });
+        
+        // 3. Delete the timetable for the class
+        const timetableRef = doc(firestore, 'users', user.uid, 'timetables', classId);
+        batch.delete(timetableRef);
+
+        // 4. Delete the class document itself
+        const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
+        batch.delete(classRef);
+
+        await batch.commit();
+        
+        toast({
+            title: 'Class Deleted',
+            description: `${classDetails.name} and all its associated data have been permanently removed.`
+        });
+        
+        onClose(); // Close the sheet
+
+    } catch (error) {
+        console.error("Error deleting class:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Deletion Failed',
+            description: 'Could not delete the class. Please try again.'
+        });
+    } finally {
+        setIsDeleting(false);
+    }
+  }
+
 
   if (isLoadingClass) {
       return (
@@ -317,6 +372,51 @@ function ClassDetailsContent({ classId }: { classId: string }) {
           </CardContent>
         </Card>
       </div>
+
+       <Separator />
+
+       {/* Danger Zone */}
+       <div>
+        <h3 className="text-lg font-semibold flex items-center mb-4 text-destructive">
+          <AlertTriangle className="mr-2 h-5 w-5" />
+          Danger Zone
+        </h3>
+         <Card className="border-destructive">
+            <CardHeader>
+                <CardTitle>Delete This Class</CardTitle>
+                <CardDescription>
+                    This action is permanent and cannot be undone. It will delete the class and all its associated data.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <p className="text-sm text-destructive mb-4">
+                    Deleting <strong>{classDetails.name}</strong> will also permanently delete all <strong>{studentsInClass?.length || 0} students</strong> in it, along with all of their grades, attendance, traits, and payment records.
+                </p>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            {isDeleting ? 'Deleting...' : `Delete ${classDetails.name}`}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                You are about to permanently delete the class <strong>{classDetails.name}</strong>, all its students, and all their academic records. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteClass} className="bg-destructive hover:bg-destructive/90">
+                                Yes, Delete Everything
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+         </Card>
+       </div>
     </div>
   );
 }
