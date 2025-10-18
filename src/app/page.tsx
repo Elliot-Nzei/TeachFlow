@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, BookOpen, Users, FileDown, Notebook, ArrowRightCircle, CheckCircle, Send, FileQuestion, DollarSign, Linkedin, Menu } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDoc, useFirebase } from '@/firebase';
@@ -168,7 +168,7 @@ export default function Home() {
             <div className="mx-auto max-w-4xl aspect-video bg-muted rounded-xl overflow-hidden border">
               <iframe
                 className="w-full h-full"
-                src="https://drive.google.com/file/d/1UPKXUpBC2rZ22zkJ4PkMaLJi6T7CugvL/preview"
+                src="https://www.youtube.com/embed/dQw4w9WgXcQ"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 title="TeachFlow Video Guide"
@@ -177,19 +177,17 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="about-developer" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <section id="about-developer" className="w-full py-12 md:py-24 lg:py-32 bg-card">
             <div className="container px-4 md:px-6">
                 <Card className="overflow-hidden">
                     <div className="grid md:grid-cols-3">
                         <div className="md:col-span-1 bg-secondary/50 p-8 flex flex-col items-center justify-center text-center">
                             <Avatar className="h-32 w-32 border-4 border-primary shadow-lg mb-4">
-                                <Image 
-                                  src="https://drive.google.com/uc?export=view&id=1kI6Um7t0VE-lMPJI4kNXGTItTvMio3_0" 
+                                <AvatarImage 
+                                  src="https://lh3.googleusercontent.com/a/ACg8ocK_3_x_4_Y_2_z_Xw_3_Y_3_x_4_Y_2_z_Xw=s96-c" 
                                   alt="Elliot Nzei"
-                                  width={128}
-                                  height={128}
-                                  className="object-cover"
                                 />
+                                <AvatarFallback>EN</AvatarFallback>
                             </Avatar>
                             <h3 className="text-2xl font-bold">Elliot Nzei</h3>
                             <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
@@ -223,7 +221,7 @@ export default function Home() {
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-xs hover:underline underline-offse-4" href="#">
+          <Link className="text-xs hover:underline underline-offset-4" href="#">
             Terms of Service
           </Link>
           <Link className="text-xs hover:underline underline-offset-4" href="#">
