@@ -169,14 +169,14 @@ const PlanCard = ({ plan, cycle, currentPlanId }: { plan: typeof plansData[0], c
 const SubscriptionStatusCard = () => {
     const { plan, isTrial, subscriptionCycle, renewalDate, daysRemaining } = usePlan();
 
-    if (isTrial || !plan || !renewalDate) {
-        return null; // Don't show this card for free trial users or if data is missing
-    }
-
     const planName = useMemo(() => {
         if (!plan) return 'Free';
         return plan.charAt(0).toUpperCase() + plan.slice(1);
     }, [plan]);
+
+    if (isTrial || !plan || !renewalDate) {
+        return null; // Don't show this card for free trial users or if data is missing
+    }
 
     return (
         <Card className="bg-primary text-primary-foreground">
