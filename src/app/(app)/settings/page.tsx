@@ -14,16 +14,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useFirebase } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
     const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
-    const { firestore, storage, user } = useFirebase();
+    const { firestore, user } = useFirebase();
     
     const [previewLogo, setPreviewLogo] = useState('');
-    const [logoFile, setLogoFile] = useState<File | null>(null);
-
     const [isSaving, setIsSaving] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -44,33 +41,20 @@ export default function SettingsPage() {
         }
     }, [isAlertOpen]);
     
-    const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
-            const file = event.target.files[0];
-            setLogoFile(file);
-            const logoUrl = URL.createObjectURL(file);
-            setPreviewLogo(logoUrl);
-        }
-    };
-
 
     const handleCopyCode = async () => {
         if (!settings?.userCode) return;
         const textToCopy = settings.userCode;
 
         try {
-            // Modern method
             await navigator.clipboard.writeText(textToCopy);
             toast({
                 title: 'Copied to Clipboard',
                 description: 'Your user code has been copied.',
             });
         } catch (err) {
-            // Fallback for older browsers or restricted environments
             const textArea = document.createElement("textarea");
             textArea.value = textToCopy;
-            
-            // Make the textarea invisible
             textArea.style.position = "fixed";
             textArea.style.top = "0";
             textArea.style.left = "0";
@@ -81,11 +65,9 @@ export default function SettingsPage() {
             textArea.style.outline = "none";
             textArea.style.boxShadow = "none";
             textArea.style.background = "transparent";
-
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            
             try {
                 document.execCommand('copy');
                  toast({
@@ -111,67 +93,23 @@ export default function SettingsPage() {
     const handleSelectChange = (id: string, value: string) => {
         setSettings({[id]: value});
     };
-
-    const uploadFile = useCallback((file: File, path: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            if (!storage) {
-                return reject(new Error("Firebase Storage is not available."));
-            }
-            const storageRef = ref(storage, path);
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            uploadTask.on('state_changed',
-                null,
-                (error) => {
-                    console.error("Upload failed:", error);
-                    toast({
-                        variant: "destructive",
-                        title: "File Upload Failed",
-                        description: `Could not upload ${file.name}. Please try again.`,
-                    });
-                    reject(error);
-                },
-                async () => {
-                    try {
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        resolve(downloadURL);
-                    } catch (error) {
-                        reject(error);
-                    }
-                }
-            );
-        });
-    }, [storage, toast]);
     
     const handleSaveChanges = async () => {
         if (!user || !settings) return;
-
         setIsSaving(true);
-        
         try {
             const updates = { ...settings };
-            
-            if (logoFile) {
-                const logoPath = `school-logos/${user.uid}/${logoFile.name}`;
-                const url = await uploadFile(logoFile, logoPath);
-                updates.schoolLogo = url;
-            }
-
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, updates);
-            
             setSettings(updates);
-
             toast({
                 title: 'Settings Saved',
                 description: 'Your changes have been saved successfully.',
             });
-
         } catch (error) {
             console.error("Error saving settings:", error);
         } finally {
             setIsSaving(false);
-            setLogoFile(null);
         }
     }
 
@@ -191,7 +129,9 @@ export default function SettingsPage() {
             'attendance', 
             'traits',
             'incomingTransfers', 
-            'outgoingTransfers'
+            'outgoingTransfers',
+            'payments',
+            'timetables'
         ];
 
         try {

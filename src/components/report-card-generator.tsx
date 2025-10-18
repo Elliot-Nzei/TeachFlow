@@ -12,7 +12,7 @@ import { Button, ButtonProps } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { Student, Class, Grade } from '@/lib/types';
-import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School } from 'lucide-react';
+import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School, Lock } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Logo } from './logo';
@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Separator } from './ui/separator';
+import { usePlan } from '@/contexts/plan-context';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
@@ -240,6 +242,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [generatedReports, setGeneratedReports] = useState<ReportWithStudentAndGradeInfo[]>([]);
   const { settings } = useContext(SettingsContext);
+  const { features } = usePlan();
   const [classPopoverOpen, setClassPopoverOpen] = useState(false);
   const [studentPopoverOpen, setStudentPopoverOpen] = useState(false);
 
@@ -599,13 +602,17 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   // If component is used for a single student (e.g. from parent portal)
   if (studentId) {
       return (
-          <Button onClick={handleGenerateReports} disabled={loading} variant={buttonVariant}>
+          <Button onClick={handleGenerateReports} disabled={loading || !features.canUseAdvancedAI} variant={buttonVariant}>
             {loading ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
                 </>
-            ) : <><FileDown className="mr-2 h-4 w-4" />{buttonLabel}</>}
+            ) : !features.canUseAdvancedAI ? (
+              <><Lock className="mr-2 h-4 w-4" />{buttonLabel}</>
+            ) : (
+              <><FileDown className="mr-2 h-4 w-4" />{buttonLabel}</>
+            )}
           </Button>
       )
   }
@@ -708,14 +715,21 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                 )}
             </CardContent>
             <CardFooter>
-              <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent)}>
-                {loading ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                    </>
-                ) : buttonLabel}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="w-full">
+                        <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent) || !features.canUseAdvancedAI} className="w-full">
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !features.canUseAdvancedAI ? <Lock className="mr-2 h-4 w-4" /> : null}
+                            {loading ? 'Generating...' : buttonLabel}
+                        </Button>
+                    </div>
+                </TooltipTrigger>
+                {!features.canUseAdvancedAI && (
+                    <TooltipContent>
+                        <p>Upgrade to a paid plan to use this feature.</p>
+                    </TooltipContent>
+                )}
+              </Tooltip>
             </CardFooter>
           </Card>
         </div>

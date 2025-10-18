@@ -7,17 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FileDown, Printer, AlertCircle } from 'lucide-react';
+import { Loader2, Sparkles, FileDown, Printer, AlertCircle, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import jsPDF from 'jspdf';
-
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { Class, Subject } from '@/lib/types';
 import { SettingsContext } from '@/contexts/settings-context';
 import { generateExamQuestions, type GenerateExamInput, type GenerateExamOutput } from '@/ai/flows/generate-exam-questions';
+import { usePlan } from '@/contexts/plan-context';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type LoadingState = 'idle' | 'generating' | 'downloading';
 
@@ -40,6 +41,7 @@ export default function ExamQuestionGeneratorPage() {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const { settings } = useContext(SettingsContext);
+  const { features } = usePlan();
 
   // Fetch classes & subjects
   const classesQuery = useMemoFirebase(
@@ -466,9 +468,21 @@ export default function ExamQuestionGeneratorPage() {
               </CardContent>
 
               <CardFooter>
-                <Button type="submit" disabled={!formValidation.isValid || isProcessing} className="w-full">
-                  {isGenerating ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</>) : (<><Sparkles className="mr-2 h-4 w-4" />Generate Questions</>)}
-                </Button>
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="w-full">
+                             <Button type="submit" disabled={!formValidation.isValid || isProcessing || !features.canUseAdvancedAI} className="w-full">
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !features.canUseAdvancedAI ? <Lock className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                {isGenerating ? 'Generating...' : 'Generate Questions'}
+                            </Button>
+                        </div>
+                    </TooltipTrigger>
+                    {!features.canUseAdvancedAI && (
+                        <TooltipContent>
+                            <p>Upgrade to a paid plan to use this feature.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
               </CardFooter>
             </form>
           </Card>

@@ -1,13 +1,13 @@
 
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook, ArrowLeft } from 'lucide-react';
+import { Loader2, Sparkles, FileDown, Printer, Trash2, History, Copy, Check, Notebook, ArrowLeft, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateLessonNote, type GenerateLessonNoteInput } from '@/ai/flows/generate-lesson-note';
 import ReactMarkdown from 'react-markdown';
@@ -19,6 +19,8 @@ import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase
 import { collection, query } from 'firebase/firestore';
 import type { Class, Subject } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { usePlan } from '@/contexts/plan-context';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type SavedNote = {
   id: string;
@@ -45,6 +47,7 @@ export default function LessonGeneratorPage() {
   const [hasCopied, setHasCopied] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
   const { toast } = useToast();
+  const { features } = usePlan();
 
   const { firestore, user } = useFirebase();
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
@@ -407,10 +410,21 @@ export default function LessonGeneratorPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" disabled={isLoading || !isFormValid()} className="w-full">
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  Generate Lesson Note
-                </Button>
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="w-full">
+                             <Button type="submit" disabled={isLoading || !isFormValid() || !features.canUseAdvancedAI} className="w-full">
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !features.canUseAdvancedAI ? <Lock className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                {isLoading ? 'Generating...' : 'Generate Lesson Note'}
+                            </Button>
+                        </div>
+                    </TooltipTrigger>
+                    {!features.canUseAdvancedAI && (
+                        <TooltipContent>
+                            <p>Upgrade to a paid plan to use this feature.</p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
               </CardFooter>
             </form>
           </Card>
