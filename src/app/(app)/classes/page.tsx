@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -18,55 +18,35 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const ClassCard = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
-    <SheetTrigger asChild key={cls.id}>
-        <div onClick={onClick} className="h-full">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
-            <CardHeader>
-                <CardTitle className="font-headline">{cls.name}</CardTitle>
-                <CardDescription>
-                  <Badge variant="outline">{cls.category}</Badge>
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 flex-grow">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{cls.students?.length || 0} Students</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{cls.subjects?.length || 0} Subjects</span>
-                </div>
-            </CardContent>
-            <CardFooter>
-                <Button variant="outline" className="w-full">View Details</Button>
-            </CardFooter>
-            </Card>
-        </div>
-    </SheetTrigger>
-);
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
     <SheetTrigger asChild key={cls.id}>
-        <div onClick={onClick} className="flex items-center gap-4 p-3 rounded-lg cursor-pointer hover:bg-muted border">
-            <div className="flex-1">
-                <p className="font-semibold font-headline">{cls.name}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-                    <div className="flex items-center gap-1.5">
-                         <Badge variant="secondary">{cls.category}</Badge>
+        <div onClick={onClick}>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow group">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                            <p className="font-bold font-headline text-lg group-hover:text-primary transition-colors">{cls.name}</p>
+                            <Badge variant="secondary">{cls.category}</Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                            <div className="flex items-center gap-1.5">
+                                <Users className="h-4 w-4" />
+                                <span>{cls.students?.length || 0} Students</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <BookOpen className="h-4 w-4" />
+                                <span>{cls.subjects?.length || 0} Subjects</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5" />
-                        <span>{cls.students?.length || 0} Students</span>
-                    </div>
-                     <div className="flex items-center gap-1.5">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        <span>{cls.subjects?.length || 0} Subjects</span>
-                    </div>
-                </div>
-            </div>
-            <Button variant="ghost" size="sm">View <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10">
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     </SheetTrigger>
 );
@@ -212,28 +192,19 @@ export default function ClassesPage() {
         <Sheet open={!!selectedClassId} onOpenChange={(isOpen) => !isOpen && setSelectedClassId(null)}>
         {['All', ...classCategories].map(category => (
             <TabsContent key={category} value={category}>
-                <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
-                {isLoading ? Array.from({length: 4}).map((_, i) => (
-                    <Card key={i}><CardContent className="h-48 bg-muted rounded-lg animate-pulse" /></Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-8">
+                {isLoading ? Array.from({length: 6}).map((_, i) => (
+                    <Card key={i}>
+                        <CardContent className="p-4 flex items-center gap-4">
+                             <div className="flex-1 space-y-3">
+                                 <Skeleton className="h-5 w-3/5 rounded" />
+                                 <Skeleton className="h-4 w-4/5 rounded" />
+                             </div>
+                             <Skeleton className="h-10 w-10 rounded" />
+                        </CardContent>
+                    </Card>
                 )) : filteredClasses(category).map((cls) => (
-                    <ClassCard key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
-                ))}
-                </div>
-
-                <div className="md:hidden space-y-3 mt-8">
-                {isLoading ? Array.from({length: 3}).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
-                        <div className="flex-1 space-y-2">
-                            <div className="h-5 w-3/4 rounded bg-muted animate-pulse" />
-                            <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
-                        </div>
-                    </div>
-                )) : filteredClasses(category).map((cls) => (
-                    <ClassListItem 
-                        key={cls.id}
-                        cls={cls}
-                        onClick={() => handleCardClick(cls.id)}
-                    />
+                    <ClassListItem key={cls.id} cls={cls} onClick={() => handleCardClick(cls.id)} />
                 ))}
                 </div>
 
@@ -259,3 +230,5 @@ export default function ClassesPage() {
     </>
   );
 }
+
+    
