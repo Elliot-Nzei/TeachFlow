@@ -11,7 +11,7 @@ import { Send, Loader2, Check, X, AlertCircle, Calendar, HelpCircle, Lock, Datab
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, limit } from 'firebase/firestore';
 import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -230,7 +230,7 @@ export default function DataManagementPage() {
         if (dataArray && dataArray.length > 0) {
             const collRef = collection(firestore, 'users', user.uid, collectionName);
             dataArray.forEach(itemData => {
-                const newDocRef = doc(collRef);
+                const newDocRef = doc(collRef); // Creates a new document with a unique ID
                 batch.set(newDocRef, itemData);
             });
         }
@@ -370,8 +370,9 @@ export default function DataManagementPage() {
 
             const existingStudentQuery = query(
                 recipientStudentsRef, 
-                where('name', '==', studentData.name),
-                where('transferredFrom', '==', transfer.fromUserId)
+                where('transferredFrom', '==', transfer.fromUserId),
+                where('originalStudentDocId', '==', originalStudentDocId),
+                limit(1)
             );
 
             const existingStudentSnap = await getDocs(existingStudentQuery);
@@ -388,6 +389,7 @@ export default function DataManagementPage() {
                   ...studentData,
                   studentId: newStudentId,
                   transferredFrom: transfer.fromUserId,
+                  originalStudentDocId: originalStudentDocId, // Store the original ID
                   transferredAt: serverTimestamp(),
                 });
                 finalStudentDocId = newStudentRef.id;
@@ -458,7 +460,7 @@ export default function DataManagementPage() {
         }
         
         const upsertSubcollectionData = async (
-          subcollectionName: 'grades' | 'attendance' | 'traits',
+          subcollectionName: keyof Pick<DataTransfer, 'grades' | 'attendance' | 'traits'>,
           dataArray: any[] | undefined
         ) => {
             if (!dataArray || !user) return;

@@ -71,7 +71,7 @@ export default function DashboardPage() {
   } satisfies ChartConfig
 
   const paymentSummary = useMemo(() => {
-    if (!payments || !students) return { paid: 0, partially: 0, owing: 0, totalCollected: 0, totalOutstanding: 0 };
+    if (!payments || !students || !classes) return { paid: 0, partially: 0, owing: 0, totalCollected: 0, totalOutstanding: 0 };
 
     let paid = 0;
     let partially = 0;
