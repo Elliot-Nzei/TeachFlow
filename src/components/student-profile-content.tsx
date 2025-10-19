@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -20,6 +21,7 @@ import { Slider } from '@/components/ui/slider';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useRouter } from 'next/navigation';
 import ReportCardGenerator from './report-card-generator';
+import { Input } from './ui/input';
 
 const TRAIT_DEFINITIONS = {
     affective: ['Punctuality', 'Neatness', 'Honesty', 'Cooperation', 'Attentiveness'],
