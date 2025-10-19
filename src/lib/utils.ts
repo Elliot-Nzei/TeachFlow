@@ -6,14 +6,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const getNextClassName = (currentName: string, allClasses: { name: string; grade: number }[]): string | null => {
+export const getNextClassName = (currentName: string, allClasses: { name: string; grade: string }[]): string | null => {
   const currentClass = allClasses.find(c => c.name === currentName);
   if (!currentClass) return null;
 
-  const nextGrade = currentClass.grade + 1;
+  const currentGradeNum = parseInt(currentClass.grade, 10);
   
-  // Find a class with the exact next grade
-  const nextClass = allClasses.find(c => c.grade === nextGrade);
+  // If the current grade is not a number (e.g., "Pre-Nursery"), we can't promote numerically.
+  if (isNaN(currentGradeNum)) {
+    return null;
+  }
+
+  const nextGrade = currentGradeNum + 1;
+  
+  // Find a class with the exact next numeric grade
+  const nextClass = allClasses.find(c => parseInt(c.grade, 10) === nextGrade);
 
   return nextClass ? nextClass.name : null;
 };

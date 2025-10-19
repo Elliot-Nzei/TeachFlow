@@ -1,7 +1,6 @@
 
 'use client';
 import { useState, useMemo, useContext } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Users, UserPlus, GraduationCap, Loader2, Search, AlertTriangle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -422,5 +421,3 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
 }
 
 export default ClassDetailsContent;
-
-    
