@@ -2,6 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import {
   ArrowRightLeft,
   BookCopy,
@@ -20,6 +21,7 @@ import {
   Database,
   CalendarDays,
   CreditCard,
+  HelpCircle,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -42,6 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/logo';
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -54,6 +57,7 @@ import NotificationBell from '@/components/notification-bell';
 import UpgradeModal from '@/components/upgrade-modal';
 import { Badge } from '@/components/ui/badge';
 import { toTitleCase } from '@/lib/utils';
+import HelpGuide from '@/components/help-guide';
 
 
 const allMenuItems = [
@@ -134,7 +138,8 @@ function UserProfileDisplay() {
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { plan } = usePlan();
+  const { plan, isLocked } = usePlan();
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
 
@@ -193,6 +198,10 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                          {toTitleCase(plan.replace('_', ' '))}
                        </Badge>
                     )}
+                     <Button variant="ghost" size="icon" onClick={() => setIsHelpOpen(true)}>
+                        <HelpCircle className="h-5 w-5" />
+                        <span className="sr-only">Open Help</span>
+                    </Button>
                     <NotificationBell />
                     <UserProfileDisplay />
                 </div>
@@ -204,6 +213,17 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <UpgradeModal />
         </div>
       </div>
+       <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Page Guide</DialogTitle>
+            <DialogDescription>
+              A quick guide on how to use the current page.
+            </DialogDescription>
+          </DialogHeader>
+          <HelpGuide pathname={pathname} />
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }
