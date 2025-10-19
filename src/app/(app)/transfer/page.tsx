@@ -16,12 +16,13 @@ import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { usePlan } from '@/contexts/plan-context';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type DataType = 'Full Class Data' | 'Single Student Record' | 'Lesson Note';
 
@@ -851,30 +852,32 @@ export default function DataManagementPage() {
       </div>
 
        <Dialog open={selectionDialog.open} onOpenChange={(open) => !open && setSelectionDialog({ open: false, transfer: null, selections: initialSelectionState })}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Select Data to Import</DialogTitle>
             <DialogDescription>
               Choose which parts of the transfer "<strong>{selectionDialog.transfer?.dataTransferred}</strong>" you want to import.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-              {selectionOptions.map(option => (
-                  <div key={option.id} className="flex items-start space-x-3 rounded-md p-3 hover:bg-muted/50">
-                      <Checkbox
-                          id={option.id}
-                          checked={selectionDialog.selections[option.id]}
-                          onCheckedChange={(checked) => handleSelectionChange(option.id, !!checked)}
-                      />
-                      <div className="grid gap-1.5 leading-none">
-                          <label htmlFor={option.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              {option.label}
-                          </label>
-                          <p className="text-sm text-muted-foreground">{option.description}</p>
-                      </div>
-                  </div>
-              ))}
-          </div>
+          <ScrollArea className="max-h-[50vh] pr-6 -mr-6">
+            <div className="py-4 space-y-4">
+                {selectionOptions.map(option => (
+                    <div key={option.id} className="flex items-start space-x-3 rounded-md p-3 hover:bg-muted/50">
+                        <Checkbox
+                            id={option.id}
+                            checked={selectionDialog.selections[option.id]}
+                            onCheckedChange={(checked) => handleSelectionChange(option.id, !!checked)}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                            <label htmlFor={option.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                {option.label}
+                            </label>
+                            <p className="text-sm text-muted-foreground">{option.description}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectionDialog(prev => ({...prev, open: false}))}>Cancel</Button>
             <Button onClick={() => selectionDialog.transfer && processSelectiveAccept(selectionDialog.transfer, selectionDialog.selections)}>
@@ -886,5 +889,3 @@ export default function DataManagementPage() {
     </>
   );
 }
-
-    
