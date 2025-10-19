@@ -18,13 +18,13 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
-    const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
+    const { settings, setSettings: setContextSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
     const { firestore, user } = useFirebase();
     const storage = useStorage();
     
+    const [localSettings, setLocalSettings] = useState(settings);
     const [previewLogo, setPreviewLogo] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
@@ -33,10 +33,11 @@ export default function SettingsPage() {
     const CONFIRMATION_PHRASE = 'DELETE';
 
     useEffect(() => {
-        if (settings?.schoolLogo) {
-            setPreviewLogo(settings.schoolLogo);
+        if (settings) {
+            setLocalSettings(settings);
+            setPreviewLogo(settings.schoolLogo || '');
         }
-    }, [settings?.schoolLogo]);
+    }, [settings]);
     
     useEffect(() => {
         if (!isAlertOpen) {
@@ -56,41 +57,17 @@ export default function SettingsPage() {
                 description: 'Your user code has been copied.',
             });
         } catch (err) {
-            const textArea = document.createElement("textarea");
-            textArea.value = textToCopy;
-            textArea.style.position = "fixed";
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.width = "2em";
-            textArea.style.height = "2em";
-            textArea.style.padding = "0";
-            textArea.style.border = "none";
-            textArea.style.outline = "none";
-            textArea.style.boxShadow = "none";
-            textArea.style.background = "transparent";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                 toast({
-                    title: 'Copied to Clipboard',
-                    description: 'Your user code has been copied.',
-                });
-            } catch (copyErr) {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Copy Failed',
-                    description: 'Could not copy the code to your clipboard.',
-                });
-            }
-            document.body.removeChild(textArea);
+            toast({
+                variant: 'destructive',
+                title: 'Copy Failed',
+                description: 'Could not copy the code to your clipboard.',
+            });
         }
     };
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
-        setSettings({[id]: value});
+        setLocalSettings(prev => prev ? {...prev, [id]: value} : null);
     };
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,56 +76,53 @@ export default function SettingsPage() {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPreviewLogo(reader.result as string);
-                handleLogoUpload(reader.result as string);
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleLogoUpload = async (dataUrl: string) => {
-        if (!user || !storage) return;
-
-        setIsUploading(true);
-        const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
-        
-        try {
-            await uploadString(storageRef, dataUrl, 'data_url');
-            const downloadURL = await getDownloadURL(storageRef);
-            
-            setSettings({ schoolLogo: downloadURL });
-            handleSaveChanges({ schoolLogo: downloadURL });
-
-            toast({ title: 'Logo Uploaded', description: 'Your school logo has been updated.' });
-        } catch (error) {
-            console.error("Logo upload failed: ", error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload your logo.' });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-    
     const handleSelectChange = (id: string, value: string) => {
-        setSettings({[id]: value});
+        setLocalSettings(prev => prev ? {...prev, [id]: value} : null);
     };
     
-    const handleSaveChanges = async (extraUpdates: Partial<Settings> = {}) => {
-        if (!user || !settings) return;
+    const handleSaveChanges = async () => {
+        if (!user || !localSettings) return;
         setIsSaving(true);
+        let updatedSettings = { ...localSettings };
+
         try {
-            const updates = { ...settings, ...extraUpdates };
+            // Check if the logo has changed and needs to be uploaded
+            if (previewLogo && previewLogo !== settings?.schoolLogo) {
+                if (!storage) {
+                    toast({ variant: 'destructive', title: 'Storage Error', description: 'Firebase Storage is not available.' });
+                    setIsSaving(false);
+                    return;
+                }
+                const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
+                await uploadString(storageRef, previewLogo, 'data_url');
+                const downloadURL = await getDownloadURL(storageRef);
+                updatedSettings.schoolLogo = downloadURL;
+                setPreviewLogo(downloadURL);
+            }
+
             const userRef = doc(firestore, 'users', user.uid);
-            await updateDoc(userRef, updates);
-            setSettings(updates);
+            await updateDoc(userRef, updatedSettings);
+            
+            // Update the context after saving
+            setContextSettings(updatedSettings);
+
             toast({
                 title: 'Settings Saved',
                 description: 'Your changes have been saved successfully.',
             });
         } catch (error) {
             console.error("Error saving settings:", error);
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save your settings.' });
         } finally {
             setIsSaving(false);
         }
     }
+
 
     const handleClearAllData = async () => {
         if (!user) {
@@ -189,7 +163,7 @@ export default function SettingsPage() {
 
             localStorage.removeItem('lessonNotesHistory');
             
-            setSettings({ studentCounter: 0 });
+            setContextSettings({ studentCounter: 0 });
 
             toast({
                 title: 'Data Cleared',
@@ -211,7 +185,7 @@ export default function SettingsPage() {
         }
     };
 
-    const isLoading = isLoadingSettings || !settings;
+    const isLoading = isLoadingSettings || !localSettings;
 
     if (isLoading) {
         return (
@@ -271,7 +245,7 @@ export default function SettingsPage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isUploading} />
+                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isSaving} />
                                 <p className="text-xs text-muted-foreground">Recommended: Square PNG/JPG.</p>
                             </div>
                         </div>
@@ -281,28 +255,28 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" value={settings?.name || ''} onChange={handleInputChange} disabled={isSaving}/>
+                        <Input id="name" value={localSettings?.name || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolName">School Name</Label>
-                        <Input id="schoolName" value={settings?.schoolName || ''} onChange={handleInputChange} disabled={isSaving}/>
+                        <Input id="schoolName" value={localSettings?.schoolName || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolMotto">School Motto</Label>
-                        <Input id="schoolMotto" value={settings?.schoolMotto || ''} onChange={handleInputChange} disabled={isSaving}/>
+                        <Input id="schoolMotto" value={localSettings?.schoolMotto || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="schoolAddress">School Address</Label>
-                        <Input id="schoolAddress" value={settings?.schoolAddress || ''} onChange={handleInputChange} disabled={isSaving}/>
+                        <Input id="schoolAddress" value={localSettings?.schoolAddress || ''} onChange={handleInputChange} disabled={isSaving}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" value={settings?.email || ''} disabled />
+                        <Input id="email" value={localSettings?.email || ''} disabled />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="user-code">Your User Code</Label>
                         <div className="flex items-center gap-2">
-                        <Input id="user-code" value={settings?.userCode || ''} readOnly />
+                        <Input id="user-code" value={localSettings?.userCode || ''} readOnly />
                         <Button variant="outline" size="icon" onClick={handleCopyCode}>
                             <Clipboard className="h-4 w-4" />
                         </Button>
@@ -310,12 +284,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </CardContent>
-            <CardFooter>
-            <Button onClick={() => handleSaveChanges()} disabled={isSaving || isLoading || isUploading}>
-                {isSaving || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isSaving ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Profile'}
-            </Button>
-            </CardFooter>
         </Card>
 
       <Card>
@@ -326,7 +294,7 @@ export default function SettingsPage() {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="current-term">Current Term</Label>
-            <Select value={settings?.currentTerm || ''} onValueChange={(value) => handleSelectChange('currentTerm', value)} disabled={isSaving}>
+            <Select value={localSettings?.currentTerm || ''} onValueChange={(value) => handleSelectChange('currentTerm', value)} disabled={isSaving}>
               <SelectTrigger id="current-term">
                 <SelectValue />
               </SelectTrigger>
@@ -339,16 +307,16 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="currentSession">Current Session</Label>
-            <Input id="currentSession" value={settings?.currentSession || ''} onChange={handleInputChange} disabled={isSaving}/>
+            <Input id="currentSession" value={localSettings?.currentSession || ''} onChange={handleInputChange} disabled={isSaving}/>
           </div>
         </CardContent>
-        <CardFooter>
-          <Button onClick={() => handleSaveChanges()} disabled={isSaving || isLoading || isUploading}>
+      </Card>
+        <CardFooter className="px-0">
+          <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isSaving ? 'Saving...' : 'Save Academic Settings'}
+            {isSaving ? 'Saving...' : 'Save All Settings'}
           </Button>
         </CardFooter>
-      </Card>
 
       <Card className="border-destructive">
           <CardHeader>
@@ -407,3 +375,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
