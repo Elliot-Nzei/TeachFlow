@@ -22,6 +22,8 @@ import { SettingsContext } from '@/contexts/settings-context';
 import { useRouter } from 'next/navigation';
 import ReportCardGenerator from './report-card-generator';
 import { Input } from './ui/input';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const TRAIT_DEFINITIONS = {
     affective: ['Punctuality', 'Neatness', 'Honesty', 'Cooperation', 'Attentiveness'],
@@ -174,6 +176,8 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState('academic-record');
+  const isMobile = useIsMobile();
 
   const studentDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId]);
   const { data: student, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
@@ -365,12 +369,25 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
         </div>
       </div>
 
-      <Tabs defaultValue="academic-record" className="p-4 md:p-6 pt-0">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4 md:p-6 pt-0">
+        {isMobile ? (
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full mb-4">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="academic-record">Academic Record</SelectItem>
+              <SelectItem value="attendance">Attendance</SelectItem>
+              <SelectItem value="traits">Behavioral Traits</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="academic-record">Academic Record</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="traits">Behavioral Traits</TabsTrigger>
-        </TabsList>
+          </TabsList>
+        )}
         <TabsContent value="academic-record" className="mt-6">
              <Card>
                 <CardHeader>
