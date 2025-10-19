@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useMemo, useContext, useEffect } from 'react';
+import { useState, useMemo, useContext, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home, KeyRound } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home, KeyRound, Clipboard } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -202,6 +202,16 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
       total: attendanceForStudent.length,
     };
   }, [attendanceForStudent]);
+
+  const handleCopyParentId = useCallback(() => {
+    if (student?.parentId) {
+      navigator.clipboard.writeText(student.parentId).then(() => {
+        toast({ title: 'Success', description: 'Parent ID copied to clipboard.' });
+      }).catch(err => {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not copy Parent ID.' });
+      });
+    }
+  }, [student, toast]);
   
   const handleDeleteStudent = async () => {
     if (readOnly || !student || !user) return;
@@ -361,7 +371,14 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
                 <CardContent>
                     <div className="space-y-2">
                         <Label htmlFor="parent-id">Unique Parent ID</Label>
-                        <Input id="parent-id" readOnly value={student.parentId} />
+                        <div className="flex items-center gap-2">
+                           <Input id="parent-id" readOnly value={student.parentId || 'N/A'} />
+                           {!readOnly && (
+                            <Button variant="outline" size="icon" onClick={handleCopyParentId} disabled={!student.parentId}>
+                                <Clipboard className="h-4 w-4" />
+                            </Button>
+                           )}
+                        </div>
                         <p className="text-xs text-muted-foreground">Share this ID with the parent for portal access.</p>
                     </div>
                 </CardContent>
