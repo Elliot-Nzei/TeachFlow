@@ -169,6 +169,33 @@ export default function BillingPage() {
       }
   };
   
+  const getButtonText = (planId: string, planName: string, isCurrentPlan: boolean) => {
+    if (isCurrentPlan && !isSubscriptionExpired) {
+        return 'Your Current Plan';
+    }
+    if (planId === 'free_trial') {
+        return 'Included';
+    }
+    if (isSubscriptionExpired) {
+        if (currentPlanId === planId) {
+            return 'Renew Plan';
+        }
+        return 'Choose Plan';
+    }
+    
+    const planHierarchy = { 'free_trial': 0, 'basic': 1, 'prime': 2 };
+    const currentPlanLevel = planHierarchy[currentPlanId as keyof typeof planHierarchy];
+    const targetPlanLevel = planHierarchy[planId as keyof typeof planHierarchy];
+
+    if (targetPlanLevel > currentPlanLevel) {
+        return `Upgrade to ${planName}`;
+    }
+    if (targetPlanLevel < currentPlanLevel) {
+        return `Downgrade to ${planName}`;
+    }
+    return `Select ${planName}`;
+  };
+
   return (
     <div className="space-y-8">
         <div className="text-center max-w-2xl mx-auto">
@@ -236,11 +263,7 @@ export default function BillingPage() {
                                 disabled={(isCurrentPlan && !isSubscriptionExpired) || plan.id === 'free_trial'}
                                 onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
                             >
-                                {isCurrentPlan && isSubscriptionExpired && plan.id !== 'free_trial' ? 'Renew Plan' 
-                                 : isCurrentPlan && !isSubscriptionExpired ? 'Your Current Plan'
-                                 : plan.id === 'free_trial' ? 'Included'
-                                 : `Upgrade to ${plan.name}`
-                                }
+                                {getButtonText(plan.id, plan.name, isCurrentPlan)}
                             </Button>
                         </CardFooter>
                     </Card>
