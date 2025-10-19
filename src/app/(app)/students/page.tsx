@@ -23,6 +23,7 @@ import { toTitleCase } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { v4 as uuidv4 } from 'uuid';
 
 
 const StudentCard = ({ student, index, onClick }: { student: Student, index: number, onClick: () => void }) => (
@@ -128,6 +129,15 @@ export default function StudentsPage() {
       setNewStudent(prev => ({...prev, classId: value}));
   }
 
+  const generateParentId = () => {
+    const segments = [
+        Math.random().toString(36).substring(2, 6),
+        Math.random().toString(36).substring(2, 6),
+        Math.random().toString(36).substring(2, 6)
+    ];
+    return `PARENT-${segments.join('-').toUpperCase()}`;
+  }
+
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (atStudentLimit) {
@@ -162,6 +172,9 @@ export default function StudentsPage() {
                 guardianPhone: newStudent.guardianPhone || '',
                 guardianEmail: newStudent.guardianEmail || '',
                 createdAt: serverTimestamp(),
+                parentId: generateParentId(),
+                parentAccessCount: 0,
+                lastAccessMonth: '',
             };
 
             const newStudentDoc = await addDoc(studentsCollection, studentData);

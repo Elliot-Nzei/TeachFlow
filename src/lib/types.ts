@@ -1,4 +1,3 @@
-
 import { type DialogContentProps } from '@radix-ui/react-dialog';
 
 declare module "@radix-ui/react-dialog" {
@@ -30,6 +29,11 @@ export type Student = {
   guardianPhone?: string;
   guardianEmail?: string;
   promotionHistory?: { from: string; to: string; date: string; session: string; }[];
+  parentId: string;
+  parentAccessCount: number;
+  lastAccessMonth: string;
+  transferredFrom?: string;
+  originalStudentDocId?: string;
 };
 
 export type Class = {

@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home, KeyRound } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,13 +19,14 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useRouter } from 'next/navigation';
+import ReportCardGenerator from './report-card-generator';
 
 const TRAIT_DEFINITIONS = {
     affective: ['Punctuality', 'Neatness', 'Honesty', 'Cooperation', 'Attentiveness'],
     psychomotor: ['Handwriting', 'Games & Sports', 'Drawing & Painting', 'Musical Skills']
 }
 
-function TraitEditor({ student }: { student: any }) {
+function TraitEditor({ student, readOnly = false }: { student: any, readOnly?: boolean }) {
     const { firestore, user } = useFirebase();
     const { settings } = useContext(SettingsContext);
     const { toast } = useToast();
@@ -68,11 +68,11 @@ function TraitEditor({ student }: { student: any }) {
     }
 
     const handleSaveTraits = async () => {
-        if (!user || !student || !term || !session) {
+        if (readOnly || !user || !student || !term || !session) {
             toast({
                 variant: 'destructive',
-                title: 'Missing Information',
-                description: 'Cannot save traits without student, term, or session.',
+                title: 'Permission Denied',
+                description: 'Cannot save traits in read-only mode.',
             });
             return;
         }
@@ -130,6 +130,7 @@ function TraitEditor({ student }: { student: any }) {
                                     min={1} max={5} step={1}
                                     value={[traitRatings[trait] || 3]}
                                     onValueChange={(val) => handleRatingChange(trait, val)}
+                                    disabled={readOnly}
                                 />
                             </div>
                         ))}
@@ -149,20 +150,23 @@ function TraitEditor({ student }: { student: any }) {
                                     min={1} max={5} step={1}
                                     value={[traitRatings[trait] || 3]}
                                     onValueChange={(val) => handleRatingChange(trait, val)}
+                                    disabled={readOnly}
                                 />
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
-            <div className="mt-6">
-                <Button onClick={handleSaveTraits}>Save Traits</Button>
-            </div>
+            {!readOnly && (
+                <div className="mt-6">
+                    <Button onClick={handleSaveTraits}>Save Traits</Button>
+                </div>
+            )}
         </div>
     )
 }
 
-function StudentProfileContent({ studentId }: { studentId: string }) {
+function StudentProfileContent({ studentId, readOnly = false }: { studentId: string, readOnly?: boolean }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
@@ -194,7 +198,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
   }, [attendanceForStudent]);
   
   const handleDeleteStudent = async () => {
-    if (!student || !user) return;
+    if (readOnly || !student || !user) return;
     setIsDeleting(true);
 
     try {
@@ -285,29 +289,34 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     {student.className && <Badge variant="outline" className="mt-1">{student.className}</Badge>}
                 </div>
             </div>
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="w-full sm:w-auto">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades, attendance, and traits.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting}>
-                          {isDeleting ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {!readOnly && (
+                <div className="flex gap-2">
+                    <ReportCardGenerator studentId={student.id} buttonLabel="Generate Report Card" buttonVariant="secondary" />
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" className="w-full sm:w-auto">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades, attendance, and traits.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting}>
+                                {isDeleting ? "Deleting..." : "Delete"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            )}
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Personal Information</CardTitle>
@@ -337,6 +346,18 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     ) : (
                         <p className="text-sm text-muted-foreground text-center py-4">No guardian information provided.</p>
                     )}
+                </CardContent>
+            </Card>
+            <Card>
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" /> Parent Access</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-2">
+                        <Label htmlFor="parent-id">Unique Parent ID</Label>
+                        <Input id="parent-id" readOnly value={student.parentId} />
+                        <p className="text-xs text-muted-foreground">Share this ID with the parent for portal access.</p>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -473,7 +494,7 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
                     <CardDescription>Rate student's traits for the current term.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <TraitEditor student={student} />
+                    <TraitEditor student={student} readOnly={readOnly} />
                 </CardContent>
             </Card>
         </TabsContent>
@@ -483,5 +504,3 @@ function StudentProfileContent({ studentId }: { studentId: string }) {
 }
 
 export default StudentProfileContent;
-
-    
