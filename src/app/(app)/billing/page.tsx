@@ -1,25 +1,23 @@
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Zap, Star, Lock } from 'lucide-react';
+import { CheckCircle2, XCircle, Zap } from 'lucide-react';
 import { cn, toTitleCase } from '@/lib/utils';
 import { usePlan } from '@/contexts/plan-context';
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { formatDistanceToNow, format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { usePaystackPayment } from 'react-paystack';
 
 const plansData = [
   {
     name: 'Free Trial',
     id: 'free_trial',
-    price: '₦0',
-    priceAnnually: '₦0',
+    price: 0,
+    priceAnnually: 0,
     description: 'For getting started and managing a small classroom.',
     isFeatured: false,
     features: [
@@ -35,8 +33,8 @@ const plansData = [
   {
     name: 'Basic',
     id: 'basic',
-    price: '₦1,500',
-    priceAnnually: '₦15,000',
+    price: 1500,
+    priceAnnually: 15000,
     description: 'Ideal for individual teachers managing multiple classes.',
     isFeatured: true,
     features: [
@@ -52,8 +50,8 @@ const plansData = [
   {
     name: 'Prime',
     id: 'prime',
-    price: '₦3,500',
-    priceAnnually: '₦35,000',
+    price: 3500,
+    priceAnnually: 35000,
     description: 'For power users or small schools needing full capabilities.',
     isFeatured: false,
     features: [
@@ -65,7 +63,6 @@ const plansData = [
     ],
   },
 ];
-
 
 const SubscriptionStatusCard = () => {
     const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
@@ -143,30 +140,61 @@ const SubscriptionStatusCard = () => {
 export default function BillingPage() {
   const { plan: currentPlanId, isSubscriptionExpired } = usePlan();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
-  const { firestore, user } = useFirebase();
+  const { user } = useFirebase();
   const { toast } = useToast();
 
-  const handleUpgrade = async (newPlanId: 'basic' | 'prime') => {
-      if (!user) {
+  const initializePayment = usePaystackPayment({
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+  });
+
+  const handleUpgrade = (newPlanId: 'basic' | 'prime') => {
+      if (!user || !user.email) {
           toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to upgrade.' });
           return;
       }
-      try {
-          const userRef = doc(firestore, 'users', user.uid);
-          await updateDoc(userRef, {
-              plan: newPlanId,
-              subscriptionCycle: billingCycle,
-              planStartDate: serverTimestamp(), // Reset the start date to now
+
+      const planDetails = plansData.find(p => p.id === newPlanId);
+      if (!planDetails) return;
+
+      const amount = billingCycle === 'monthly' ? planDetails.price : planDetails.priceAnnually;
+      const amountInKobo = amount * 100;
+
+      const onSuccess = async (reference: { reference: string }) => {
+        try {
+          const res = await fetch('/api/paystack/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference: reference.reference, planId: newPlanId, billingCycle, userId: user.uid }),
           });
-          toast({
-              title: 'Plan Updated!',
-              description: `You have successfully upgraded to the ${toTitleCase(newPlanId)} Plan.`,
-          });
-          // Force a reload to ensure the new context takes effect everywhere
-          window.location.reload();
-      } catch (error) {
-          toast({ variant: 'destructive', title: 'Upgrade Failed', description: 'Could not update your plan.' });
-      }
+  
+          const result = await res.json();
+
+          if (!res.ok || !result.success) {
+            throw new Error(result.message || 'Verification failed');
+          }
+          
+          toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded.' });
+          window.location.reload(); // To ensure context is fully updated
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          toast({ title: 'Verification Error', description: `There was an issue verifying your payment: ${errorMessage}. Please contact support.`, variant: 'destructive' });
+        }
+      };
+  
+      const onClose = () => {
+        toast({ title: 'Payment Cancelled', description: 'The payment process was not completed.' });
+      };
+
+      initializePayment({
+          onSuccess,
+          onClose,
+          config: {
+            email: user.email,
+            amount: amountInKobo,
+            currency: 'NGN',
+          }
+      });
   };
   
   const getButtonText = (planId: string, planName: string, isCurrentPlan: boolean) => {
@@ -223,6 +251,8 @@ export default function BillingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto items-start">
             {plansData.map((plan) => {
                 const isCurrentPlan = currentPlanId === plan.id;
+                const price = billingCycle === 'monthly' ? plan.price : plan.priceAnnually;
+                const displayPrice = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
                 
                 return (
                     <Card key={plan.id} className={cn("flex flex-col h-full", plan.isFeatured ? "border-primary border-2 shadow-lg" : "")}>
@@ -233,7 +263,7 @@ export default function BillingPage() {
                             <CardTitle className="font-headline">{plan.name}</CardTitle>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-4xl font-bold">
-                                    {billingCycle === 'monthly' ? plan.price : plan.priceAnnually}
+                                    {displayPrice}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
                                     /{billingCycle === 'monthly' ? 'month' : 'year'}
