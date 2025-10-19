@@ -173,7 +173,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
         reportCard: 'reportCardGenerations',
         lessonNote: 'lessonNoteGenerations',
         exam: 'examGenerations',
-    };
+    } as const;
     const fieldToIncrement = fieldMap[featureType];
     const newCount = aiUsage[fieldToIncrement] + 1;
 

@@ -18,6 +18,12 @@ type Settings = {
     plan?: 'free_trial' | 'basic' | 'prime';
     planStartDate?: Timestamp;
     subscriptionCycle?: 'monthly' | 'annually';
+    aiUsage?: {
+        reportCardGenerations?: number;
+        lessonNoteGenerations?: number;
+        examGenerations?: number;
+        usageCycleStartDate?: Timestamp;
+    };
 }
 
 type SettingsContextType = {
