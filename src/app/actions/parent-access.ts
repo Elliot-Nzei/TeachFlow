@@ -1,14 +1,18 @@
+
 'use server';
 
-import { collection, query, where, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
-import { getApps } from 'firebase/app';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { serviceAccount } from '@/firebase/service-account'; // Using a service account for admin access
 
-// This is a server-side only file. We need to initialize a separate Firebase app instance
-// to interact with Firestore from the server.
+// Initialize Firebase Admin SDK
 function getDb() {
-  const { firestore } = initializeFirebase();
-  return firestore;
+  if (getApps().length === 0) {
+    initializeApp({
+      credential: cert(serviceAccount)
+    });
+  }
+  return getFirestore();
 }
 
 export async function getStudentByParentId(parentId: string) {
@@ -17,60 +21,76 @@ export async function getStudentByParentId(parentId: string) {
     return { error: 'Parent ID is required.' };
   }
 
-  // Find the user that has this student
-  const usersRef = collection(db, 'users');
-  const usersSnapshot = await getDocs(usersRef);
-  
-  let studentDoc = null;
-  let userUid = null;
+  try {
+    const studentsRef = db.collectionGroup('students');
+    const q = studentsRef.where('parentId', '==', parentId);
+    const studentSnapshot = await q.get();
 
-  for (const userDoc of usersSnapshot.docs) {
-    const studentsRef = collection(db, `users/${userDoc.id}/students`);
-    const q = query(studentsRef, where('parentId', '==', parentId));
-    const studentSnapshot = await getDocs(q);
+    if (studentSnapshot.empty) {
+      return { error: 'Invalid Parent ID.' };
+    }
+
+    const studentDoc = studentSnapshot.docs[0];
+    const studentData = studentDoc.data();
+    const studentRef = studentDoc.ref;
+    const userUid = studentRef.parent.parent?.id; // Get the user ID from the path
+
+    if (!userUid) {
+      return { error: 'Could not determine the student\'s associated user.' };
+    }
+
+    // --- Access Limit Logic ---
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const lastAccessMonth = studentData.lastAccessMonth || '';
+    let accessCount = studentData.parentAccessCount || 0;
+
+    if (lastAccessMonth !== currentMonth) {
+      accessCount = 0;
+    }
+
+    if (accessCount >= 3) {
+      return { error: 'Monthly access limit reached. Please try again next month.' };
+    }
+
+    // Increment access count
+    await studentRef.update({
+        parentAccessCount: accessCount + 1,
+        lastAccessMonth: currentMonth
+    });
+
+    // Fetch grades for the student
+    const gradesRef = db.collection(`users/${userUid}/grades`);
+    const gradesQuery = gradesRef.where('studentId', '==', studentDoc.id);
+    const gradesSnapshot = await gradesQuery.get();
+    const grades = gradesSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+    // Helper to convert Timestamps to JSON-serializable strings
+    const toJSON = (data: any) => {
+        if (data && typeof data === 'object') {
+            for (const key in data) {
+                if (data[key] instanceof Timestamp) {
+                    data[key] = data[key].toDate().toISOString();
+                } else if (typeof data[key] === 'object') {
+                    toJSON(data[key]); // Recurse
+                }
+            }
+        }
+        return data;
+    };
     
-    if (!studentSnapshot.empty) {
-      studentDoc = studentSnapshot.docs[0];
-      userUid = userDoc.id;
-      break;
-    }
+    const finalStudentData = toJSON({ ...studentData, id: studentDoc.id });
+    const finalGrades = grades.map(g => toJSON(g));
+
+    return {
+      data: {
+        ...finalStudentData,
+        grades: finalGrades,
+      }
+    };
+
+  } catch (err) {
+      console.error("Error in getStudentByParentId:", err);
+      // This will now be caught by the frontend and show the generic error
+      throw new Error("A server error occurred while fetching student data.");
   }
-
-  if (!studentDoc || !userUid) {
-    return { error: 'Invalid Parent ID.' };
-  }
-
-  const studentData = { ...studentDoc.data(), id: studentDoc.id };
-
-  // --- Access Limit Logic ---
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const lastAccessMonth = studentData.lastAccessMonth || '';
-  let accessCount = studentData.parentAccessCount || 0;
-
-  if (lastAccessMonth !== currentMonth) {
-    accessCount = 0;
-  }
-
-  if (accessCount >= 3) {
-    return { error: 'Monthly access limit reached. Please try again next month.' };
-  }
-  
-  // Increment access count
-  await updateDoc(doc(db, `users/${userUid}/students`, studentDoc.id), {
-      parentAccessCount: increment(1),
-      lastAccessMonth: currentMonth
-  });
-  
-  // Fetch grades for the student
-  const gradesRef = collection(db, `users/${userUid}/grades`);
-  const gradesQuery = query(gradesRef, where('studentId', '==', studentDoc.id));
-  const gradesSnapshot = await getDocs(gradesQuery);
-  const grades = gradesSnapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
-
-  return {
-    data: {
-      ...studentData,
-      grades: grades,
-    }
-  };
 }
