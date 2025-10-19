@@ -1,5 +1,6 @@
+
 'use client';
-import { Button } from '@/components/ui/button';
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Zap } from 'lucide-react';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -10,7 +11,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { usePaystackPayment } from 'react-paystack';
+import dynamic from 'next/dynamic';
+
+const PaystackButton = dynamic(() => import('@/components/paystack/PaystackButton'), { ssr: false });
 
 const plansData = [
   {
@@ -143,58 +146,35 @@ export default function BillingPage() {
   const { user } = useFirebase();
   const { toast } = useToast();
 
-  const initializePayment = usePaystackPayment({
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-  });
-
-  const handleUpgrade = (newPlanId: 'basic' | 'prime') => {
-      if (!user || !user.email) {
-          toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to upgrade.' });
-          return;
-      }
-
-      const planDetails = plansData.find(p => p.id === newPlanId);
-      if (!planDetails) return;
-
-      const amount = billingCycle === 'monthly' ? planDetails.price : planDetails.priceAnnually;
-      const amountInKobo = amount * 100;
-
-      const onSuccess = async (reference: { reference: string }) => {
-        try {
-          const res = await fetch('/api/paystack/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reference: reference.reference, planId: newPlanId, billingCycle, userId: user.uid }),
-          });
-  
-          const result = await res.json();
-
-          if (!res.ok || !result.success) {
-            throw new Error(result.message || 'Verification failed');
-          }
-          
-          toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded.' });
-          window.location.reload(); // To ensure context is fully updated
-
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          toast({ title: 'Verification Error', description: `There was an issue verifying your payment: ${errorMessage}. Please contact support.`, variant: 'destructive' });
-        }
-      };
-  
-      const onClose = () => {
-        toast({ title: 'Payment Cancelled', description: 'The payment process was not completed.' });
-      };
-
-      initializePayment({
-          onSuccess,
-          onClose,
-          config: {
-            email: user.email,
-            amount: amountInKobo,
-            currency: 'NGN',
-          }
+  const handleSuccess = async (reference: { reference: string }, newPlanId: string) => {
+    if (!user) {
+        toast({ title: 'Authentication Error', description: 'You must be logged in to complete this action.', variant: 'destructive' });
+        return;
+    }
+    try {
+      const res = await fetch('/api/paystack/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference: reference.reference, planId: newPlanId, billingCycle, userId: user.uid }),
       });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Verification failed');
+      }
+      
+      toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded.' });
+      window.location.reload(); // To ensure context is fully updated
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: 'Verification Error', description: `There was an issue verifying your payment: ${errorMessage}. Please contact support.`, variant: 'destructive' });
+    }
+  };
+
+  const handleClose = () => {
+    toast({ title: 'Payment Cancelled', description: 'The payment process was not completed.' });
   };
   
   const getButtonText = (planId: string, planName: string, isCurrentPlan: boolean) => {
@@ -287,14 +267,18 @@ export default function BillingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                           <Button
-                                className="w-full"
-                                variant={isCurrentPlan && !isSubscriptionExpired ? 'outline' : (plan.isFeatured ? 'default' : 'outline')}
-                                disabled={(isCurrentPlan && !isSubscriptionExpired) || plan.id === 'free_trial'}
-                                onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
-                            >
-                                {getButtonText(plan.id, plan.name, isCurrentPlan)}
-                            </Button>
+                           <PaystackButton
+                                email={user?.email || ''}
+                                amount={price}
+                                onSuccess={(ref) => handleSuccess(ref, plan.id)}
+                                onClose={handleClose}
+                                planName={plan.name}
+                                isCurrentPlan={isCurrentPlan}
+                                isSubscriptionExpired={isSubscriptionExpired || false}
+                                billingCycle={billingCycle}
+                                getButtonText={getButtonText}
+                                planId={plan.id}
+                            />
                         </CardFooter>
                     </Card>
                 );
