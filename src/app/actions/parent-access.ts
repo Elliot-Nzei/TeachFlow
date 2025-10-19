@@ -1,17 +1,13 @@
 'use server';
 
 import { collection, query, where, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
-import { getSdks } from '@/firebase';
-import { initializeApp, getApps } from 'firebase/app';
-import { firebaseConfig } from '@/firebase/config';
+import { initializeFirebase } from '@/firebase';
+import { getApps } from 'firebase/app';
 
 // This is a server-side only file. We need to initialize a separate Firebase app instance
 // to interact with Firestore from the server.
 function getDb() {
-  if (!getApps().some(app => app.name === 'parent-access')) {
-    initializeApp(firebaseConfig, 'parent-access');
-  }
-  const { firestore } = getSdks(getApps().find(app => app.name === 'parent-access')!);
+  const { firestore } = initializeFirebase();
   return firestore;
 }
 
