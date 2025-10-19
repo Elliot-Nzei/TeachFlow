@@ -108,7 +108,7 @@ const SubscriptionStatusCard = () => {
         return () => clearInterval(interval);
     }, [renewalDate]);
 
-    if (isTrial || !plan || !renewalDate || timeLeft === 'N/A') {
+    if (isTrial || !plan || !renewalDate || timeLeft === 'N/A' || plan === 'free_trial') {
         return null;
     }
 
@@ -236,7 +236,7 @@ export default function BillingPage() {
                                 disabled={(isCurrentPlan && !isSubscriptionExpired) || plan.id === 'free_trial'}
                                 onClick={() => handleUpgrade(plan.id as 'basic' | 'prime')}
                             >
-                                {isCurrentPlan && isSubscriptionExpired ? 'Renew Plan' 
+                                {isCurrentPlan && isSubscriptionExpired && plan.id !== 'free_trial' ? 'Renew Plan' 
                                  : isCurrentPlan && !isSubscriptionExpired ? 'Your Current Plan'
                                  : plan.id === 'free_trial' ? 'Included'
                                  : `Upgrade to ${plan.name}`
