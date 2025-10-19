@@ -12,16 +12,19 @@ import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useStorage } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
     const { settings, setSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
     const { firestore, user } = useFirebase();
+    const storage = useStorage();
     
     const [previewLogo, setPreviewLogo] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
@@ -89,16 +92,50 @@ export default function SettingsPage() {
         const { id, value } = e.target;
         setSettings({[id]: value});
     };
+
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewLogo(reader.result as string);
+                handleLogoUpload(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleLogoUpload = async (dataUrl: string) => {
+        if (!user || !storage) return;
+
+        setIsUploading(true);
+        const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
+        
+        try {
+            await uploadString(storageRef, dataUrl, 'data_url');
+            const downloadURL = await getDownloadURL(storageRef);
+            
+            setSettings({ schoolLogo: downloadURL });
+            handleSaveChanges({ schoolLogo: downloadURL });
+
+            toast({ title: 'Logo Uploaded', description: 'Your school logo has been updated.' });
+        } catch (error) {
+            console.error("Logo upload failed: ", error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload your logo.' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
     
     const handleSelectChange = (id: string, value: string) => {
         setSettings({[id]: value});
     };
     
-    const handleSaveChanges = async () => {
+    const handleSaveChanges = async (extraUpdates: Partial<Settings> = {}) => {
         if (!user || !settings) return;
         setIsSaving(true);
         try {
-            const updates = { ...settings };
+            const updates = { ...settings, ...extraUpdates };
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, updates);
             setSettings(updates);
@@ -225,9 +262,8 @@ export default function SettingsPage() {
                      <div>
                         <div className="flex items-center gap-2 mb-2">
                            <Label>School Logo</Label>
-                           <Badge variant="outline">Coming Soon</Badge>
                         </div>
-                        <div className="flex items-center gap-4 mt-2 opacity-50 cursor-not-allowed">
+                        <div className="flex items-center gap-4 mt-2">
                             <Avatar className="h-24 w-24 rounded-md">
                                 <AvatarImage src={previewLogo} className="object-contain"/>
                                 <AvatarFallback className="rounded-md">
@@ -235,8 +271,8 @@ export default function SettingsPage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="logo" type="file" accept="image/*" className="w-full" disabled />
-                                <p className="text-xs text-muted-foreground">This feature is not yet available.</p>
+                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isUploading} />
+                                <p className="text-xs text-muted-foreground">Recommended: Square PNG/JPG.</p>
                             </div>
                         </div>
                     </div>
@@ -275,9 +311,9 @@ export default function SettingsPage() {
                 </div>
             </CardContent>
             <CardFooter>
-            <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isSaving ? 'Saving...' : 'Save Profile'}
+            <Button onClick={() => handleSaveChanges()} disabled={isSaving || isLoading || isUploading}>
+                {isSaving || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isSaving ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Profile'}
             </Button>
             </CardFooter>
         </Card>
@@ -307,7 +343,7 @@ export default function SettingsPage() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
+          <Button onClick={() => handleSaveChanges()} disabled={isSaving || isLoading || isUploading}>
             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {isSaving ? 'Saving...' : 'Save Academic Settings'}
           </Button>

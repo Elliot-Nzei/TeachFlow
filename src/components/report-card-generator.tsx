@@ -624,8 +624,16 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
   // If component is used for a single student (e.g. from parent portal)
   if (studentId) {
+      const studentForReport = allStudents?.find(s => s.id === studentId);
+      const classForStudent = studentForReport ? classes?.find(c => c.id === studentForReport.classId) : null;
       return (
-          <Button onClick={handleGenerateReports} disabled={loading || !canGenerate} variant={buttonVariant}>
+          <Button onClick={() => {
+              if (studentForReport && classForStudent) {
+                  setSelectedStudent(studentForReport);
+                  setSelectedClass(classForStudent);
+                  handleGenerateReports();
+              }
+          }} disabled={loading || !canGenerate} variant={buttonVariant}>
             {loading ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

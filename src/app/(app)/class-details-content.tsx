@@ -109,7 +109,6 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
     const gradesQuery = query(
       collection(firestore, 'users', user.uid, 'grades'),
       where('classId', '==', classId),
-      where('term', '==', 'Third Term'),
       where('session', '==', settings.currentSession)
     );
 
@@ -343,7 +342,7 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              This action will evaluate all students in <strong>{classDetails.name}</strong> for the <strong>{settings?.currentSession}</strong> session. Only students with an average score of 50% or higher in the third term will be promoted.
+              This action will evaluate all students in <strong>{classDetails.name}</strong> for the <strong>{settings?.currentSession}</strong> session. Only students with an average score of 50% or higher for the entire session will be promoted.
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
