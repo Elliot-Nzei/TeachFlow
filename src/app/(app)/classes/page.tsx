@@ -62,6 +62,7 @@ const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) =>
 type ClassCategory = 'Early Years' | 'Primary' | 'Junior Secondary' | 'Senior Secondary';
 
 const classCategories: ClassCategory[] = ['Early Years', 'Primary', 'Junior Secondary', 'Senior Secondary'];
+const earlyYearsGrades = ['Pre-Nursery', 'Basic 1', 'Basic 2', 'Basic 3'];
 
 
 export default function ClassesPage() {
@@ -71,16 +72,25 @@ export default function ClassesPage() {
     const { features } = usePlan();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newClassName, setNewClassName] = useState('');
-    const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
+    const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<ClassCategory | ''>('');
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('All');
     const isMobile = useIsMobile();
+    const [gradePopoverOpen, setGradePopoverOpen] = useState(false);
 
     const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
     const { data: classes, isLoading } = useCollection<Class>(classesQuery);
 
-    const classGrades = Array.from({length: 12}, (_, i) => i + 1);
+    const numericGrades = Array.from({ length: 12 }, (_, i) => String(i + 1));
+    
+    const gradeOptions = useMemo(() => {
+        if (selectedCategory === 'Early Years') {
+            return earlyYearsGrades;
+        }
+        return numericGrades;
+    }, [selectedCategory, numericGrades]);
+
 
     const atClassLimit = useMemo(() => {
         if (features.classLimit === 'Unlimited' || !classes) return false;
@@ -136,7 +146,7 @@ export default function ClassesPage() {
     };
     
     const filteredClasses = (category: string) => {
-        const sorted = (classes || []).sort((a,b) => a.grade - b.grade);
+        const sorted = (classes || []).sort((a,b) => String(a.grade).localeCompare(String(b.grade), undefined, {numeric: true}));
         if (category === 'All') return sorted;
         return sorted.filter(c => c.category === category);
     };
@@ -192,7 +202,7 @@ export default function ClassesPage() {
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="category" className="text-right">Category</Label>
                             <div className="col-span-3">
-                                <Select onValueChange={(value: ClassCategory) => setSelectedCategory(value)} value={selectedCategory}>
+                                <Select onValueChange={(value: ClassCategory) => {setSelectedCategory(value); setSelectedGrade(null);}} value={selectedCategory}>
                                     <SelectTrigger id="category">
                                         <SelectValue placeholder="Select category..." />
                                     </SelectTrigger>
@@ -205,10 +215,10 @@ export default function ClassesPage() {
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="grade" className="text-right">Grade</Label>
                             <div className="col-span-3">
-                                <Popover>
+                                <Popover open={gradePopoverOpen} onOpenChange={setGradePopoverOpen}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                                            {selectedGrade !== null ? `Grade ${selectedGrade}` : "Select grade..."}
+                                        <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedCategory}>
+                                            {selectedGrade !== null ? (selectedCategory === 'Early Years' ? selectedGrade : `Grade ${selectedGrade}`) : "Select grade..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
@@ -218,16 +228,17 @@ export default function ClassesPage() {
                                         <CommandList>
                                             <CommandEmpty>No grade found.</CommandEmpty>
                                             <CommandGroup>
-                                            {classGrades.map((grade) => (
+                                            {gradeOptions.map((grade) => (
                                                 <CommandItem
                                                 key={grade}
                                                 value={String(grade)}
                                                 onSelect={() => {
-                                                    setSelectedGrade(grade);
+                                                    setSelectedGrade(String(grade));
+                                                    setGradePopoverOpen(false);
                                                 }}
                                                 >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedGrade === grade ? "opacity-100" : "opacity-0")} />
-                                                Grade {grade}
+                                                <Check className={cn("mr-2 h-4 w-4", selectedGrade === String(grade) ? "opacity-100" : "opacity-0")} />
+                                                {selectedCategory === 'Early Years' ? grade : `Grade ${grade}`}
                                                 </CommandItem>
                                             ))}
                                             </CommandGroup>

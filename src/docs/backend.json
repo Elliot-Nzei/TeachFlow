@@ -96,8 +96,8 @@
           "description": "The name of the class (e.g., Primary 3A)."
         },
         "grade": {
-          "type": "number",
-          "description": "The academic grade of the class, used for promotion logic (e.g., 1 for Primary 1, 7 for JSS 1)."
+          "type": "string",
+          "description": "The academic grade of the class, used for promotion logic (e.g., '1' for Primary 1, 'Pre-Nursery')."
         },
         "category": {
           "type": "string",
@@ -180,11 +180,32 @@
               "session": { "type": "string" }
             }
           }
+        },
+        "parentId": {
+            "type": "string",
+            "description": "A unique, permanent ID for parent access."
+        },
+        "parentAccessCount": {
+            "type": "number",
+            "description": "How many times the parent has accessed the record this month."
+        },
+        "lastAccessMonth": {
+            "type": "string",
+            "description": "The last month the parent accessed the record (YYYY-MM)."
+        },
+        "transferredFrom": {
+            "type": "string",
+            "description": "The original user ID if this student record was transferred."
+        },
+        "originalStudentDocId": {
+            "type": "string",
+            "description": "The original document ID of the student from the source user account."
         }
       },
       "required": [
         "studentId",
-        "name"
+        "name",
+        "parentId"
       ]
     },
     "Subject": {
