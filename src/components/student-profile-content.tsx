@@ -292,7 +292,7 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
                 </div>
             </div>
             {!readOnly && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <ReportCardGenerator studentId={student.id} buttonLabel="Generate Report Card" buttonVariant="secondary" />
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
