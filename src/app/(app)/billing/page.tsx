@@ -161,15 +161,22 @@ export default function BillingPage() {
       const result = await res.json();
 
       if (!res.ok || !result.success) {
-        throw new Error(result.message || 'Verification failed');
+        const errorDetails = result.details ? `Details: ${result.details}` : '';
+        const errorSuggestion = result.suggestion ? `Suggestion: ${result.suggestion}` : '';
+        throw new Error(`${result.message || 'Verification failed.'} ${errorDetails} ${errorSuggestion}`);
       }
       
       toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded.' });
-      window.location.reload(); // To ensure context is fully updated
+      window.location.reload();
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: 'Verification Error', description: `There was an issue verifying your payment: ${errorMessage}. Please contact support.`, variant: 'destructive' });
+      toast({ 
+          title: 'Verification Error',
+          description: `There was an issue verifying your payment: ${errorMessage}. Please contact support if the issue persists.`,
+          variant: 'destructive',
+          duration: 9000 // Allow more time to read the detailed error
+      });
     }
   };
 
