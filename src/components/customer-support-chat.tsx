@@ -114,7 +114,7 @@ export default function CustomerSupportChat() {
                 )}
                 <div
                   className={cn(
-                    'max-w-[75%] rounded-lg px-3 py-2 text-sm prose dark:prose-invert prose-p:my-0 prose-ul:my-1 prose-li:my-0',
+                    'max-w-[75%] rounded-lg px-3 py-2 text-sm prose dark:prose-invert prose-p:my-0 prose-ul:my-1 prose-li:my-0 break-words',
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
