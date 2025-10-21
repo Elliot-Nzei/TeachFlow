@@ -10,9 +10,7 @@ import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useDoc, useFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useMemo }from 'react';
+import CustomerSupportChat from '@/components/customer-support-chat';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -229,6 +227,7 @@ export default function Home() {
           </Link>
         </nav>
       </footer>
+      <CustomerSupportChat />
     </div>
   );
 }
