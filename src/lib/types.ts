@@ -147,6 +147,7 @@ export type DataTransfer = {
   lessonNote?: LessonNote;
   grades?: Grade[];
   attendance?: Attendance[];
+  timetable?: Timetable;
 };
 
 export type Settings = {
@@ -163,6 +164,7 @@ export type Settings = {
   plan?: 'free_trial' | 'basic' | 'prime';
   planStartDate?: any;
   subscriptionCycle?: 'monthly' | 'annually';
+  reportCardTemplate?: 'classic' | 'modern' | 'compact';
   aiUsage?: {
       reportCardGenerations?: number;
       lessonNoteGenerations?: number;

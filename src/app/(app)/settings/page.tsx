@@ -16,6 +16,8 @@ import { useFirebase, useStorage } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Badge } from '@/components/ui/badge';
+import { toTitleCase } from '@/lib/utils';
+
 
 export default function SettingsPage() {
     const { settings, setSettings: setContextSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
@@ -97,8 +99,6 @@ export default function SettingsPage() {
         try {
             const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
             
-            // The previewLogo is a data URL (e.g., "data:image/png;base64,...")
-            // We need to upload it correctly.
             await uploadString(storageRef, previewLogo, 'data_url');
             
             const downloadURL = await getDownloadURL(storageRef);
@@ -106,7 +106,6 @@ export default function SettingsPage() {
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, { schoolLogo: downloadURL });
             
-            // Update context immediately to reflect the change
             setContextSettings({ schoolLogo: downloadURL });
 
             toast({ title: 'Logo Saved', description: 'Your new school logo has been saved.' });
@@ -115,7 +114,6 @@ export default function SettingsPage() {
             console.error("Error saving logo:", error);
             toast({ variant: 'destructive', title: 'Logo Save Failed', description: 'Could not save your new logo.' });
         } finally {
-            // CRITICAL: Always reset the saving state
             setIsSavingLogo(false);
         }
     };
@@ -129,7 +127,6 @@ export default function SettingsPage() {
         if (!user || !localSettings) return;
         setIsSaving(true);
         
-        // Exclude logo from this update, as it's handled separately.
         const { schoolLogo, ...otherSettings } = localSettings;
 
         try {
@@ -319,8 +316,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Academic Settings</CardTitle>
-          <CardDescription>Set the current term and session for new records.</CardDescription>
+          <CardTitle>Preferences</CardTitle>
+          <CardDescription>Set application-wide preferences for your account.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -338,7 +335,20 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="currentSession">Current Session</Label>
-            <Input id="currentSession" value={localSettings?.currentSession || ''} onChange={handleInputChange} disabled={isSaving}/>
+            <Input id="currentSession" value={localSettings?.currentSession || ''} onChange={handleInputChange} placeholder="e.g., 2024/2025" disabled={isSaving}/>
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="reportCardTemplate">Report Card Template</Label>
+            <Select value={localSettings?.reportCardTemplate || 'classic'} onValueChange={(value) => handleSelectChange('reportCardTemplate', value)} disabled={isSaving}>
+              <SelectTrigger id="reportCardTemplate">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic">Classic</SelectItem>
+                <SelectItem value="modern">Modern</SelectItem>
+                <SelectItem value="compact">Compact</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
         <CardFooter>
@@ -406,5 +416,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    

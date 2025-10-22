@@ -67,6 +67,11 @@
             "enum": ["monthly", "annually"],
             "description": "The billing cycle for the subscription."
         },
+        "reportCardTemplate": {
+            "type": "string",
+            "enum": ["classic", "modern", "compact"],
+            "description": "The selected template for generating report cards."
+        },
         "aiUsage": {
             "type": "object",
             "description": "Tracks monthly AI feature usage.",
@@ -456,6 +461,9 @@
           "items": {
             "$ref": "#/entities/Trait"
           }
+        },
+        "timetable": {
+            "$ref": "#/entities/Timetable"
         }
       },
       "required": [

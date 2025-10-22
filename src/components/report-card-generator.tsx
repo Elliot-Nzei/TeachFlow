@@ -15,21 +15,22 @@ import type { Student, Class, Grade } from '@/lib/types';
 import { FileDown, Loader2, Printer, Search, User, Users, Medal, Award, Star, X, AlertCircle, ChevronsUpDown, School, Lock, CheckCircle2 } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Logo } from './logo';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Progress } from './ui/progress';
 import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from './ui/skeleton';
-import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Separator } from './ui/separator';
 import { usePlan } from '@/contexts/plan-context';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import ClassicReportCard from './report-card-templates/ClassicReportCard';
+import ModernReportCard from './report-card-templates/ModernReportCard';
+import CompactReportCard from './report-card-templates/CompactReportCard';
 
-type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
+
+export type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
   studentName: string;
   studentId: string;
   className: string;
@@ -53,185 +54,6 @@ type ReportCardGeneratorProps = {
     buttonLabel?: string;
     buttonVariant?: ButtonProps['variant'];
 }
-
-const getGradeColor = (score: number) => {
-    if (score >= 70) return 'bg-green-500';
-    if (score >= 60) return 'bg-blue-500';
-    if (score >= 50) return 'bg-yellow-500';
-    if (score >= 45) return 'bg-orange-500';
-    return 'bg-red-500';
-};
-
-const PositionBadge = ({ position }: { position: number }) => {
-  const getOrdinal = (n: number) => {
-    if (n <= 0) return `${n}`;
-    const s = ["th", "st", "nd", "rd"];
-    const v = n % 100;
-    return n + (s[(v - 20) % 10] || s[v] || s[0]);
-  };
-
-  const configs = [
-    { threshold: 1, color: "text-yellow-500", Icon: Award, label: "1st" },
-    { threshold: 2, color: "text-slate-400", Icon: Medal, label: "2nd" },
-    { threshold: 3, color: "text-amber-700", Icon: Award, label: "3rd" },
-    { threshold: 10, color: "text-blue-600", Icon: X, label: getOrdinal(position) },
-  ];
-
-  const config = configs.find(c => position <= c.threshold) || 
-    { color: "text-gray-600", Icon: null, label: getOrdinal(position) };
-  
-  if (position <= 0) {
-    config.label = "N/A";
-  }
-
-  return (
-    <div className={cn('flex flex-col items-center justify-center', config.color)}>
-      {config.Icon && <config.Icon className="h-10 w-10" />}
-      <span className="text-lg font-bold">{config.label}</span>
-      <span className="text-xs font-medium">Position</span>
-    </div>
-  );
-};
-
-
-const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
-    const getRatingText = (rating: number) => {
-        const ratings: Record<number, string> = { 5: "Excellent", 4: "Very Good", 3: "Good", 2: "Fair", 1: "Poor" };
-        return ratings[rating] || "N/A";
-    };
-
-    const affectiveTraits = (report.traits || []).filter(t => ["Punctuality", "Neatness", "Honesty", "Cooperation", "Attentiveness"].includes(t.name));
-    const psychomotorSkills = (report.traits || []).filter(t => !affectiveTraits.map(at => at.name).includes(t.name));
-
-    return (
-        <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-xl border border-gray-200 rounded-lg">
-            <div className="p-6">
-                 {/* Header */}
-                <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center p-1">
-                            {report.schoolLogo ? <img src={report.schoolLogo} alt="School Logo" className="object-contain h-full w-full" /> : <School className="h-8 w-8 text-gray-400" />}
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-extrabold text-gray-800 uppercase">{report.schoolName || 'Your School Name'}</h1>
-                            <p className="text-[10px] text-gray-600">{report.schoolAddress || 'School Address Here'}</p>
-                            {report.schoolMotto && <p className="text-[10px] italic text-gray-500">"{report.schoolMotto}"</p>}
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <h2 className="text-lg font-bold text-gray-800">TERMINAL REPORT CARD</h2>
-                        <p className="text-xs text-gray-600">{report.term}, {report.session}</p>
-                    </div>
-                </div>
-
-                 {/* Student Info */}
-                <div className="mb-4">
-                    <div className="flex justify-between items-baseline">
-                        <div>
-                            <span className="text-xs text-gray-500">Student Name:</span>
-                            <p className="font-bold text-lg text-gray-800">{report.studentName}</p>
-                        </div>
-                        <div>
-                            <span className="text-xs text-gray-500">Class:</span>
-                            <p className="font-bold text-lg text-gray-800">{report.className}</p>
-                        </div>
-                        <div>
-                            <span className="text-xs text-gray-500">Student ID:</span>
-                            <p className="font-mono text-sm text-gray-600">{report.studentId}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Academic Performance */}
-                <div className="mb-4">
-                    <h3 className="font-bold text-gray-700 text-sm mb-1 border-b pb-1">ACADEMIC PERFORMANCE</h3>
-                    <table className="w-full text-[9px] border-collapse">
-                        <thead>
-                        <tr className="bg-gray-100">
-                            <th className="border p-1 text-left align-middle font-semibold">SUBJECT</th>
-                            <th className="border p-1 align-middle font-semibold">CA1 (20)</th>
-                            <th className="border p-1 align-middle font-semibold">CA2 (20)</th>
-                            <th className="border p-1 align-middle font-semibold">EXAM (60)</th>
-                            <th className="border p-1 align-middle font-semibold">TOTAL (100)</th>
-                            <th className="border p-1 align-middle font-semibold">GRADE</th>
-                            <th className="border p-1 align-middle font-semibold">REMARK</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {report.grades.map((subject, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                                <td className="border p-1 font-semibold align-middle">{subject.subject}</td>
-                                <td className="border p-1 text-center align-middle">{subject.ca1 ?? 'N/A'}</td>
-                                <td className="border p-1 text-center align-middle">{subject.ca2 ?? 'N/A'}</td>
-                                <td className="border p-1 text-center align-middle">{subject.exam ?? 'N/A'}</td>
-                                <td className="border p-1 text-center font-bold align-middle">{subject.total}</td>
-                                <td className="border p-1 text-center font-bold align-middle">{subject.grade}</td>
-                                <td className="border p-1 text-center align-middle">{subject.remark}</td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Summary & Traits */}
-                <div className="grid grid-cols-12 gap-4 mb-4">
-                    <div className="col-span-8">
-                        <h3 className="font-bold text-gray-700 text-sm mb-1 border-b pb-1">PERFORMANCE SUMMARY & TRAITS</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                             <div>
-                                <h4 className="font-semibold text-gray-700 text-[10px] mb-1">AFFECTIVE DOMAIN</h4>
-                                <table className="w-full text-[9px] border-collapse">
-                                    <tbody>
-                                    {affectiveTraits.map((trait, index) => (
-                                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border p-1 align-middle">{trait.name}</td><td className="border p-1 text-center font-bold align-middle">{getRatingText(trait.rating)}</td></tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-gray-700 text-[10px] mb-1">PSYCHOMOTOR SKILLS</h4>
-                                <table className="w-full text-[9px] border-collapse">
-                                    <tbody>
-                                    {psychomotorSkills.map((skill, index) => (
-                                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}><td className="border p-1 align-middle">{skill.name}</td><td className="border p-1 text-center font-bold align-middle">{getRatingText(skill.rating)}</td></tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                     <div className="col-span-4 bg-gray-50 p-2 rounded-lg border">
-                        <div className="text-center">
-                            <p className="text-xs text-gray-600">Total Score</p>
-                            <p className="text-2xl font-bold text-gray-800">{report.totalScore}</p>
-                        </div>
-                        <hr className="my-2"/>
-                        <div className="flex justify-between text-center">
-                             <div>
-                                <p className="text-xs text-gray-600">Average</p>
-                                <p className="text-xl font-bold text-gray-800">{report.averageScore.toFixed(1)}%</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-600">Position</p>
-                                <p className="text-xl font-bold text-gray-800">{report.position > 0 ? `${report.position}/${report.totalStudents}` : 'N/A'}</p>
-                            </div>
-                        </div>
-                         <hr className="my-2"/>
-                         <p className="text-[9px] text-gray-600 mt-1 italic text-center">Rating: 5-Excellent, 4-V.Good, 3-Good, 2-Fair, 1-Poor</p>
-                    </div>
-                </div>
-
-                {/* Comments */}
-                <div className="space-y-2 text-[10px]">
-                    <div><h3 className="font-bold text-gray-700 text-sm mb-0.5">FORM TEACHER'S COMMENT:</h3><div className="bg-gray-50 p-2 border text-[10px] min-h-[30px] italic"><p>{report.formTeacherComment}</p></div></div>
-                    <div><h3 className="font-bold text-gray-700 text-sm mb-0.5">PRINCIPAL'S COMMENT:</h3><div className="bg-gray-50 p-2 border text-[10px] min-h-[30px] italic"><p>{report.principalComment}</p></div></div>
-                </div>
-                 <div className="text-center bg-gray-800 text-white py-1 mt-4 rounded-b-lg"><p className="font-bold text-xs">Next Term Begins: TBA</p></div>
-            </div>
-        </div>
-    )
-};
-
 
 export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate Reports', buttonVariant = 'default' }: ReportCardGeneratorProps) {
   const { firestore, user } = useFirebase();
@@ -277,14 +99,12 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   const classAverages = useMemo(() => {
     if (!allGrades || !selectedClass) return [];
     
-    // Filter grades to only include those from the selected class for the current term/session
     const relevantGrades = allGrades.filter(
         g => g.classId === selectedClass.id &&
              g.session === settings?.currentSession &&
              g.term === settings?.currentTerm
     );
 
-    // Calculate averages for students in the selected class
     return studentsInClass
       .map(student => {
         const studentGrades = relevantGrades.filter(g => g.studentId === student.id && typeof g.total === 'number');
@@ -529,7 +349,6 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
     const doc = new jsPDF('p', 'mm', 'a4');
     const a4_width = 210;
-    const a4_height = 297;
 
     try {
         for (let i = 0; i < generatedReports.length; i++) {
@@ -544,12 +363,11 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
             }
             
             const clone = reportElement.cloneNode(true) as HTMLElement;
-            // Temporarily append the clone to the body to ensure it's rendered for html2canvas
             clone.style.position = 'absolute';
             clone.style.left = '-9999px';
             clone.style.top = '0px';
-            clone.style.width = `${a4_width}mm`; // Set explicit width
-            clone.style.height = 'auto'; // Let height be auto
+            clone.style.width = `${a4_width}mm`;
+            clone.style.height = 'auto';
             clone.style.display = 'block';
             clone.style.visibility = 'visible';
             document.body.appendChild(clone);
@@ -557,7 +375,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
             let canvas;
             try {
                 canvas = await html2canvas(clone, {
-                    scale: 2, // Increase resolution
+                    scale: 2,
                     useCORS: true,
                     backgroundColor: '#ffffff',
                     width: clone.scrollWidth,
@@ -571,11 +389,10 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                 }
 
             } finally {
-                // Always clean up the cloned element
                 document.body.removeChild(clone);
             }
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.98); // Use high quality jpeg
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
             if (!imgData || imgData === 'data:,') {
                 throw new Error('Failed to generate image data from canvas');
             }
@@ -611,6 +428,18 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     }
 };
 
+  const ReportCardComponent = useMemo(() => {
+    switch(settings?.reportCardTemplate) {
+        case 'modern':
+            return ModernReportCard;
+        case 'compact':
+            return CompactReportCard;
+        case 'classic':
+        default:
+            return ClassicReportCard;
+    }
+  }, [settings?.reportCardTemplate]);
+
 
   const isLoadingData = isLoadingClasses || isLoadingStudents || isLoadingGrades || isLoadingTraits || isLoadingAttendance;
   
@@ -623,7 +452,6 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
       )
   }
 
-  // If component is used for a single student (e.g. from parent portal)
   if (studentId) {
       const studentForReport = allStudents?.find(s => s.id === studentId);
       const classForStudent = studentForReport ? classes?.find(c => c.id === studentForReport.classId) : null;
@@ -871,7 +699,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
       <div className="hidden print:block space-y-4">
         {generatedReports.map((report, index) => (
           <Fragment key={report.studentId}>
-            <ReportCard report={report} />
+            <ReportCardComponent report={report} />
             {index < generatedReports.length - 1 && <div className="page-break" />}
           </Fragment>
         ))}
@@ -920,5 +748,3 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     </>
   );
 }
-
-    
