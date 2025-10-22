@@ -32,13 +32,6 @@ export default function ParentRegisterPage() {
         try {
             if (!firestore || !auth) throw new Error("Firebase services not available.");
 
-            // Check if email is already in use by a teacher
-            const teacherQuery = query(collection(firestore, 'users'), where('email', '==', email));
-            const teacherSnapshot = await getDocs(teacherQuery);
-            if (!teacherSnapshot.empty) {
-                throw new FirebaseError('auth/email-already-in-use', "This email is registered as a teacher. Please use a different email or log in as a teacher.");
-            }
-
             // 1. Create user account
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
