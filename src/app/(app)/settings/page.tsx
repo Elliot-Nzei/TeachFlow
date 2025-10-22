@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clipboard, Loader2, AlertTriangle, School } from 'lucide-react';
+import { Clipboard, Loader2, AlertTriangle, School, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +15,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useFirebase, useStorage } from '@/firebase';
 import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
     const { settings, setSettings: setContextSettings, isLoading: isLoadingSettings } = useContext(SettingsContext);
@@ -25,6 +24,7 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState(settings);
     const [previewLogo, setPreviewLogo] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isSavingLogo, setIsSavingLogo] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState('');
@@ -80,6 +80,37 @@ export default function SettingsPage() {
             reader.readAsDataURL(file);
         }
     };
+    
+    const handleSaveLogo = async () => {
+        if (!user || !previewLogo || previewLogo === settings?.schoolLogo) {
+            toast({ title: 'No Changes', description: 'No new logo to save.' });
+            return;
+        }
+
+        setIsSavingLogo(true);
+        try {
+            if (!storage) {
+                throw new Error('Firebase Storage is not available.');
+            }
+            const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
+            await uploadString(storageRef, previewLogo, 'data_url');
+            const downloadURL = await getDownloadURL(storageRef);
+
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, { schoolLogo: downloadURL });
+            
+            setContextSettings({ schoolLogo: downloadURL });
+
+            toast({ title: 'Logo Saved', description: 'Your new school logo has been saved.' });
+
+        } catch (error) {
+            console.error("Error saving logo:", error);
+            toast({ variant: 'destructive', title: 'Logo Save Failed', description: 'Could not save your new logo.' });
+        } finally {
+            setIsSavingLogo(false);
+        }
+    };
+
 
     const handleSelectChange = (id: string, value: string) => {
         setLocalSettings(prev => prev ? {...prev, [id]: value} : null);
@@ -88,28 +119,15 @@ export default function SettingsPage() {
     const handleSaveChanges = async () => {
         if (!user || !localSettings) return;
         setIsSaving(true);
-        let updatedSettings = { ...localSettings };
+        
+        // Exclude logo from this update, as it's handled separately.
+        const { schoolLogo, ...otherSettings } = localSettings;
 
         try {
-            // Check if the logo has changed and needs to be uploaded
-            if (previewLogo && previewLogo !== settings?.schoolLogo) {
-                if (!storage) {
-                    toast({ variant: 'destructive', title: 'Storage Error', description: 'Firebase Storage is not available.' });
-                    setIsSaving(false);
-                    return;
-                }
-                const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
-                await uploadString(storageRef, previewLogo, 'data_url');
-                const downloadURL = await getDownloadURL(storageRef);
-                updatedSettings.schoolLogo = downloadURL;
-                setPreviewLogo(downloadURL);
-            }
-
             const userRef = doc(firestore, 'users', user.uid);
-            await updateDoc(userRef, updatedSettings);
+            await updateDoc(userRef, otherSettings);
             
-            // Update the context after saving
-            setContextSettings(updatedSettings);
+            setContextSettings(otherSettings);
 
             toast({
                 title: 'Settings Saved',
@@ -247,6 +265,10 @@ export default function SettingsPage() {
                             <div className="grid w-full max-w-sm items-center gap-1.5">
                                 <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isSaving} />
                                 <p className="text-xs text-muted-foreground">Recommended: Square PNG/JPG.</p>
+                                <Button onClick={handleSaveLogo} disabled={isSavingLogo} size="sm" className="w-fit">
+                                    {isSavingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+                                    Save Logo
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -310,13 +332,13 @@ export default function SettingsPage() {
             <Input id="currentSession" value={localSettings?.currentSession || ''} onChange={handleInputChange} disabled={isSaving}/>
           </div>
         </CardContent>
-      </Card>
-        <CardFooter className="px-0">
+        <CardFooter>
           <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isSaving ? 'Saving...' : 'Save All Settings'}
+            {isSaving ? 'Saving...' : 'Save Settings'}
           </Button>
         </CardFooter>
+      </Card>
 
       <Card className="border-destructive">
           <CardHeader>
@@ -375,5 +397,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    

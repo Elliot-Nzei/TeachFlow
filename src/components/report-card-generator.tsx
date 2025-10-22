@@ -418,6 +418,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
                       lateDays
                   },
                   traits: studentTraits.flatMap(t => {
+                      if (!t.traits) return [];
                       const traitEntries = Object.entries(t.traits);
                       return traitEntries.map(([name, rating]) => ({ name, rating: rating as number }));
                   }),
