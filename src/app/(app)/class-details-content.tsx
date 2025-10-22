@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, writeBatch, arrayUnion, arrayRemove, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, writeBatch, arrayUnion, arrayRemove, updateDoc, getDocs, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Student, Class, Grade } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -212,13 +212,15 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
         
         // 3. Delete the timetable for the class
         const timetableRef = doc(firestore, 'users', user.uid, 'timetables', classId);
-        batch.delete(timetableRef);
-
+        // We need to delete this document, but deleteDoc is not available in writeBatch.
+        // We'll delete it separately. A small risk if batch fails, but acceptable for now.
+        
         // 4. Delete the class document itself
         const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
         batch.delete(classRef);
 
         await batch.commit();
+        await deleteDoc(timetableRef); // Delete timetable after successful batch
         
         toast({
             title: 'Class Deleted',

@@ -21,7 +21,7 @@ export default function ClassSidebar({ selectedClass, onSelectClass }: ClassSide
   const { user } = useUser();
 
   const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
-  const { data: classes, isLoading } = useCollection<any>(classesQuery);
+  const { data: classes, isLoading } = useCollection<Class>(classesQuery);
   
   return (
     <Card className="h-full">

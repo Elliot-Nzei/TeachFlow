@@ -37,10 +37,11 @@ type FullBackup = {
     attendance: any[];
     traits: any[];
     payments: any[];
+    timetables: any[];
   };
 };
 
-const collectionsToBackup = ['classes', 'students', 'subjects', 'grades', 'attendance', 'traits', 'payments'];
+const collectionsToBackup = ['classes', 'students', 'subjects', 'grades', 'attendance', 'traits', 'payments', 'timetables'];
 
 const initialSelectionState = {
   classDetails: true,
@@ -182,7 +183,7 @@ export default function DataManagementPage() {
 
     try {
       const backupData: FullBackup['data'] = {
-        classes: [], students: [], subjects: [], grades: [], attendance: [], traits: [], payments: []
+        classes: [], students: [], subjects: [], grades: [], attendance: [], traits: [], payments: [], timetables: []
       };
 
       for (const collectionName of collectionsToBackup) {
@@ -447,7 +448,14 @@ export default function DataManagementPage() {
 
             if (classQuerySnap.empty) {
                 classRef = doc(classesRef);
-                batch.set(classRef, { ...transfer.data, students: studentDocIdsToMerge, transferredFrom: transfer.fromUserId, transferredAt: serverTimestamp() });
+                const classData = {
+                  ...transfer.data,
+                  students: selections.students ? studentDocIdsToMerge : [],
+                  subjects: selections.subjects ? transfer.data.subjects || [] : [],
+                  transferredFrom: transfer.fromUserId,
+                  transferredAt: serverTimestamp(),
+                };
+                batch.set(classRef, classData);
             } else {
                 classRef = classQuerySnap.docs[0].ref;
                 batch.update(classRef, { 
