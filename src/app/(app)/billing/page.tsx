@@ -26,9 +26,9 @@ const plansData = [
     features: [
       { text: 'Up to 25 Students' },
       { text: 'Up to 5 Classes' },
-      { text: 'AI Report Card Generation', included: false },
-      { text: 'AI Lesson Note Generation', included: false },
-      { text: 'AI Exam Question Generation', included: false },
+      { text: 'AI Report Card Generation (3/mo)', included: true },
+      { text: 'AI Lesson Note Generation (3/mo)', included: true },
+      { text: 'AI Exam Question Generation (3/mo)', included: true },
       { text: 'Secure Data Transfer', included: false },
       { text: 'Full System Export', included: false },
     ],
