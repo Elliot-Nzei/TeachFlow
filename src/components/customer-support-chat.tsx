@@ -11,7 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle as VisuallyHiddenTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+
 
 type Message = {
   role: 'user' | 'model';
@@ -107,6 +109,9 @@ export default function CustomerSupportChat({ isOpen, onOpenChange }: CustomerSu
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 border-0 w-[400px] h-[600px] flex flex-col" hideCloseButton>
+        <DialogHeader className="sr-only">
+          <VisuallyHiddenTitle>TeachFlow AI Assistant</VisuallyHiddenTitle>
+        </DialogHeader>
         <Card className="h-full flex flex-col shadow-2xl rounded-lg">
           <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
             <div className="flex items-center space-x-3">
@@ -193,7 +198,7 @@ export default function CustomerSupportChat({ isOpen, onOpenChange }: CustomerSu
                 aria-label="Message input"
               />
               <Button 
-                type="submit"
+                onClick={handleSendMessage}
                 size="icon" 
                 disabled={isLoading || !input.trim()}
                 aria-label="Send message"
