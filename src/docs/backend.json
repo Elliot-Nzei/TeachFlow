@@ -527,7 +527,10 @@
     },
      "/parents/{parentId}": {
       "schema": { "$ref": "#/entities/Parent"},
-      "description": "Stores parent user profiles."
+      "description": "Stores parent user profiles. Parent can create their own account.",
+      "allow": {
+          "create": "request.auth != null"
+      }
     },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
@@ -571,3 +574,5 @@
     }
   }
 }
+
+    
