@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user in the TeachFlow School Management System.",
+      "description": "Represents a user (teacher/admin) in the TeachFlow School Management System.",
       "properties": {
         "name": {
           "type": "string",
@@ -84,6 +84,34 @@
         "userCode",
         "schoolName"
       ]
+    },
+    "Parent": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parent",
+        "type": "object",
+        "description": "Represents a parent user account.",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "The parent's full name."
+            },
+            "email": {
+                "type": "string",
+                "description": "The parent's email address.",
+                "format": "email"
+            },
+            "linkedStudentIds": {
+                "type": "array",
+                "description": "A list of Firestore document IDs for the children linked to this parent.",
+                "items": { "type": "string" }
+            },
+             "linkedParentIds": {
+                "type": "array",
+                "description": "A list of human-readable Parent IDs (e.g., PARENT-XYZ) linked to this account.",
+                "items": { "type": "string" }
+            }
+        },
+        "required": ["name", "email", "linkedStudentIds", "linkedParentIds"]
     },
     "Class": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -495,7 +523,11 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User"},
-      "description": "Stores user profile and application settings."
+      "description": "Stores user profile (teacher/admin) and application settings."
+    },
+     "/parents/{parentId}": {
+      "schema": { "$ref": "#/entities/Parent"},
+      "description": "Stores parent user profiles."
     },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
