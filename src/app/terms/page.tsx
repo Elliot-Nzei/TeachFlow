@@ -58,7 +58,7 @@ export default function TermsOfServicePage() {
             <p>We reserve the right to modify these Terms at any time. We will provide notice of any changes by posting the new Terms on this page. Your continued use of the Service after any such changes constitutes your acceptance of the new Terms.</p>
 
             <h2>12. Contact Us</h2>
-            <p>If you have any questions about these Terms, please contact us at support@teachflow.example.com.</p>
+            <p>If you have any questions about these Terms, please contact us at teachflowcontact@gmail.com.</p>
 
           </div>
         </div>
