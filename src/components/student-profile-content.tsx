@@ -6,9 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home, KeyRound, Clipboard } from 'lucide-react';
+import { Trash2, CalendarCheck, CheckCircle, XCircle, Clock, Star, Edit, UserCircle2, Home, KeyRound, Clipboard, Save, X } from 'lucide-react';
 import { useDoc, useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, collection, query, where, writeBatch, getDocs, arrayRemove, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -24,6 +24,7 @@ import ReportCardGenerator from './report-card-generator';
 import { Input } from './ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import type { Class } from '@/lib/types';
 
 const TRAIT_DEFINITIONS = {
     affective: ['Punctuality', 'Neatness', 'Honesty', 'Cooperation', 'Attentiveness'],
@@ -177,12 +178,23 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('academic-record');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingClassId, setEditingClassId] = useState('');
   const isMobile = useIsMobile();
   
   const studentDocQuery = useMemoFirebase(() => (user && studentId && !readOnly) ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId, readOnly]);
   const { data: studentFromDb, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
 
   const student = readOnly ? initialStudent : studentFromDb;
+
+  useEffect(() => {
+    if (student) {
+        setEditingClassId(student.classId || '');
+    }
+  }, [student]);
+  
+  const classesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'classes')) : null, [firestore, user]);
+  const { data: classes, isLoading: isLoadingClasses } = useCollection<Class>(classesQuery);
   
   const gradesQuery = useMemoFirebase(() => (user && student?.id) ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', student.id)) : null, [firestore, user, student?.id]);
   const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
@@ -214,6 +226,53 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
       });
     }
   }, [student, toast]);
+
+  const handleSaveChanges = async () => {
+    if (readOnly || !student || !user || editingClassId === student.classId) {
+        setIsEditing(false);
+        return;
+    }
+
+    const batch = writeBatch(firestore);
+    const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
+    
+    // 1. Remove student from old class (if they had one)
+    if (student.classId) {
+        const oldClassRef = doc(firestore, 'users', user.uid, 'classes', student.classId);
+        batch.update(oldClassRef, {
+            students: arrayRemove(student.id)
+        });
+    }
+
+    const newClass = classes?.find(c => c.id === editingClassId);
+
+    // 2. Add student to new class (if one is selected)
+    if (newClass) {
+        const newClassRef = doc(firestore, 'users', user.uid, 'classes', newClass.id);
+        batch.update(newClassRef, {
+            students: arrayUnion(student.id)
+        });
+    }
+
+    // 3. Update the student's document
+    batch.update(studentRef, {
+        classId: newClass?.id || '',
+        className: newClass?.name || ''
+    });
+
+    try {
+        await batch.commit();
+        toast({
+            title: 'Student Updated',
+            description: `${student.name} has been moved to ${newClass?.name || 'Unassigned'}.`
+        });
+    } catch(err) {
+        console.error("Error reassigning student:", err);
+        toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not reassign the student.'});
+    } finally {
+        setIsEditing(false);
+    }
+  };
   
   const handleDeleteStudent = async () => {
     if (readOnly || !student || !user) return;
@@ -262,7 +321,7 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
     }
   };
   
-  const isLoading = !readOnly && isLoadingStudent;
+  const isLoading = !readOnly && (isLoadingStudent || isLoadingClasses);
 
   if (isLoading) {
     return (
@@ -303,36 +362,63 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
                     <AvatarImage src={student.avatarUrl} alt={student.name} />
                     <AvatarFallback className="text-3xl">{student.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="space-y-1">
                     <h2 className="text-2xl font-bold font-headline">{student.name}</h2>
                     <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
-                    {student.className && <Badge variant="outline" className="mt-1">{student.className}</Badge>}
+                    {isEditing ? (
+                        <Select value={editingClassId} onValueChange={setEditingClassId}>
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Select class..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">Unassigned</SelectItem>
+                                {classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        student.className ? <Badge variant="outline">{student.className}</Badge> : <Badge variant="destructive">Unassigned</Badge>
+                    )}
                 </div>
             </div>
             {!readOnly && (
-                <div className="flex flex-wrap gap-2">
-                    <ReportCardGenerator studentId={student.id} buttonLabel="Generate Report Card" buttonVariant="secondary" />
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" className="w-full sm:w-auto">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                 <div className="flex flex-col-reverse sm:flex-row gap-2">
+                    {isEditing ? (
+                        <>
+                            <Button variant="outline" size="sm" onClick={() => {setIsEditing(false); setEditingClassId(student.classId || '');}}>
+                                <X className="mr-2 h-4 w-4" /> Cancel
                             </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades, attendance, and traits.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting}>
-                                {isDeleting ? "Deleting..." : "Delete"}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                            <Button size="sm" onClick={handleSaveChanges}>
+                                <Save className="mr-2 h-4 w-4" /> Save Changes
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Profile
+                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades, attendance, and traits.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting}>
+                                        {isDeleting ? "Deleting..." : "Delete"}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -411,9 +497,14 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
         )}
         <TabsContent value="academic-record" className="mt-6">
              <Card>
-                <CardHeader>
-                    <CardTitle>Academic Record</CardTitle>
-                    <CardDescription>Grades for all sessions.</CardDescription>
+                <CardHeader className="flex flex-row justify-between items-center">
+                    <div>
+                        <CardTitle>Academic Record</CardTitle>
+                        <CardDescription>Grades for all sessions.</CardDescription>
+                    </div>
+                     {!readOnly && (
+                       <ReportCardGenerator studentId={student.id} buttonLabel="Generate Term Report" buttonVariant="secondary" />
+                    )}
                 </CardHeader>
                 <CardContent>
                      <div className="md:hidden space-y-3">
