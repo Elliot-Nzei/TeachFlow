@@ -201,7 +201,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                          {toTitleCase(plan.replace('_', ' '))}
                        </Badge>
                     )}
-                     <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(true)}>
+                     <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(true)} className="hidden md:inline-flex">
                         <Bot className="h-5 w-5" />
                         <span className="sr-only">Open AI Assistant</span>
                     </Button>
