@@ -22,6 +22,7 @@ import {
   CalendarDays,
   CreditCard,
   HelpCircle,
+  Bot,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -141,6 +142,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { plan, isLocked } = usePlan();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
 
@@ -199,6 +201,10 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                          {toTitleCase(plan.replace('_', ' '))}
                        </Badge>
                     )}
+                     <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(true)}>
+                        <Bot className="h-5 w-5" />
+                        <span className="sr-only">Open AI Assistant</span>
+                    </Button>
                      <Button variant="ghost" size="icon" onClick={() => setIsHelpOpen(true)}>
                         <HelpCircle className="h-5 w-5" />
                         <span className="sr-only">Open Help</span>
@@ -225,7 +231,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <HelpGuide pathname={pathname} />
         </DialogContent>
       </Dialog>
-      <CustomerSupportChat />
+      <CustomerSupportChat isOpen={isChatOpen} onOpenChange={setIsChatOpen} />
     </SidebarProvider>
   )
 }
