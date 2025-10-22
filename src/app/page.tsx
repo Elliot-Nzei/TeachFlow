@@ -62,14 +62,17 @@ export default function Home() {
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <Logo />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
-          <Link href="/login" passHref>
-            <Button variant="ghost">Login</Button>
-          </Link>
-          <Link href="/register" passHref>
-            <Button variant="default">
-              Get Started <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+            <Link href="/parents" passHref>
+                <Button variant="ghost">Parents</Button>
+            </Link>
+            <Link href="/login" passHref>
+                <Button variant="ghost">Login</Button>
+            </Link>
+            <Link href="/register" passHref>
+                <Button variant="default">
+                Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
         </nav>
         <div className="ml-auto md:hidden flex items-center gap-2">
             <DropdownMenu>
@@ -80,12 +83,9 @@ export default function Home() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <Link href="/login" passHref>
-                        <DropdownMenuItem>Login</DropdownMenuItem>
-                    </Link>
-                    <Link href="/register" passHref>
-                        <DropdownMenuItem>Get Started</DropdownMenuItem>
-                    </Link>
+                    <Link href="/parents" passHref><DropdownMenuItem>Parents</DropdownMenuItem></Link>
+                    <Link href="/login" passHref><DropdownMenuItem>Login</DropdownMenuItem></Link>
+                    <Link href="/register" passHref><DropdownMenuItem>Get Started</DropdownMenuItem></Link>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
