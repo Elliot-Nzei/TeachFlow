@@ -1,55 +1,88 @@
 
 import React from 'react';
 import { ReportWithStudentAndGradeInfo } from '@/components/report-card-generator';
+import { School } from 'lucide-react';
 
 const MinimalCompact = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
-  const rate = (r: number) => ({5:"E",4:"VG",3:"G",2:"F",1:"P"}[r] || "N/A");
-  const aff = (report.traits||[]).filter(t=>["Punctuality","Neatness","Honesty","Cooperation","Attentiveness"].includes(t.name));
-  const psy = (report.traits||[]).filter(t=>!aff.map(a=>a.name).includes(t.name));
+  const getRatingText = (rating: number) => {
+    const ratings: Record<number, string> = { 5: "E", 4: "VG", 3: "G", 2: "F", 1: "P" };
+    return ratings[rating] || "N/A";
+  };
+
+  const affectiveTraits = (report.traits || []).filter(t => ["Punctuality", "Neatness", "Honesty", "Cooperation", "Attentiveness"].includes(t.name));
+  const psychomotorSkills = (report.traits || []).filter(t => !affectiveTraits.map(at => at.name).includes(t.name));
 
   return (
-    <div id={`report-card-${report.studentId}`} className="a4-page w-[210mm] h-[297mm] mx-auto bg-white text-[8px] font-sans p-2 leading-tight">
-      <div className="text-center border-b border-gray-300 mb-1">
-        <h1 className="font-bold text-xs">{report.schoolName}</h1>
-        <p>{report.schoolAddress}</p>
-        {report.schoolMotto && <p className="italic">"{report.schoolMotto}"</p>}
-      </div>
+    <div id={`report-card-${report.studentId}`} className="a4-page mx-auto bg-white shadow-xl border border-gray-200 text-gray-800 p-4 font-sans text-[9px] leading-tight">
+      {/* Header */}
+      <header className="text-center mb-2 border-b pb-2">
+        <h1 className="text-sm font-bold uppercase">{report.schoolName}</h1>
+        <p className="text-[8px]">{report.schoolAddress}</p>
+      </header>
 
-      <div className="flex justify-between text-[8px] mb-1">
-        <p><b>Name:</b> {report.studentName}</p>
-        <p><b>Class:</b> {report.className}</p>
-        <p><b>ID:</b> {report.studentId}</p>
-      </div>
+      {/* Student Info */}
+      <section className="grid grid-cols-4 gap-x-2 text-[9px] mb-2">
+        <div className="col-span-2"><b>Student:</b> {report.studentName}</div>
+        <div><b>Class:</b> {report.className}</div>
+        <div className="text-right"><b>Session:</b> {report.session}</div>
+        <div className="col-span-2"><b>Student ID:</b> {report.studentId}</div>
+        <div><b>Term:</b> {report.term}</div>
+        <div className="text-right"><b>Position:</b> {report.position > 0 ? `${report.position}/${report.totalStudents}` : 'N/A'}</div>
+      </section>
 
-      <table className="w-full border border-gray-300 border-collapse mb-1">
-        <thead><tr>{["Subj","CA1","CA2","Exam","Tot","Grd","Rem"].map(h=><th key={h} className="border px-[1px]">{h}</th>)}</tr></thead>
-        <tbody>
-          {report.grades.map((g,i)=><tr key={i}><td className="border px-[1px]">{g.subject}</td><td className="border text-center">{g.ca1}</td><td className="border text-center">{g.ca2}</td><td className="border text-center">{g.exam}</td><td className="border text-center">{g.total}</td><td className="border text-center">{g.grade}</td><td className="border text-center">{g.remark}</td></tr>)}
-        </tbody>
-      </table>
-
-      <div className="grid grid-cols-3 gap-[2px] mb-1">
-        <div>
-          <h4 className="font-semibold border-b text-[7px]">Affective</h4>
-          <table className="w-full border-collapse"><tbody>{aff.map((t,i)=><tr key={i}><td>{t.name}</td><td className="text-center">{rate(t.rating)}</td></tr>)}</tbody></table>
+      {/* Main Content */}
+      <main className="grid grid-cols-12 gap-x-2">
+        {/* Academic Performance */}
+        <div className="col-span-8">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-1 text-left font-semibold">SUBJECT</th>
+                <th className="border p-1 font-semibold">CA1</th>
+                <th className="border p-1 font-semibold">CA2</th>
+                <th className="border p-1 font-semibold">EXAM</th>
+                <th className="border p-1 font-semibold">TOTAL</th>
+                <th className="border p-1 font-semibold">GRADE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.grades.map((grade, index) => (
+                <tr key={index}>
+                  <td className="border p-1 font-semibold">{grade.subject}</td>
+                  <td className="border p-1 text-center">{grade.ca1 ?? '-'}</td>
+                  <td className="border p-1 text-center">{grade.ca2 ?? '-'}</td>
+                  <td className="border p-1 text-center">{grade.exam ?? '-'}</td>
+                  <td className="border p-1 text-center font-bold">{grade.total}</td>
+                  <td className="border p-1 text-center font-bold">{grade.grade}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div>
-          <h4 className="font-semibold border-b text-[7px]">Psychomotor</h4>
-          <table className="w-full border-collapse"><tbody>{psy.map((t,i)=><tr key={i}><td>{t.name}</td><td className="text-center">{rate(t.rating)}</td></tr>)}</tbody></table>
-        </div>
-        <div className="text-center border rounded p-[1px]">
-          <p>Ttl: <b>{report.totalScore}</b></p>
-          <p>Avg: <b>{report.averageScore.toFixed(1)}%</b></p>
-          <p>Pos: <b>{report.position}/{report.totalStudents}</b></p>
-        </div>
-      </div>
 
-      <p><b>Tchr:</b> <i>{report.formTeacherComment}</i></p>
-      <p><b>Princ:</b> <i>{report.principalComment}</i></p>
+        {/* Traits and Summary */}
+        <div className="col-span-4 space-y-2">
+           <table className="w-full border-collapse">
+                <thead className="bg-gray-100"><tr className="text-left"><th className="border p-1 font-semibold" colSpan={2}>AFFECTIVE TRAITS</th></tr></thead>
+                <tbody>
+                    {affectiveTraits.map((t, i) => <tr key={i}><td className="border p-1">{t.name}</td><td className="border p-1 text-center">{getRatingText(t.rating)}</td></tr>)}
+                </tbody>
+           </table>
+            <table className="w-full border-collapse">
+                <thead className="bg-gray-100"><tr className="text-left"><th className="border p-1 font-semibold" colSpan={2}>PSYCHOMOTOR SKILLS</th></tr></thead>
+                <tbody>
+                    {psychomotorSkills.map((t, i) => <tr key={i}><td className="border p-1">{t.name}</td><td className="border p-1 text-center">{getRatingText(t.rating)}</td></tr>)}
+                </tbody>
+            </table>
+            <div className="text-[8px] text-gray-500">E: Excellent, VG: V.Good, G: Good, F: Fair, P: Poor</div>
+        </div>
+      </main>
 
-      <div className="text-center bg-gray-800 text-white mt-1 py-[1px] rounded-b text-[7px]">
-        Next Term: TBA
-      </div>
+      {/* Comments */}
+      <footer className="mt-2 text-[9px] space-y-1 border-t pt-1">
+        <p><b>Teacher's Comment:</b> <span className="italic">{report.formTeacherComment}</span></p>
+        <p><b>Principal's Comment:</b> <span className="italic">{report.principalComment}</span></p>
+      </footer>
     </div>
   );
 };
