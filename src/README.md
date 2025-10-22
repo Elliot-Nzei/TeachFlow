@@ -1,8 +1,104 @@
 # 📘 TeachFlow: Your Complete User Guide
 
-## 1. Introduction
-
 Welcome to TeachFlow! This guide provides a comprehensive overview of the entire platform, explaining how to use each feature to manage your school's administrative tasks efficiently. From initial setup to generating AI-powered reports, this document is your single source of truth.
+
+---
+
+## 🎬 Video Guide: A Quick Tour of TeachFlow
+
+**(Video opens with upbeat, welcoming music and the TeachFlow logo.)**
+
+**Narrator (Friendly, encouraging voice):** "Hello, and welcome to TeachFlow! Are you tired of drowning in paperwork, endless calculations, and the stress of end-of-term reports? We believe your time is best spent doing what you love—teaching. That's why we built TeachFlow, your all-in-one digital assistant, designed specifically for Nigerian educators like you. In the next few minutes, I’ll show you how to transform your workflow."
+
+**(Screen shows a quick montage of the Dashboard, Gradebook, and a generated Report Card.)**
+
+---
+
+### **Chapter 1: The First Step (Setting Up Your School)**
+
+**Narrator:** "First things first, let's get your school set up. It’s quick and easy. After logging in, head straight to the **Settings** page."
+
+**(Screen shows the cursor clicking on the Settings icon in the sidebar.)**
+
+**Narrator:** "Here, you'll fill in your school's information: your name, the school's name, motto, and address. This information will appear on all your official documents, like report cards. Most importantly, set your **Current Term** and **Current Session**. This tells TeachFlow where to save all new records. It’s the backbone of your record-keeping, so make sure it's correct!"
+
+**(Cursor fills out the form fields on the Settings page.)**
+
+---
+
+### **Chapter 2: Building Your School's Foundation**
+
+**Narrator:** "With your settings in place, it's time to build your school's structure. We'll follow a simple 1-2-3 process: Subjects, then Classes, then Students."
+
+1.  **Subjects (Academics Page):**
+    **(Cursor clicks on the Academics page.)**
+    **Narrator:** "First, go to **Academics**. In the 'Master Subject List' card, add every subject your school offers. Think of this as your school's subject library. Once you've added them here, you can assign them to any class."
+
+2.  **Classes (Classes Page):**
+    **(Cursor clicks on the Classes page.)**
+    **Narrator:** "Next, on the **Classes** page, click 'Add New Class'. Give it a name, like 'Primary 2B', and assign its category and level. The level is important—it helps the system automate promotions at the end of the year!"
+
+3.  **Students (Students Page):**
+    **(Cursor clicks on the Students page.)**
+    **Narrator:** "Finally, let's add your students. On the **Students** page, click 'Add Student'. A unique ID is automatically created for them! Just enter their name, upload a photo, and assign them to a class. It’s that simple."
+
+---
+
+### **Chapter 3: Your Daily & Termly Tasks, Simplified**
+
+**Narrator:** "Now for the day-to-day. Let’s see how TeachFlow handles your core tasks."
+
+*   **Gradebook:**
+    **(Screen shows the Grades page.)**
+    **Narrator:** "On the **Grades** page, select a class, click 'Add/Edit Grades', and choose a subject. You can then enter scores for CA1, CA2, and Exam for all students at once. The total and grade are calculated for you instantly. No more manual calculations!"
+
+*   **Attendance:**
+    **(Screen shows the Attendance page.)**
+    **Narrator:** "Taking attendance is a breeze. Select a class, pick the date, and mark each student as 'Present', 'Absent', or 'Late'. You can even mark everyone present with a single click."
+
+*   **Timetable:**
+    **(Screen shows the Timetable page.)**
+    **Narrator:** "Organize your week with the **Timetable** feature. Select a class, click 'Edit Schedule', and start adding periods. Assign subjects to time slots to create a clear, visual schedule for your students."
+
+---
+
+### **Chapter 4: Unleash the Power of AI**
+
+**Narrator:** "This is where the magic happens. TeachFlow's AI tools are here to be your personal assistant."
+
+*   **AI Report Card Generator:**
+    **(Screen shows the Reports page, with the AI generating comments.)**
+    **Narrator:** "End-of-term has never been easier. Go to **Reports**, select a class, and click 'Generate'. The AI analyzes all academic and behavioral data to write personalized, constructive comments for both the teacher and the principal. You get beautiful, print-ready report cards in seconds."
+
+*   **AI Lesson Note & Exam Generators:**
+    **(Screen quickly shows the Lesson Generator and Exam Generator pages.)**
+    **Narrator:** "Need a lesson plan? Go to the **Lesson Generator**, enter your topic, and get a detailed, NERDC-compliant note. Need exam questions? The **Exam Generator** will create them for you, formatted and ready to print."
+
+---
+
+### **Chapter 5: Advanced Features for Power Users**
+
+**Narrator:** "TeachFlow has even more to offer."
+
+*   **Data Transfer:**
+    **(Screen shows the Data Transfer page.)**
+    **Narrator:** "Collaborating with another teacher? On the **Data Management** page, you can securely transfer a full class—students, grades, and all—to another TeachFlow user with their unique user code."
+
+*   **End-of-Session Promotion:**
+    **(Screen shows the 'Run Promotions' button on the Class Details view.)**
+    **Narrator:** "At the end of the Third Term, the **Run Promotions** button becomes active. With one click, the system evaluates all students in a class and automatically promotes those who passed to their new class for the next session."
+
+---
+
+**Outro (0:30 - End)**
+
+**Narrator:** "And that's just the beginning. TeachFlow is designed to grow with you, continuously making your life easier."
+
+**(Screen shows the TeachFlow logo and a call-to-action.)**
+
+**Narrator:** "So go ahead, explore, and reclaim your time. Welcome to the future of school management. Welcome to TeachFlow."
+
+**(Upbeat music fades in and ends.)**
 
 ---
 
