@@ -2,7 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 
-if (!admin.apps.length) {
+// Helper function to initialize Firebase Admin SDK
+function initializeFirebaseAdmin() {
+  if (admin.apps.length) {
+    return;
+  }
   try {
     const serviceAccount = {
       projectId: process.env.FIREBASE_PROJECT_ID,
@@ -14,18 +18,25 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(serviceAccount),
     });
   } catch (error: any) {
-    console.error('Firebase Admin initialization error:', error);
-    return NextResponse.json(
-      { success: false, message: `Firebase initialization failed: ${error.message}` },
-      { status: 500 }
-    );
+    console.error('Firebase Admin initialization error:', error.message);
+    // Throw an error that can be caught inside the API route handler
+    throw new Error(`Firebase initialization failed: ${error.message}`);
   }
 }
 
-const db = admin.firestore();
-
 export async function POST(req: NextRequest) {
+  try {
+    initializeFirebaseAdmin();
+  } catch (error) {
+    if (error instanceof Error) {
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: false, message: 'An unknown error occurred during Firebase initialization.' }, { status: 500 });
+  }
+
+  const db = admin.firestore();
   let reference, planId, billingCycle, userId;
+  
   try {
     const body = await req.json();
     reference = body.reference;
@@ -40,6 +51,9 @@ export async function POST(req: NextRequest) {
   let paystackData;
   try {
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) {
+        throw new Error('Paystack secret key is not configured.');
+    }
     const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`,
       {
         headers: {
