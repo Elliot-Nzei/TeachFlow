@@ -113,7 +113,7 @@ function TraitEditor({ student, readOnly = false }: { student: any, readOnly?: b
         return ratings[rating] || "N/A";
     };
 
-    if (isLoadingTraits) {
+    if (isLoadingTraits && !readOnly) {
         return <Skeleton className="h-64 w-full" />
     }
 
@@ -170,7 +170,7 @@ function TraitEditor({ student, readOnly = false }: { student: any, readOnly?: b
     )
 }
 
-function StudentProfileContent({ studentId, readOnly = false }: { studentId: string, readOnly?: boolean }) {
+function StudentProfileContent({ student: initialStudent, readOnly = false }: { student: any, readOnly?: boolean }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
@@ -178,30 +178,31 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('academic-record');
   const isMobile = useIsMobile();
-
-  const studentDocQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId]);
-  const { data: student, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
   
-  const classDocQuery = useMemoFirebase(() => (user && student?.classId) ? doc(firestore, 'users', user.uid, 'classes', student.classId) : null, [firestore, user, student]);
-  const { data: studentClass, isLoading: isLoadingClass } = useDoc<any>(classDocQuery);
-
-  const gradesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
+  const student = initialStudent; // data comes from prop now
+  const studentId = student?.id;
+  
+  // These hooks will only run if NOT in readOnly mode
+  const gradesQuery = useMemoFirebase(() => (user && !readOnly) ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', studentId)) : null, [firestore, user, studentId, readOnly]);
   const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
   
-  const attendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', studentId)) : null, [firestore, user, studentId]);
+  const attendanceQuery = useMemoFirebase(() => (user && !readOnly) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', studentId)) : null, [firestore, user, studentId, readOnly]);
   const { data: attendanceForStudent, isLoading: isLoadingAttendance } = useCollection<any>(attendanceQuery);
 
+  const displayGrades = readOnly ? (student.grades || []) : gradesForStudent;
+  const displayAttendance = readOnly ? (student.attendance || []) : attendanceForStudent;
+
   const attendanceSummary = useMemo(() => {
-    if (!attendanceForStudent) {
+    if (!displayAttendance) {
       return { present: 0, absent: 0, late: 0, total: 0 };
     }
     return {
-      present: attendanceForStudent.filter(a => a.status === 'Present').length,
-      absent: attendanceForStudent.filter(a => a.status === 'Absent').length,
-      late: attendanceForStudent.filter(a => a.status === 'Late').length,
-      total: attendanceForStudent.length,
+      present: displayAttendance.filter((a:any) => a.status === 'Present').length,
+      absent: displayAttendance.filter((a:any) => a.status === 'Absent').length,
+      late: displayAttendance.filter((a:any) => a.status === 'Late').length,
+      total: displayAttendance.length,
     };
-  }, [attendanceForStudent]);
+  }, [displayAttendance]);
 
   const handleCopyParentId = useCallback(() => {
     if (student?.parentId) {
@@ -220,11 +221,9 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
     try {
         const batch = writeBatch(firestore);
 
-        // 1. Delete the student document itself
         const studentRef = doc(firestore, 'users', user.uid, 'students', studentId);
         batch.delete(studentRef);
 
-        // 2. Query and delete all associated sub-collection documents
         const collectionsToDelete = ['grades', 'attendance', 'traits', 'payments'];
         for (const coll of collectionsToDelete) {
             const q = query(collection(firestore, 'users', user.uid, coll), where('studentId', '==', studentId));
@@ -234,7 +233,6 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
             });
         }
 
-        // 3. Remove student from their class's student list
         if (student.classId) {
             const classRef = doc(firestore, 'users', user.uid, 'classes', student.classId);
             batch.update(classRef, {
@@ -242,7 +240,6 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
             });
         }
         
-        // 4. Commit all batched writes at once
         await batch.commit();
 
         toast({
@@ -250,7 +247,7 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
             description: `${student.name} and all associated records have been permanently removed.`,
         });
 
-        router.push('/students'); // Redirect to student list
+        router.push('/students');
 
     } catch (error) {
         console.error("Error deleting student and their data:", error);
@@ -264,18 +261,6 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
     }
   };
 
-
-  if (isLoadingStudent) {
-      return (
-          <div className="space-y-8 p-4 md:p-6">
-              <Skeleton className="h-32 w-full" />
-              <div className="space-y-4">
-                <Skeleton className="h-10 w-1/3" />
-                <Skeleton className="h-64 w-full" />
-              </div>
-          </div>
-      )
-  }
 
   if (!student) {
       return <div className="p-6">Student not found.</div>;
@@ -412,11 +397,10 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
                     <CardDescription>Grades for all sessions.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                     {/* Mobile Card View */}
                      <div className="md:hidden space-y-3">
-                        {isLoadingGrades ? <Skeleton className="h-24 w-full" /> : 
-                        gradesForStudent && gradesForStudent.length > 0 ? (
-                            gradesForStudent.map((grade: any) => (
+                        {(isLoadingGrades && !readOnly) ? <Skeleton className="h-24 w-full" /> : 
+                        displayGrades && displayGrades.length > 0 ? (
+                            displayGrades.map((grade: any) => (
                                 <Card key={grade.id} className="border-l-4 border-primary">
                                     <CardHeader className="pb-2">
                                         <CardTitle className="text-base">{grade.subject}</CardTitle>
@@ -438,7 +422,6 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
                             <p className="text-center text-muted-foreground py-8">No grades recorded yet.</p>
                         )}
                     </div>
-                    {/* Desktop Table View */}
                     <div className="hidden md:block">
                         <Table>
                             <TableHeader>
@@ -451,10 +434,10 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {isLoadingGrades ? (
+                                {(isLoadingGrades && !readOnly) ? (
                                 <TableRow><TableCell colSpan={5}><Skeleton className="h-24 w-full" /></TableCell></TableRow> 
-                                ) : gradesForStudent && gradesForStudent.length > 0 ? (
-                                    gradesForStudent.map((grade: any) => (
+                                ) : displayGrades && displayGrades.length > 0 ? (
+                                    displayGrades.map((grade: any) => (
                                         <TableRow key={grade.id}>
                                             <TableCell className="font-medium">{grade.subject}</TableCell>
                                             <TableCell>{grade.term}</TableCell>
@@ -502,9 +485,9 @@ function StudentProfileContent({ studentId, readOnly = false }: { studentId: str
                     </div>
                      <ScrollArea className="h-72">
                         <div className="space-y-2 pr-4">
-                        {isLoadingAttendance ? <Skeleton className="h-48 w-full" /> : 
-                        attendanceForStudent && attendanceForStudent.length > 0 ? (
-                            attendanceForStudent.sort((a,b) => b.date.localeCompare(a.date)).map((att: any) => (
+                        {(isLoadingAttendance && !readOnly) ? <Skeleton className="h-48 w-full" /> : 
+                        displayAttendance && displayAttendance.length > 0 ? (
+                            displayAttendance.sort((a:any,b:any) => b.date.localeCompare(a.date)).map((att: any) => (
                                 <div key={att.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
                                     <div className="flex items-center gap-2">
                                         <AttendanceIcon status={att.status} />
