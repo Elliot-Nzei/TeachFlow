@@ -75,6 +75,9 @@ export default function Home() {
             <Link href="/parents" passHref>
                 <Button variant="ghost">Parents</Button>
             </Link>
+             <Link href="/about" passHref>
+                <Button variant="ghost">About Us</Button>
+            </Link>
             <Link href="/login" passHref>
                 <Button variant="ghost">Teacher Login</Button>
             </Link>
@@ -94,6 +97,7 @@ export default function Home() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <Link href="/parents" passHref><DropdownMenuItem>Parents</DropdownMenuItem></Link>
+                    <Link href="/about" passHref><DropdownMenuItem>About Us</DropdownMenuItem></Link>
                     <Link href="/login" passHref><DropdownMenuItem>Teacher Login</DropdownMenuItem></Link>
                     <Link href="/register" passHref><DropdownMenuItem>Start for Free</DropdownMenuItem></Link>
                 </DropdownMenuContent>
@@ -223,6 +227,9 @@ export default function Home() {
           </Link>
           <Link className="text-xs hover:underline underline-offset-4" href="#">
             Privacy
+          </Link>
+           <Link className="text-xs hover:underline underline-offset-4" href="/about">
+            About Us
           </Link>
         </nav>
       </footer>

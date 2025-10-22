@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, serverTimestamp } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { useUser } from '@/firebase';
 
 const feedbackSchema = z.object({
   type: z.string().min(1, { message: 'Please select a feedback type.' }),
@@ -26,6 +27,7 @@ type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 export default function FeedbackForm() {
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<FeedbackFormValues>({
@@ -33,7 +35,7 @@ export default function FeedbackForm() {
     defaultValues: {
       type: '',
       message: '',
-      contactEmail: '',
+      contactEmail: user?.email || '',
     },
   });
 
@@ -53,6 +55,8 @@ export default function FeedbackForm() {
       const feedbackCollection = collection(firestore, 'feedback');
       await addDocumentNonBlocking(feedbackCollection, {
         ...data,
+        userId: user?.uid || 'anonymous',
+        userEmail: user?.email || data.contactEmail || 'anonymous',
         createdAt: serverTimestamp(),
       });
       
