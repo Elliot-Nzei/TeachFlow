@@ -405,7 +405,7 @@ export default function ExamQuestionGeneratorPage() {
                   <AlertDescription>
                     {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
                      features.canUseAdvancedAI ? `You have ${generationsLeft} exam generations left this month.` :
-                     'Upgrade to a Basic or Prime plan to use this feature.'
+                     'Upgrade to a paid plan to use this feature.'
                     }
                   </AlertDescription>
                 </Alert>

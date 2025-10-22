@@ -150,18 +150,18 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
         };
       default: // free_trial or null
         return {
-          canUseAdvancedAI: false,
+          canUseAdvancedAI: true,
           canUseDataTransfer: false,
           canUseSystemExport: false,
           studentLimit: 25,
           classLimit: 5,
-          aiGenerations: 0,
+          aiGenerations: 3,
         };
     }
   }, [plan]);
 
   const incrementUsage = (featureType: 'reportCard' | 'lessonNote' | 'exam') => {
-    if (!user || plan !== 'basic') return;
+    if (!user || plan === 'prime') return;
 
     const fieldMap = {
         reportCard: 'reportCardGenerations',

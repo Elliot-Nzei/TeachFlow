@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, Fragment, useContext, useCallback } from 'react';
 import jsPDF from 'jspdf';
@@ -241,7 +242,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [generatedReports, setGeneratedReports] = useState<ReportWithStudentAndGradeInfo[]>([]);
   const { settings } = useContext(SettingsContext);
-  const { features } = usePlan();
+  const { features, aiUsage, incrementUsage } = usePlan();
   const [classPopoverOpen, setClassPopoverOpen] = useState(false);
   const [studentPopoverOpen, setStudentPopoverOpen] = useState(false);
 
@@ -261,6 +262,11 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
   
   const allAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendance')) : null, [firestore, user]);
   const { data: allAttendance, isLoading: isLoadingAttendance } = useCollection<any>(allAttendanceQuery);
+
+  const canGenerate = useMemo(() => {
+    if (features.aiGenerations === 'Unlimited') return true;
+    return aiUsage.reportCardGenerations < features.aiGenerations;
+  }, [features, aiUsage]);
 
 
   const studentsInClass = useMemo(() => {
@@ -324,6 +330,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
     return true;
   }, [settings, toast]);
+  
 
   const handleGenerateReports = async () => {
     const finalSelectedStudent = studentId ? allStudents?.find(s => s.id === studentId) : selectedStudent;
@@ -340,6 +347,15 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     if (!validateSettings() || !allGrades) {
       return;
     }
+    
+    if (!canGenerate) {
+        toast({
+            variant: 'destructive',
+            title: 'Monthly Limit Reached',
+            description: 'You have used all your AI report card generations for this month.',
+        });
+        return;
+    }
 
     setLoading(true);
     setLoadingProgress(0);
@@ -351,6 +367,7 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     const session = settings!.currentSession;
     
     const newReports: ReportWithStudentAndGradeInfo[] = [];
+    let generationsMade = 0;
     
     try {
       for (let i = 0; i < targets.length; i++) {
@@ -410,6 +427,8 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
               };
 
               const result = await generateReportCard(input);
+              generationsMade++;
+
               const detailedGrades = studentGrades.map(g => ({ 
                 subject: g.subject, 
                 ca1: g.ca1, 
@@ -454,6 +473,10 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
       }
       
       setGeneratedReports(newReports);
+
+      if (generationsMade > 0) {
+        incrementUsage('reportCard');
+      }
 
       if (newReports.length === 0) {
           const description = finalSelectedStudent
@@ -600,14 +623,22 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
 
   // If component is used for a single student (e.g. from parent portal)
   if (studentId) {
+      const studentForReport = allStudents?.find(s => s.id === studentId);
+      const classForStudent = studentForReport ? classes?.find(c => c.id === studentForReport.classId) : null;
       return (
-          <Button onClick={handleGenerateReports} disabled={loading || !features.canUseAdvancedAI} variant={buttonVariant}>
+          <Button onClick={() => {
+              if (studentForReport && classForStudent) {
+                  setSelectedStudent(studentForReport);
+                  setSelectedClass(classForStudent);
+                  handleGenerateReports();
+              }
+          }} disabled={loading || !canGenerate} variant={buttonVariant}>
             {loading ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
                 </>
-            ) : !features.canUseAdvancedAI ? (
+            ) : !canGenerate ? (
               <><Lock className="mr-2 h-4 w-4" />{buttonLabel}</>
             ) : (
               <><FileDown className="mr-2 h-4 w-4" />{buttonLabel}</>
@@ -615,6 +646,8 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
           </Button>
       )
   }
+
+  const generationsLeft = features.aiGenerations === 'Unlimited' ? 'Unlimited' : features.aiGenerations - aiUsage.reportCardGenerations;
 
   return (
     <>
@@ -626,6 +659,16 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
               <CardDescription>Choose a class or an individual student.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                <Alert variant={canGenerate ? 'default' : 'destructive'}>
+                    {canGenerate ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    <AlertTitle>{features.canUseAdvancedAI ? 'Feature Enabled' : 'Upgrade Required'}</AlertTitle>
+                    <AlertDescription>
+                        {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
+                        features.canUseAdvancedAI ? `You have ${generationsLeft} report card generations left this month.` :
+                        'Upgrade to a Basic or Prime plan to use this feature.'
+                        }
+                    </AlertDescription>
+                </Alert>
                <div className="space-y-2">
                  <Popover open={classPopoverOpen} onOpenChange={setClassPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -717,15 +760,15 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
               <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="w-full">
-                        <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent) || !features.canUseAdvancedAI} className="w-full">
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !features.canUseAdvancedAI ? <Lock className="mr-2 h-4 w-4" /> : null}
+                        <Button onClick={handleGenerateReports} disabled={loading || (!selectedClass && !selectedStudent) || !canGenerate} className="w-full">
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : !canGenerate ? <Lock className="mr-2 h-4 w-4" /> : null}
                             {loading ? 'Generating...' : buttonLabel}
                         </Button>
                     </div>
                 </TooltipTrigger>
-                {!features.canUseAdvancedAI && (
+                {!canGenerate && (
                     <TooltipContent>
-                        <p>Upgrade to a paid plan to use this feature.</p>
+                        <p>{features.canUseAdvancedAI ? 'You have reached your monthly generation limit.' : 'Upgrade to a paid plan to use this feature.'}</p>
                     </TooltipContent>
                 )}
               </Tooltip>

@@ -371,7 +371,7 @@ export default function LessonGeneratorPage() {
                   <AlertDescription>
                     {features.aiGenerations === 'Unlimited' ? 'You have unlimited generations.' :
                      features.canUseAdvancedAI ? `You have ${generationsLeft} lesson note generations left this month.` :
-                     'Upgrade to a Basic or Prime plan to use this feature.'
+                     'Upgrade to a paid plan to use this feature.'
                     }
                   </AlertDescription>
                 </Alert>
