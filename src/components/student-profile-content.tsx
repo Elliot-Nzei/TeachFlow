@@ -489,7 +489,7 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
         )}
         <TabsContent value="academic-record" className="mt-6">
              <Card>
-                <CardHeader className="flex flex-row justify-between items-center">
+                <CardHeader className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
                         <CardTitle>Academic Record</CardTitle>
                         <CardDescription>Grades for all sessions.</CardDescription>
