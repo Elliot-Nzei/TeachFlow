@@ -87,18 +87,25 @@ export default function SettingsPage() {
             return;
         }
 
+        if (!storage) {
+            toast({ variant: 'destructive', title: 'Storage Error', description: 'Firebase Storage is not available.' });
+            return;
+        }
+
         setIsSavingLogo(true);
         try {
-            if (!storage) {
-                throw new Error('Firebase Storage is not available.');
-            }
             const storageRef = ref(storage, `users/${user.uid}/logos/school_logo.png`);
+            
+            // The previewLogo is a data URL (e.g., "data:image/png;base64,...")
+            // We need to upload it correctly.
             await uploadString(storageRef, previewLogo, 'data_url');
+            
             const downloadURL = await getDownloadURL(storageRef);
 
             const userRef = doc(firestore, 'users', user.uid);
             await updateDoc(userRef, { schoolLogo: downloadURL });
             
+            // Update context immediately to reflect the change
             setContextSettings({ schoolLogo: downloadURL });
 
             toast({ title: 'Logo Saved', description: 'Your new school logo has been saved.' });
@@ -107,6 +114,7 @@ export default function SettingsPage() {
             console.error("Error saving logo:", error);
             toast({ variant: 'destructive', title: 'Logo Save Failed', description: 'Could not save your new logo.' });
         } finally {
+            // CRITICAL: Always reset the saving state
             setIsSavingLogo(false);
         }
     };
@@ -263,7 +271,7 @@ export default function SettingsPage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isSaving} />
+                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={isSavingLogo}/>
                                 <p className="text-xs text-muted-foreground">Recommended: Square PNG/JPG.</p>
                                 <Button onClick={handleSaveLogo} disabled={isSavingLogo} size="sm" className="w-fit">
                                     {isSavingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
@@ -315,9 +323,9 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="current-term">Current Term</Label>
+            <Label htmlFor="currentTerm">Current Term</Label>
             <Select value={localSettings?.currentTerm || ''} onValueChange={(value) => handleSelectChange('currentTerm', value)} disabled={isSaving}>
-              <SelectTrigger id="current-term">
+              <SelectTrigger id="currentTerm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
