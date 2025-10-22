@@ -529,7 +529,7 @@
       "schema": { "$ref": "#/entities/Parent"},
       "description": "Stores parent user profiles. Parent can create their own account.",
       "allow": {
-          "create": "request.auth != null",
+          "create": "request.auth.uid == parentId",
           "read": "request.auth.uid == parentId"
       }
     },
