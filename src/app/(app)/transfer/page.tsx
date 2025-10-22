@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where, serverTimestamp, writeBatch, doc, orderBy, getDoc, getDocs, addDoc, updateDoc, arrayUnion, limit } from 'firebase/firestore';
-import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait } from '@/lib/types';
+import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait, Timetable } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -303,6 +303,12 @@ export default function DataManagementPage() {
             
             payload.data = classSnap.data();
 
+            const timetableRef = doc(firestore, `users/${user.uid}/timetables/${dataItem}`);
+            const timetableSnap = await getDoc(timetableRef);
+            if (timetableSnap.exists()) {
+                payload.timetable = timetableSnap.data() as Timetable;
+            }
+
             const studentsInClassQuery = query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', dataItem));
             const studentsSnap = await getDocs(studentsInClassQuery);
             const studentDocs = studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
@@ -472,7 +478,7 @@ export default function DataManagementPage() {
             }
         }
         
-        if (selections.subjects && transfer.dataType === 'Full Class Data' && transfer.data.subjects && transfer.data.subjects.length > 0) {
+        if (selections.subjects && transfer.data.subjects && transfer.data.subjects.length > 0) {
             const subjectsRef = collection(firestore, 'users', user.uid, 'subjects');
             const existingSubjectsSnap = await getDocs(subjectsRef);
             const existingSubjectNames = existingSubjectsSnap.docs.map(d => d.data().name.toLowerCase());
@@ -897,3 +903,5 @@ export default function DataManagementPage() {
     </>
   );
 }
+
+    

@@ -212,15 +212,13 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
         
         // 3. Delete the timetable for the class
         const timetableRef = doc(firestore, 'users', user.uid, 'timetables', classId);
-        // We need to delete this document, but deleteDoc is not available in writeBatch.
-        // We'll delete it separately. A small risk if batch fails, but acceptable for now.
+        batch.delete(timetableRef);
         
         // 4. Delete the class document itself
         const classRef = doc(firestore, 'users', user.uid, 'classes', classId);
         batch.delete(classRef);
 
         await batch.commit();
-        await deleteDoc(timetableRef); // Delete timetable after successful batch
         
         toast({
             title: 'Class Deleted',
@@ -422,3 +420,5 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
 }
 
 export default ClassDetailsContent;
+
+    

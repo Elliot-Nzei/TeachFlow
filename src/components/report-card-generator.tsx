@@ -162,8 +162,8 @@ const ReportCard = ({ report }: { report: ReportWithStudentAndGradeInfo }) => {
                             <tr key={index} className="hover:bg-gray-50">
                                 <td className="border p-1 font-semibold align-middle">{subject.subject}</td>
                                 <td className="border p-1 text-center align-middle">{subject.ca1 ?? 'N/A'}</td>
-                                <td className="border p-1 text-center align-middle">{subject.ca2 ?? 'N_A'}</td>
-                                <td className="border p-1 text-center align-middle">{subject.exam ?? 'N_A'}</td>
+                                <td className="border p-1 text-center align-middle">{subject.ca2 ?? 'N/A'}</td>
+                                <td className="border p-1 text-center align-middle">{subject.exam ?? 'N/A'}</td>
                                 <td className="border p-1 text-center font-bold align-middle">{subject.total}</td>
                                 <td className="border p-1 text-center font-bold align-middle">{subject.grade}</td>
                                 <td className="border p-1 text-center align-middle">{subject.remark}</td>
@@ -920,3 +920,5 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
     </>
   );
 }
+
+    

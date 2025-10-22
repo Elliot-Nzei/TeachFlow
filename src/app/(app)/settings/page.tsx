@@ -263,7 +263,6 @@ export default function SettingsPage() {
                      <div>
                         <div className="flex items-center gap-2 mb-2">
                            <Label>School Logo</Label>
-                           <Badge variant="outline">Coming Soon</Badge>
                         </div>
                         <div className="flex items-center gap-4 mt-2">
                             <Avatar className="h-24 w-24 rounded-md">
@@ -273,10 +272,10 @@ export default function SettingsPage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled/>
+                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange}/>
                                 <p className="text-xs text-muted-foreground">Recommended: Square PNG/JPG.</p>
-                                <Button onClick={handleSaveLogo} disabled size="sm" className="w-fit">
-                                    <Save className="mr-2 h-4 w-4" />
+                                <Button onClick={handleSaveLogo} disabled={isSavingLogo} size="sm" className="w-fit">
+                                    {isSavingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                     Save Logo
                                 </Button>
                             </div>
@@ -407,3 +406,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
