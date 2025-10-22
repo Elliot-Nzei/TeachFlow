@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import placeholderImages from '@/lib/placeholder-images.json';
 import { doc, getDoc } from "firebase/firestore";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
 const loginImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -31,12 +32,10 @@ export default function LoginPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // After successful sign-in, check if the user exists in the 'users' collection
       const userDocRef = doc(firestore, 'users', userCredential.user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        // If the document doesn't exist, they are not a teacher. Sign them out.
         await auth.signOut();
         throw new Error('This account does not have teacher privileges.');
       }
@@ -66,58 +65,58 @@ export default function LoginPage() {
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <Logo />
-            <h1 className="text-3xl font-bold font-headline mt-4">Welcome Back</h1>
-            <p className="text-balance text-muted-foreground">
-              Enter your credentials to access your dashboard.
-            </p>
-          </div>
-          <form onSubmit={handleLogin}>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="/forgot-password"
-                    className="ml-auto inline-block text-sm underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
-                <Input 
-                    id="password" 
-                    type="password" 
-                    required 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Logging in...' : 'Login'}
-              </Button>
-            </div>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="underline">
-              Sign up
-            </Link>
-          </div>
-        </div>
+      <div className="flex items-center justify-center p-6 sm:p-12">
+        <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mb-4"><Logo /></div>
+              <CardTitle className="text-3xl font-bold font-headline">Welcome Back</CardTitle>
+              <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleLogin}>
+              <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                      id="email"
+                      type="email"
+                      placeholder="m@example.com"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <div className="flex items-center">
+                      <Label htmlFor="password">Password</Label>
+                      <Link
+                          href="/forgot-password"
+                          className="ml-auto inline-block text-sm underline"
+                      >
+                          Forgot your password?
+                      </Link>
+                      </div>
+                      <Input 
+                          id="password" 
+                          type="password" 
+                          required 
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                      />
+                  </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4">
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+                  <div className="text-center text-sm">
+                      Don&apos;t have an account?{" "}
+                      <Link href="/register" className="underline">
+                      Sign up
+                      </Link>
+                  </div>
+              </CardFooter>
+            </form>
+        </Card>
       </div>
        <div className="hidden bg-muted lg:block">
         {loginImage && (

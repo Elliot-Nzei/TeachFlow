@@ -14,6 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ToastAction } from "@/components/ui/toast";
+import placeholderImages from '@/lib/placeholder-images.json';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+
+const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 export default function RegisterPage() {
     const { firestore } = useFirebase();
@@ -75,60 +79,59 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="hidden bg-primary lg:flex items-center justify-center p-12 text-center">
-        <div className="text-primary-foreground">
-            <h2 className="text-4xl font-bold font-headline mb-4">A Modern Toolkit for Today's Teacher</h2>
-            <p className="text-lg max-w-md mx-auto">From AI-powered lesson plans to seamless data sharing, TeachFlow is designed to simplify your administrative tasks.</p>
-        </div>
+      <div className="flex items-center justify-center p-6 sm:p-12">
+        <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+                <div className="mb-4"><Logo /></div>
+                <CardTitle className="text-3xl font-bold font-headline">Create an Account</CardTitle>
+                <CardDescription>Enter your information to get started with TeachFlow.</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleRegister}>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="full-name">Full Name</Label>
+                            <Input id="full-name" placeholder="John Doe" required value={fullName} onChange={e => setFullName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="school-name">School Name</Label>
+                            <Input id="school-name" placeholder="Sunshine Primary" required value={schoolName} onChange={e => setSchoolName(e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? 'Creating Account...' : 'Create Account'}
+                    </Button>
+                     <div className="text-center text-sm">
+                        Already have an account?{" "}
+                        <Link href="/login" className="underline">
+                        Login
+                        </Link>
+                    </div>
+                </CardFooter>
+            </form>
+        </Card>
       </div>
-      <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[400px] gap-6">
-          <div className="grid gap-2 text-center">
-            <Logo />
-            <h1 className="text-3xl font-bold font-headline mt-4">Create an Account</h1>
-            <p className="text-balance text-muted-foreground">
-              Enter your information to get started.
-            </p>
-          </div>
-          <form onSubmit={handleRegister}>
-            <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="full-name">Full Name</Label>
-                    <Input id="full-name" placeholder="John Doe" required value={fullName} onChange={e => setFullName(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="school-name">School Name</Label>
-                    <Input id="school-name" placeholder="Sunshine Primary School" required value={schoolName} onChange={e => setSchoolName(e.target.value)} />
-                </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
-            </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating Account...' : 'Create Account'}
-                </Button>
-            </div>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Already have an account?{" "}
-            <Link href="/login" className="underline">
-              Login
-            </Link>
-          </div>
-        </div>
+      <div className="hidden bg-muted lg:block">
+        {registerImage && (
+            <Image
+                src={registerImage.imageUrl}
+                alt={registerImage.description}
+                width="1920"
+                height="1080"
+                className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                data-ai-hint={registerImage.imageHint}
+            />
+        )}
       </div>
     </div>
   )
