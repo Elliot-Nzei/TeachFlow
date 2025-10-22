@@ -6,11 +6,32 @@ import Link from 'next/link';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Lightbulb, Target, Users, Menu } from 'lucide-react';
-import FeedbackForm from '@/components/feedback-form';
+import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const aboutImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
+
+const roadmapFeatures = [
+    {
+        icon: <Users className="h-6 w-6 text-primary" />,
+        title: 'Parent-Teacher Communication',
+        description: 'A dedicated portal for seamless communication between parents and teachers.',
+        status: 'In Progress'
+    },
+    {
+        icon: <Bell className="h-6 w-6 text-primary" />,
+        title: 'Real-time Notifications',
+        description: 'Instant alerts for parents and teachers on important updates and events.',
+        status: 'Planned'
+    },
+    {
+        icon: <LineChart className="h-6 w-6 text-primary" />,
+        title: 'Advanced Analytics',
+        description: 'Deeper insights into student and class performance trends over time.',
+        status: 'Planned'
+    }
+];
+
 
 export default function AboutPage() {
   return (
@@ -97,13 +118,32 @@ export default function AboutPage() {
             </div>
         </section>
 
-         <section id="feedback" className="w-full py-12 md:py-24 bg-secondary">
-          <div className="container px-4 md:px-6 flex flex-col items-center">
-            <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold font-headline">Have a suggestion?</h2>
-                <p className="text-muted-foreground max-w-lg">We are constantly working to improve TeachFlow and we'd love to hear your thoughts.</p>
+         <section id="roadmap" className="w-full py-12 md:py-24 bg-secondary">
+          <div className="container px-4 md:px-6">
+            <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold font-headline">Our Roadmap</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto">We're always working to make TeachFlow better. Here's a glimpse of what's coming next.</p>
             </div>
-            <FeedbackForm />
+            <div className="max-w-4xl mx-auto grid gap-8 md:grid-cols-3">
+              {roadmapFeatures.map((feature, index) => (
+                <Card key={index} className="flex flex-col">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            {feature.icon}
+                        </div>
+                        <div className={`text-xs font-bold py-1 px-2 rounded-full ${feature.status === 'In Progress' ? 'bg-yellow-200 text-yellow-800' : 'bg-blue-200 text-blue-800'}`}>
+                            {feature.status}
+                        </div>
+                    </div>
+                    <CardTitle className="pt-4">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <CardDescription>{feature.description}</CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </section>
       </main>
