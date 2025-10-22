@@ -1,9 +1,10 @@
+
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, CheckCircle, Send, FileQuestion, DollarSign, Menu, Star } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, FileDown, Notebook, CheckCircle, Send, FileQuestion, DollarSign, Menu, Star, Video } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -162,8 +163,33 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <section id="video-demo" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">See It in Action</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">A Quick Tour of TeachFlow</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Watch this short video to see how TeachFlow can revolutionize your school's workflow in just a few minutes.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto max-w-4xl mt-12">
+              <div className="aspect-video w-full overflow-hidden rounded-xl border-4 border-primary/20 shadow-2xl">
+                 <iframe
+                    className="w-full h-full"
+                    src="https://drive.google.com/file/d/1Au75CjFL2MRKolLx9NkJKXEM9cSbBPI3/preview"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="TeachFlow Demo Video"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        </section>
         
-        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
           <div className="container px-4 md:px-6">
              <div className="flex flex-col items-center justify-center space-y-4 text-center">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">What Teachers Are Saying</h2>
@@ -200,7 +226,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">Ready to Transform Your Workflow?</h2>
