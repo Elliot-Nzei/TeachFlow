@@ -1,76 +1,86 @@
-
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, ArrowRightCircle, CheckCircle, Send, FileQuestion, DollarSign, Linkedin, Menu } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, FileDown, Notebook, CheckCircle, Send, FileQuestion, DollarSign, Menu, Star } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 const features = [
   {
-    icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Class & Student Management',
-    description: 'Easily create classes, manage student profiles with auto-generated IDs, and assign subjects.',
+    icon: <Users className="h-6 w-6 text-primary" />,
+    title: 'Effortless Class Management',
+    description: 'Organize classes, manage student profiles with auto-generated IDs, and assign subjects in a few clicks.',
   },
   {
-    icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Comprehensive Gradebook',
-    description: 'Input scores for continuous assessments and exams. The system auto-calculates totals and assigns grades.',
+    icon: <BookOpen className="h-6 w-6 text-primary" />,
+    title: 'Smart Gradebook',
+    description: 'Input CA & exam scores with ease. Totals and grades are calculated automatically, saving you hours of work.',
   },
-    {
-    icon: <DollarSign className="h-8 w-8 text-primary" />,
+  {
+    icon: <DollarSign className="h-6 w-6 text-primary" />,
     title: 'Fee & Payment Tracking',
     description: 'Set class fees and record student payments to track revenue and outstanding balances each term.',
   },
   {
-    icon: <FileDown className="h-8 w-8 text-primary" />,
+    icon: <FileDown className="h-6 w-6 text-primary" />,
     title: 'AI Report Card Generator',
-    description: 'Generate insightful, printable report cards with AI-driven comments for teachers and principals.',
+    description: 'Create professional, insightful report cards with AI-driven comments for teachers and principals.',
   },
   {
-    icon: <Notebook className="h-8 w-8 text-primary" />,
+    icon: <Notebook className="h-6 w-6 text-primary" />,
     title: 'AI Lesson Note Generator',
-    description: 'Create multi-week, NERDC-compliant lesson notes for any subject, downloadable as a PDF.',
+    description: 'Generate multi-week, NERDC-compliant lesson notes for any subject, ready to download as a PDF.',
   },
-    {
-    icon: <FileQuestion className="h-8 w-8 text-primary" />,
+  {
+    icon: <FileQuestion className="h-6 w-6 text-primary" />,
     title: 'AI Exam Question Generator',
-    description: 'Instantly create objective, essay, or mixed-format exam questions based on your topics.',
-  },
-  {
-    icon: <CheckCircle className="h-8 w-8 text-primary" />,
-    title: 'Attendance Tracking',
-    description: 'A simple interface for marking daily student attendance (Present, Absent, or Late) for any class.',
-  },
-  {
-    icon: <Send className="h-8 w-8 text-primary" />,
-    title: 'Secure Data Transfer',
-    description: 'Share class rosters, academic records, and lesson notes securely with other users via a unique transfer code.',
+    description: 'Instantly create objective, essay, or mixed-format exams based on your topics, in a printable A4 format.',
   },
 ];
+
+const testimonials = [
+  {
+    name: 'Mrs. Adebayo',
+    role: 'Primary 4 Teacher, Lagos',
+    avatar: 'https://picsum.photos/seed/teacher-1/100/100',
+    comment: "TeachFlow has been a lifesaver. The AI report card generator cut my end-of-term work in half. I can't imagine going back to the old way.",
+  },
+  {
+    name: 'Mr. Chukwuma',
+    role: 'JSS Coordinator, Abuja',
+    avatar: 'https://picsum.photos/seed/teacher-2/100/100',
+    comment: 'The ability to manage all my classes, subjects, and student records in one place is fantastic. It’s so organized and easy to use.',
+  },
+  {
+    name: 'Mrs. Ibrahim',
+    role: 'School Owner, Kano',
+    avatar: 'https://picsum.photos/seed/teacher-3/100/100',
+    comment: "The payment tracking feature alone is worth it. I can see who has paid and who is owing at a glance. It has greatly improved our school's finances.",
+  }
+];
+
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50">
+      <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50 border-b">
         <Logo />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
             <Link href="/parents" passHref>
                 <Button variant="ghost">Parents</Button>
             </Link>
             <Link href="/login" passHref>
-                <Button variant="ghost">Login</Button>
+                <Button variant="ghost">Teacher Login</Button>
             </Link>
             <Link href="/register" passHref>
                 <Button variant="default">
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                Start for Free <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
         </nav>
@@ -84,131 +94,127 @@ export default function Home() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <Link href="/parents" passHref><DropdownMenuItem>Parents</DropdownMenuItem></Link>
-                    <Link href="/login" passHref><DropdownMenuItem>Login</DropdownMenuItem></Link>
-                    <Link href="/register" passHref><DropdownMenuItem>Get Started</DropdownMenuItem></Link>
+                    <Link href="/login" passHref><DropdownMenuItem>Teacher Login</DropdownMenuItem></Link>
+                    <Link href="/register" passHref><DropdownMenuItem>Start for Free</DropdownMenuItem></Link>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
       </header>
       <main className="flex-1">
-        <section className="relative w-full h-[70vh] md:h-[80vh] flex items-center justify-center text-center text-white">
-          {heroImage && (
-            <Image
-              src={heroImage.imageUrl}
-              alt={heroImage.description}
-              fill
-              className="object-cover -z-10"
-              data-ai-hint={heroImage.imageHint}
-              priority
-            />
-          )}
-          <div className="absolute inset-0 bg-black/60 -z-10" />
-          <div className="container px-4 md:px-6 space-y-6">
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none font-headline drop-shadow-md">
-              The Smart Way to Manage Your School
+        <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28">
+          <div className="container px-4 md:px-6 space-y-8 text-center">
+            <div className="bg-primary/10 text-primary inline-block rounded-full px-4 py-1.5 text-sm font-semibold mb-4">
+                The #1 School Management Platform for Nigerian Educators
+            </div>
+            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none font-headline">
+              Focus on Teaching, Not Paperwork.
             </h1>
-            <p className="max-w-[700px] mx-auto md:text-xl drop-shadow">
-              TeachFlow empowers Nigerian educators with AI-driven tools for class management, grade tracking, report generation, and secure data sharing.
+            <p className="max-w-[700px] mx-auto text-muted-foreground md:text-xl">
+              TeachFlow is the all-in-one tool designed for Nigerian teachers. Automate your administrative tasks, from grading and attendance to generating report cards, and get back to what you do best.
             </p>
             <div className="flex flex-col gap-4 min-[400px]:flex-row justify-center">
               <Link href="/register" passHref>
                 <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Get Started for Free <ArrowRightCircle className="ml-2" />
-                </Button>
-              </Link>
-              <Link href="#features" passHref>
-                <Button variant="secondary" size="lg">
-                  Learn More
+                  Start Your Free Trial
                 </Button>
               </Link>
             </div>
           </div>
+           {heroImage && (
+            <div className="absolute inset-0 -z-10 h-full w-full bg-background [mask-image:radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,0,0,0.3),rgba(255,255,255,0))]">
+                <Image
+                    src={heroImage.imageUrl}
+                    alt={heroImage.description}
+                    fill
+                    className="object-cover opacity-5 dark:opacity-10"
+                    data-ai-hint={heroImage.imageHint}
+                    priority
+                />
+            </div>
+           )}
         </section>
 
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-card">
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Built for Efficiency and Collaboration</h2>
+                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">Key Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need in One Place</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  From generating report cards to planning lessons, TeachFlow simplifies your administrative tasks so you can focus on teaching.
+                  TeachFlow simplifies your administrative tasks so you can focus on what truly matters: teaching.
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-6xl items-start gap-8 sm:grid-cols-2 lg:grid-cols-4 pt-12">
+            <div className="mx-auto grid max-w-5xl items-start gap-y-12 gap-x-8 sm:grid-cols-2 lg:grid-cols-3 pt-12">
               {features.map((feature, index) => (
-                <div key={index} className="flex flex-col items-center text-center gap-4">
-                  {feature.icon}
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-bold font-headline">{feature.title}</h3>
-                    <p className="text-muted-foreground">{feature.description}</p>
+                <div key={index} className="grid gap-2">
+                  <div className="flex items-center gap-3">
+                    {feature.icon}
+                    <h3 className="text-lg font-bold font-headline">{feature.title}</h3>
                   </div>
+                  <p className="text-muted-foreground">{feature.description}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
         
-        <section id="video-guide" className="w-full py-12 md:py-24 lg:py-32 bg-background">
-          <div className="container px-4 md:px-6 text-center">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">See TeachFlow in Action</h2>
-            <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl mb-8">
-              Watch this short video to see how TeachFlow can transform your school's administration.
-            </p>
-            <div className="mx-auto max-w-4xl aspect-video bg-muted rounded-xl overflow-hidden border">
-              <iframe
-                className="w-full h-full"
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title="TeachFlow Video Guide"
-              ></iframe>
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+          <div className="container px-4 md:px-6">
+             <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">What Teachers Are Saying</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                    Trusted by educators across Nigeria to simplify their work and improve efficiency.
+                </p>
             </div>
+             <div className="mx-auto grid max-w-5xl items-center gap-6 pt-12 lg:grid-cols-3 lg:gap-8">
+                {testimonials.map((testimonial, index) => (
+                    <Card key={index}>
+                        <CardContent className="p-6">
+                            <div className="flex items-start gap-4">
+                                <Avatar className="h-12 w-12 border">
+                                    <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
+                                    <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold">{testimonial.name}</p>
+                                    <p className="text-xs text-muted-foreground">{testimonial.role}</p>
+                                </div>
+                                <div className="flex text-yellow-400">
+                                    <Star className="w-4 h-4 fill-current" />
+                                    <Star className="w-4 h-4 fill-current" />
+                                    <Star className="w-4 h-4 fill-current" />
+                                    <Star className="w-4 h-4 fill-current" />
+                                    <Star className="w-4 h-4 fill-current" />
+                                </div>
+                            </div>
+                             <p className="mt-4 text-muted-foreground">"{testimonial.comment}"</p>
+                        </CardContent>
+                    </Card>
+                ))}
+             </div>
           </div>
         </section>
 
-        <section id="about-developer" className="w-full py-12 md:py-24 lg:py-32 bg-card">
-            <div className="container px-4 md:px-6">
-                <Card className="overflow-hidden">
-                    <div className="grid md:grid-cols-3">
-                        <div className="md:col-span-1 bg-secondary/50 p-8 flex flex-col items-center justify-center text-center">
-                            <Avatar className="h-32 w-32 border-4 border-primary shadow-lg mb-4">
-                                <AvatarImage 
-                                  src="https://lh3.googleusercontent.com/a/ACg8ocK_3_x_4_Y_2_z_Xw_3_Y_3_x_4_Y_2_z_Xw=s96-c" 
-                                  alt="Elliot Nzei"
-                                />
-                                <AvatarFallback>EN</AvatarFallback>
-                            </Avatar>
-                            <h3 className="text-2xl font-bold">Elliot Nzei</h3>
-                            <p className="text-muted-foreground">Passionate Researcher, Programmer, and Problem-Solver</p>
-                             <div className="flex items-center gap-4 mt-6">
-                                <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
-                                   <Button variant="outline"><Linkedin className="mr-2 h-4 w-4" /> LinkedIn</Button>
-                                </Link>
-                                 <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
-                                   <Button variant="outline">Upwork</Button>
-                                </Link>
-                             </div>
-                        </div>
-                        <div className="md:col-span-2 p-8 md:p-12 space-y-4">
-                           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline mb-4">About the Developer</h2>
-                           <p>
-                             Hi, I'm Elliot Nzei — a passionate researcher, programmer, and problem-solver specializing in Python, JavaScript, and cloud-based web technologies. I built TeachFlow to address the real challenges faced by Nigerian educators in managing schools, students, and academics efficiently.
-                           </p>
-                            <p>
-                             With a strong background in computer science, system automation, and AI integration, I focus on developing intelligent digital tools that simplify complex administrative tasks. My goal is to bridge the gap between traditional education systems and modern technology through reliable, user-friendly solutions that empower teachers and improve learning outcomes.
-                           </p>
-                            <p>
-                             TeachFlow reflects my belief that innovation in education starts with better tools — and I’m committed to building platforms that make that vision a reality.
-                           </p>
-                        </div>
-                    </div>
-                </Card>
+        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+          <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">Ready to Transform Your Workflow?</h2>
+              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Join hundreds of teachers who are saving time and reducing stress. Get started with TeachFlow today—it's free to try.
+              </p>
             </div>
+            <div className="mx-auto w-full max-w-sm space-y-2">
+                <Link href="/register" passHref>
+                    <Button size="lg" className="w-full">
+                    Sign Up Now <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+              </Link>
+            </div>
+          </div>
         </section>
-
       </main>
+
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
