@@ -9,13 +9,6 @@ import { z } from 'genkit';
 import { readFileSync } from 'fs';
 import path from 'path';
 
-// Read context files. Using readFileSync is acceptable here as it runs at server start-up.
-const readmePath = path.join(process.cwd(), 'src', 'README.md');
-const backendSpecPath = path.join(process.cwd(), 'docs', 'backend.json');
-
-const readmeContent = readFileSync(readmePath, 'utf-8');
-const backendSpecContent = readFileSync(backendSpecPath, 'utf-8');
-
 const MessageSchema = z.object({
   role: z.enum(['user', 'model']),
   content: z.string(),
@@ -40,7 +33,7 @@ export async function customerSupport(
 
 const prompt = ai.definePrompt({
   name: 'customerSupportPrompt',
-  input: { schema: CustomerSupportInputSchema },
+  input: { schema: CustomerSupportInputSchema.extend({ readmeContent: z.string(), backendSpecContent: z.string() }) },
   output: { schema: CustomerSupportOutputSchema },
   prompt: `You are a friendly and helpful customer support agent for a Nigerian School Management System called "TeachFlow". Your goal is to answer user questions and guide them on how to use the application.
 
@@ -87,6 +80,13 @@ const customerSupportFlow = ai.defineFlow(
     outputSchema: CustomerSupportOutputSchema,
   },
   async (input) => {
+    // Read context files. Using readFileSync is acceptable here as it runs at server start-up.
+    const readmePath = path.join(process.cwd(), 'src', 'README.md');
+    const backendSpecPath = path.join(process.cwd(), 'docs', 'backend.json');
+
+    const readmeContent = readFileSync(readmePath, 'utf-8');
+    const backendSpecContent = readFileSync(backendSpecPath, 'utf-8');
+    
     const { output } = await prompt({
       ...input,
       readmeContent,
