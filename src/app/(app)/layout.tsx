@@ -58,6 +58,7 @@ import UpgradeModal from '@/components/upgrade-modal';
 import { Badge } from '@/components/ui/badge';
 import { toTitleCase } from '@/lib/utils';
 import HelpGuide from '@/components/help-guide';
+import CustomerSupportChat from '@/components/customer-support-chat';
 
 
 const allMenuItems = [
@@ -224,6 +225,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <HelpGuide pathname={pathname} />
         </DialogContent>
       </Dialog>
+      <CustomerSupportChat />
     </SidebarProvider>
   )
 }
