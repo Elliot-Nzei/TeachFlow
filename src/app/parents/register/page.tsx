@@ -8,13 +8,12 @@ import { Logo } from "@/components/logo"
 import { useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp, getDocs, collectionGroup, where, query, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collection, where, query } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ToastAction } from "@/components/ui/toast";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { getStudentByParentId } from "@/app/actions/parent-access";
 
 export default function ParentRegisterPage() {
     const { firestore, auth } = useFirebase();
