@@ -6,18 +6,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import { useAuth } from '@/firebase';
+import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import placeholderImages from '@/lib/placeholder-images.json';
+import { doc, getDoc } from "firebase/firestore";
 
 const loginImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 export default function LoginPage() {
-  const auth = useAuth();
+  const { auth, firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -28,8 +29,20 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // After successful sign-in, check if the user exists in the 'users' collection
+      const userDocRef = doc(firestore, 'users', userCredential.user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // If the document doesn't exist, they are not a teacher. Sign them out.
+        await auth.signOut();
+        throw new Error('This account does not have teacher privileges.');
+      }
+      
       router.push('/dashboard');
+
     } catch (error) {
         console.error("Error during login:", error);
         let description = 'An unexpected error occurred. Please try again.';
@@ -37,7 +50,10 @@ export default function LoginPage() {
             if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
                 description = 'Invalid email or password. Please check your credentials and try again.';
             }
+        } else if (error instanceof Error) {
+            description = error.message;
         }
+
         toast({
             variant: 'destructive',
             title: 'Login Failed',

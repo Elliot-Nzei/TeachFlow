@@ -1,7 +1,7 @@
 
 'use client';
 import { useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc, arrayUnion, collectionGroup } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
 import StudentProfileContent from '@/components/student-profile-content';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,18 @@ export default function ParentDashboardPage() {
         if (user && firestore) {
             try {
                 setIsLoading(true);
+
+                // First, check if this user is a teacher
+                const teacherDocRef = doc(firestore, 'users', user.uid);
+                const teacherDocSnap = await getDoc(teacherDocRef);
+                if (teacherDocSnap.exists()) {
+                   setError("This appears to be a teacher account. Please log in through the teacher portal.");
+                   await signOut(auth!); // Log out the user
+                   router.push('/login'); // Redirect to teacher login
+                   return;
+                }
+
+                // If not a teacher, proceed to check for parent profile
                 const parentDocRef = doc(firestore, 'parents', user.uid);
                 const parentDocSnap = await getDoc(parentDocRef);
                 if (parentDocSnap.exists()) {
@@ -46,13 +58,8 @@ export default function ParentDashboardPage() {
                         setStudentIds([]);
                     }
                 } else {
-                     const teacherDocRef = doc(firestore, 'users', user.uid);
-                     const teacherDocSnap = await getDoc(teacherDocRef);
-                     if (teacherDocSnap.exists()) {
-                        setError("This appears to be a teacher account. Please log in through the teacher portal.");
-                     } else {
-                        setError("Parent profile not found. Please contact the school administrator.");
-                     }
+                     // This case happens if a user is authenticated but has neither a teacher nor a parent profile.
+                     setError("Your parent profile could not be found. Please ensure you have registered correctly or contact support.");
                 }
             } catch (e) {
                 setError("Failed to fetch your profile. Please try again later.");
@@ -85,7 +92,8 @@ export default function ParentDashboardPage() {
 
         setIsLinking(true);
         try {
-            const studentQuery = query(collectionGroup(firestore, 'students'), where('parentId', '==', parentIdInput));
+            // Use collectionGroup to query all 'students' subcollections across all users
+            const studentQuery = query(collectionGroup(firestore, 'students'), where('parentId', '==', parentIdInput), limit(1));
             const studentSnapshot = await getDocs(studentQuery);
 
             if (studentSnapshot.empty) {
