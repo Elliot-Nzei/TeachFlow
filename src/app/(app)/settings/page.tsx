@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Clipboard, Loader2, AlertTriangle, School, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -22,7 +22,7 @@ export default function SettingsPage() {
     const storage = useStorage();
     
     const [localSettings, setLocalSettings] = useState(settings);
-    const [previewLogo, setPreviewLogo] = useState('');
+    const [previewLogo, setPreviewLogo] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isSavingLogo, setIsSavingLogo] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
@@ -35,7 +35,7 @@ export default function SettingsPage() {
     useEffect(() => {
         if (settings) {
             setLocalSettings(settings);
-            setPreviewLogo(settings.schoolLogo || '');
+            setPreviewLogo(settings.schoolLogo || null);
         }
     }, [settings]);
     
@@ -257,7 +257,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="flex items-center gap-4 mt-2">
                             <Avatar className="h-24 w-24 rounded-md">
-                                <AvatarImage src={previewLogo} className="object-contain"/>
+                                <AvatarImage src={previewLogo || undefined} className="object-contain"/>
                                 <AvatarFallback className="rounded-md">
                                     <School className="h-10 w-10 text-muted-foreground" />
                                 </AvatarFallback>
