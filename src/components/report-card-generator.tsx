@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import ClassicReportCard from './report-card-templates/ClassicReportCard';
 import ModernReportCard from './report-card-templates/ModernReportCard';
 import CompactReportCard from './report-card-templates/CompactReportCard';
+import MinimalCompact from './report-card-templates/MinimalCompact';
 
 
 export type ReportWithStudentAndGradeInfo = GenerateReportCardOutput & {
@@ -434,6 +435,8 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
             return ModernReportCard;
         case 'compact':
             return CompactReportCard;
+        case 'minimal-compact':
+            return MinimalCompact;
         case 'classic':
         default:
             return ClassicReportCard;
@@ -709,10 +712,10 @@ export default function ReportCardGenerator({ studentId, buttonLabel = 'Generate
             body {
                 background-color: #fff;
             }
-            .print\\:hidden {
+            .print\:hidden {
                 display: none;
             }
-            .print\\:block {
+            .print\:block {
                 display: block;
             }
             .a4-page, .a4-page * {

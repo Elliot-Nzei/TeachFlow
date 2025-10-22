@@ -347,6 +347,7 @@ export default function SettingsPage() {
                 <SelectItem value="classic">Classic</SelectItem>
                 <SelectItem value="modern">Modern</SelectItem>
                 <SelectItem value="compact">Compact</SelectItem>
+                <SelectItem value="minimal-compact">Minimal Compact</SelectItem>
               </SelectContent>
             </Select>
           </div>

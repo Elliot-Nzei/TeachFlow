@@ -1,4 +1,5 @@
 
+
 import { type DialogContentProps } from '@radix-ui/react-dialog';
 
 declare module "@radix-ui/react-dialog" {
@@ -164,7 +165,7 @@ export type Settings = {
   plan?: 'free_trial' | 'basic' | 'prime';
   planStartDate?: any;
   subscriptionCycle?: 'monthly' | 'annually';
-  reportCardTemplate?: 'classic' | 'modern' | 'compact';
+  reportCardTemplate?: 'classic' | 'modern' | 'compact' | 'minimal-compact';
   aiUsage?: {
       reportCardGenerations?: number;
       lessonNoteGenerations?: number;
