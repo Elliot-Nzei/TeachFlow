@@ -3,7 +3,7 @@
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc, arrayUnion, collectionGroup } from 'firebase/firestore';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import StudentProfileContent from '@/components/student-profile-content';
+import ParentStudentProfile from '@/components/parent-student-profile';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { signOut } from 'firebase/auth';
@@ -36,7 +36,7 @@ export default function ParentDashboardPage() {
 
     const hasLinkedChildren = useMemo(() => linkedParentIds.length > 0, [linkedParentIds]);
 
-    const fetchParentProfile = useCallback(async () => {
+    const fetchParentProfileAndStudentData = useCallback(async () => {
         if (!user || !firestore) return;
         setIsLoading(true);
         setError(null);
@@ -77,12 +77,12 @@ export default function ParentDashboardPage() {
     useEffect(() => {
         if (!isUserLoading) {
             if (user) {
-                fetchParentProfile();
+                fetchParentProfileAndStudentData();
             } else {
                 router.push('/parents/login');
             }
         }
-    }, [user, isUserLoading, fetchParentProfile, router]);
+    }, [user, isUserLoading, fetchParentProfileAndStudentData, router]);
 
 
     const handleLogout = async () => {
@@ -117,7 +117,7 @@ export default function ParentDashboardPage() {
             });
             
             setParentIdInput('');
-            await fetchParentProfile();
+            await fetchParentProfileAndStudentData();
 
         } catch (error) {
             console.error("Error linking child:", error);
@@ -171,7 +171,7 @@ export default function ParentDashboardPage() {
             </header>
             <main className="flex-1 bg-muted/40 p-4 md:p-8">
                 {hasLinkedChildren && studentData ? (
-                    <StudentProfileContent student={studentData} readOnly />
+                    <ParentStudentProfile student={studentData} />
                 ) : (
                     <div className="flex items-center justify-center h-full">
                         <Card className="w-full max-w-md">

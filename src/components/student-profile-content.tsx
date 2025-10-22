@@ -170,7 +170,7 @@ function TraitEditor({ student, readOnly = false }: { student: any, readOnly?: b
     )
 }
 
-function StudentProfileContent({ student: initialStudent, readOnly = false }: { student: any, readOnly?: boolean }) {
+function StudentProfileContent({ studentId, student: initialStudent, readOnly = false }: { studentId?: string, student?: any, readOnly?: boolean }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const router = useRouter();
@@ -179,14 +179,15 @@ function StudentProfileContent({ student: initialStudent, readOnly = false }: { 
   const [activeTab, setActiveTab] = useState('academic-record');
   const isMobile = useIsMobile();
   
-  const student = initialStudent; // data comes from prop now
-  const studentId = student?.id;
+  const studentDocQuery = useMemoFirebase(() => (user && studentId && !readOnly) ? doc(firestore, 'users', user.uid, 'students', studentId) : null, [firestore, user, studentId, readOnly]);
+  const { data: studentFromDb, isLoading: isLoadingStudent } = useDoc<any>(studentDocQuery);
+
+  const student = readOnly ? initialStudent : studentFromDb;
   
-  // These hooks will only run if NOT in readOnly mode
-  const gradesQuery = useMemoFirebase(() => (user && !readOnly) ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', studentId)) : null, [firestore, user, studentId, readOnly]);
+  const gradesQuery = useMemoFirebase(() => (user && student?.id) ? query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', '==', student.id)) : null, [firestore, user, student?.id]);
   const { data: gradesForStudent, isLoading: isLoadingGrades } = useCollection<any>(gradesQuery);
   
-  const attendanceQuery = useMemoFirebase(() => (user && !readOnly) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', studentId)) : null, [firestore, user, studentId, readOnly]);
+  const attendanceQuery = useMemoFirebase(() => (user && student?.id) ? query(collection(firestore, 'users', user.uid, 'attendance'), where('studentId', '==', student.id)) : null, [firestore, user, student?.id]);
   const { data: attendanceForStudent, isLoading: isLoadingAttendance } = useCollection<any>(attendanceQuery);
 
   const displayGrades = readOnly ? (student.grades || []) : gradesForStudent;
@@ -221,12 +222,12 @@ function StudentProfileContent({ student: initialStudent, readOnly = false }: { 
     try {
         const batch = writeBatch(firestore);
 
-        const studentRef = doc(firestore, 'users', user.uid, 'students', studentId);
+        const studentRef = doc(firestore, 'users', user.uid, 'students', student.id);
         batch.delete(studentRef);
 
         const collectionsToDelete = ['grades', 'attendance', 'traits', 'payments'];
         for (const coll of collectionsToDelete) {
-            const q = query(collection(firestore, 'users', user.uid, coll), where('studentId', '==', studentId));
+            const q = query(collection(firestore, 'users', user.uid, coll), where('studentId', '==', student.id));
             const snapshot = await getDocs(q);
             snapshot.forEach(docToDelete => {
                 batch.delete(docToDelete.ref);
@@ -236,7 +237,7 @@ function StudentProfileContent({ student: initialStudent, readOnly = false }: { 
         if (student.classId) {
             const classRef = doc(firestore, 'users', user.uid, 'classes', student.classId);
             batch.update(classRef, {
-                students: arrayRemove(studentId)
+                students: arrayRemove(student.id)
             });
         }
         
@@ -260,7 +261,25 @@ function StudentProfileContent({ student: initialStudent, readOnly = false }: { 
         setIsDeleting(false);
     }
   };
+  
+  const isLoading = !readOnly && isLoadingStudent;
 
+  if (isLoading) {
+    return (
+        <div className="p-4 md:p-6 space-y-6">
+            <div className="flex items-center gap-4">
+                <Skeleton className="h-24 w-24 rounded-full" />
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-20" />
+                </div>
+            </div>
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-64 w-full" />
+        </div>
+    )
+  }
 
   if (!student) {
       return <div className="p-6">Student not found.</div>;
