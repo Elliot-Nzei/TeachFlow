@@ -8,11 +8,11 @@ import type { User } from 'firebase/auth';
 import { add, differenceInDays, isAfter } from 'date-fns';
 import { doc } from 'firebase/firestore';
 
-const TRIAL_DURATION_SECONDS = 30;
-const BASIC_MONTHLY_SECONDS = 45;
-const BASIC_ANNUALLY_MINUTES = 1;
-const PRIME_MONTHLY_MINUTES = 1;
-const PRIME_ANNUALLY_MINUTES = 90;
+// Standard subscription durations
+const TRIAL_DURATION_DAYS = 7;
+const MONTHLY_DURATION_DAYS = 30;
+const ANNUAL_DURATION_YEARS = 1;
+
 
 type Plan = 'free_trial' | 'basic' | 'prime' | null;
 type BillingCycle = 'monthly' | 'annually' | null;
@@ -104,18 +104,12 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     let endDate: Date;
 
     if (plan === 'free_trial') {
-        endDate = add(startDate, { seconds: TRIAL_DURATION_SECONDS });
-    } else if (plan === 'basic') {
+        endDate = add(startDate, { days: TRIAL_DURATION_DAYS });
+    } else { // basic or prime
         if (subscriptionCycle === 'annually') {
-            endDate = add(startDate, { minutes: BASIC_ANNUALLY_MINUTES });
-        } else {
-            endDate = add(startDate, { seconds: BASIC_MONTHLY_SECONDS });
-        }
-    } else { // prime
-         if (subscriptionCycle === 'annually') {
-            endDate = add(startDate, { minutes: PRIME_ANNUALLY_MINUTES });
-        } else {
-            endDate = add(startDate, { minutes: PRIME_MONTHLY_MINUTES });
+            endDate = add(startDate, { years: ANNUAL_DURATION_YEARS });
+        } else { // monthly
+            endDate = add(startDate, { days: MONTHLY_DURATION_DAYS });
         }
     }
     
