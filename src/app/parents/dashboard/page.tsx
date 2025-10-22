@@ -2,7 +2,7 @@
 'use client';
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc, arrayUnion, collectionGroup } from 'firebase/firestore';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import StudentProfileContent from '@/components/student-profile-content';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -28,67 +28,62 @@ export default function ParentDashboardPage() {
     const { toast } = useToast();
 
     const [studentData, setStudentData] = useState<any | null>(null);
-    const [hasLinkedChildren, setHasLinkedChildren] = useState(false);
+    const [linkedParentIds, setLinkedParentIds] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [parentIdInput, setParentIdInput] = useState('');
     const [isLinking, setIsLinking] = useState(false);
 
-    const fetchParentProfileAndStudentData = async () => {
-        if (user && firestore) {
-            try {
-                setIsLoading(true);
-                setError(null);
+    const hasLinkedChildren = useMemo(() => linkedParentIds.length > 0, [linkedParentIds]);
 
-                const teacherDocRef = doc(firestore, 'users', user.uid);
-                const teacherDocSnap = await getDoc(teacherDocRef);
-                if (teacherDocSnap.exists()) {
-                   setError("This appears to be a teacher account. Please log in through the teacher portal.");
-                   if (auth) await signOut(auth);
-                   router.push('/login');
-                   return;
-                }
-
-                const parentDocRef = doc(firestore, 'parents', user.uid);
-                const parentDocSnap = await getDoc(parentDocRef);
-                if (parentDocSnap.exists()) {
-                    const parentData = parentDocSnap.data() as ParentProfile;
-                    const linkedIds = parentData.linkedParentIds || [];
-                    
-                    if (linkedIds.length > 0) {
-                        setHasLinkedChildren(true);
-                        // Fetch the first student's data
-                        const result = await getStudentByParentId(linkedIds[0]);
-                        if (result.error) {
-                            setError(result.error);
-                        } else {
-                            setStudentData(result.data);
-                        }
-                    } else {
-                        setHasLinkedChildren(false);
-                    }
-                } else {
-                     setError("Your parent profile could not be found. Please ensure you have registered correctly or contact support.");
-                }
-            } catch (e) {
-                setError("Failed to fetch your profile. Please try again later.");
-                console.error("Error fetching parent profile:", e);
-            } finally {
+    const fetchParentProfile = useCallback(async () => {
+        if (!user || !firestore) return;
+        setIsLoading(true);
+        setError(null);
+        setStudentData(null);
+        
+        try {
+            const parentDocRef = doc(firestore, 'parents', user.uid);
+            const parentDocSnap = await getDoc(parentDocRef);
+    
+            if (!parentDocSnap.exists()) {
+                setError("Your parent profile could not be found. Please ensure you have registered correctly or contact support.");
                 setIsLoading(false);
+                return;
             }
-        }
-    };
+            
+            const parentData = parentDocSnap.data() as ParentProfile;
+            const currentLinkedIds = parentData.linkedParentIds || [];
+            setLinkedParentIds(currentLinkedIds);
 
+            if (currentLinkedIds.length > 0) {
+                // Fetch the first student's data
+                const result = await getStudentByParentId(currentLinkedIds[0]);
+                if (result.error) {
+                    setError(result.error);
+                } else {
+                    setStudentData(result.data);
+                }
+            }
+
+        } catch (e) {
+            setError("Failed to fetch your profile. Please try again later.");
+            console.error("Error fetching parent profile:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, firestore]);
+    
     useEffect(() => {
         if (!isUserLoading) {
             if (user) {
-                fetchParentProfileAndStudentData();
+                fetchParentProfile();
             } else {
                 router.push('/parents/login');
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, isUserLoading, firestore, router]);
+    }, [user, isUserLoading, fetchParentProfile, router]);
+
 
     const handleLogout = async () => {
         if (!auth) return;
@@ -122,7 +117,7 @@ export default function ParentDashboardPage() {
             });
             
             setParentIdInput('');
-            await fetchParentProfileAndStudentData();
+            await fetchParentProfile();
 
         } catch (error) {
             console.error("Error linking child:", error);
