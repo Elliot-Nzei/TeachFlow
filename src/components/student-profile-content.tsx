@@ -369,7 +369,7 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
                     {isEditing ? (
                          <div className="flex items-center gap-2 pt-1">
                              <Select value={editingClassId} onValueChange={setEditingClassId}>
-                                <SelectTrigger className="w-[200px] h-9">
+                                <SelectTrigger className="w-full sm:w-[200px] h-9">
                                     <SelectValue placeholder="Select class..." />
                                 </SelectTrigger>
                                 <SelectContent>
