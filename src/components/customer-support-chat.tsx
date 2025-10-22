@@ -131,6 +131,9 @@ export default function CustomerSupportChat({ isOpen, onOpenChange }: CustomerSu
      return (
        <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="p-0 border-0 w-[95vw] h-[80vh] flex flex-col" hideCloseButton>
+            <DialogHeader className="sr-only">
+              <VisuallyHiddenTitle>TeachFlow AI Assistant</VisuallyHiddenTitle>
+            </DialogHeader>
             <Card className="h-full flex flex-col shadow-2xl rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
                 <div className="flex items-center space-x-3">
