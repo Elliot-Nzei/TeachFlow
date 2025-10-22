@@ -367,7 +367,7 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
                     <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
                     {isEditing ? (
                         <Select value={editingClassId} onValueChange={setEditingClassId}>
-                            <SelectTrigger className="w-[200px]">
+                            <SelectTrigger className="w-[200px] h-9 mt-1">
                                 <SelectValue placeholder="Select class..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -376,7 +376,7 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
                             </SelectContent>
                         </Select>
                     ) : (
-                        student.className ? <Badge variant="outline">{student.className}</Badge> : <Badge variant="destructive">Unassigned</Badge>
+                        student.className ? <Badge variant="outline" className="mt-1">{student.className}</Badge> : <Badge variant="destructive" className="mt-1">Unassigned</Badge>
                     )}
                 </div>
             </div>
@@ -633,3 +633,6 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
 }
 
 export default StudentProfileContent;
+
+
+    
