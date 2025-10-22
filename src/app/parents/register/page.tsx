@@ -8,7 +8,7 @@ import { Logo } from "@/components/logo"
 import { useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp, getDocs, collectionGroup, where, query } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collectionGroup, where, query, getDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -54,8 +54,8 @@ export default function ParentRegisterPage() {
             if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
                 toast({
                     variant: 'destructive',
-                    title: 'Registration Failed',
-                    description: 'This email is already in use. Please try another email or log in.',
+                    title: 'Email Already Registered',
+                    description: 'This email is already associated with an account. Please use a different email or log in.',
                     action: <ToastAction altText="Go to Login" onClick={() => router.push('/parents/login')}>Go to Login</ToastAction>,
                 });
             } else {
