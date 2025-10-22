@@ -43,11 +43,13 @@ export default function ParentDashboardPage() {
         setStudentData(null);
         
         try {
+            // Use the user's UID to query their profile in the 'parents' collection
             const parentDocRef = doc(firestore, 'parents', user.uid);
             const parentDocSnap = await getDoc(parentDocRef);
     
             if (!parentDocSnap.exists()) {
-                setError("Your parent profile could not be found. Please ensure you have registered correctly or contact support.");
+                // This could happen if the doc creation failed or was delayed
+                setError("Your parent profile could not be found. Please try logging out and in again, or contact support if the issue persists.");
                 setIsLoading(false);
                 return;
             }

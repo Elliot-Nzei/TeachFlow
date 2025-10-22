@@ -33,11 +33,18 @@ export default function ParentRegisterPage() {
         try {
             if (!firestore || !auth) throw new Error("Firebase services not available.");
 
+            // Check if email is already in use by a teacher
+            const teacherQuery = query(collection(firestore, 'users'), where('email', '==', email));
+            const teacherSnapshot = await getDocs(teacherQuery);
+            if (!teacherSnapshot.empty) {
+                throw new FirebaseError('auth/email-already-in-use', "This email is registered as a teacher. Please use a different email or log in as a teacher.");
+            }
+
             // 1. Create user account
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2. Create parent profile in 'parents' collection
+            // 2. Create parent profile in 'parents' collection using the user's UID as the document ID
             await setDoc(doc(firestore, "parents", user.uid), {
                 uid: user.uid,
                 name: fullName,
@@ -51,20 +58,25 @@ export default function ParentRegisterPage() {
 
         } catch (error) {
             console.error("Error during parent registration:", error);
-            if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Email Already Registered',
-                    description: 'This email is already associated with an account. Please use a different email or log in.',
-                    action: <ToastAction altText="Go to Login" onClick={() => router.push('/parents/login')}>Go to Login</ToastAction>,
-                });
-            } else {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Registration Failed',
-                    description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
-                });
+            let errorMessage = 'An unexpected error occurred. Please try again.';
+            if (error instanceof FirebaseError) {
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'This email is already registered. Please log in or use a different email.';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+            } else if (error instanceof Error) {
+                errorMessage = error.message;
             }
+
+            toast({
+                variant: 'destructive',
+                title: 'Registration Failed',
+                description: errorMessage,
+                action: error instanceof FirebaseError && error.code === 'auth/email-already-in-use' 
+                    ? <ToastAction altText="Go to Login" onClick={() => router.push('/parents/login')}>Go to Login</ToastAction>
+                    : undefined,
+            });
         } finally {
             setIsLoading(false);
         }
