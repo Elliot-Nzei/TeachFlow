@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -23,7 +24,6 @@ export default function ParentRegisterPage() {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [parentId, setParentId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -33,25 +33,17 @@ export default function ParentRegisterPage() {
         try {
             if (!firestore || !auth) throw new Error("Firebase services not available.");
 
-            // 1. Validate Parent ID
-            const studentQuery = query(collectionGroup(firestore, 'students'), where('parentId', '==', parentId));
-            const studentSnapshot = await getDocs(studentQuery);
-            if (studentSnapshot.empty) {
-                throw new Error("Invalid Parent ID. Please check the ID provided by the school.");
-            }
-            const studentDoc = studentSnapshot.docs[0];
-            
-            // 2. Create user account
+            // 1. Create user account
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 3. Create parent profile in 'parents' collection
+            // 2. Create parent profile in 'parents' collection
             await setDoc(doc(firestore, "parents", user.uid), {
                 uid: user.uid,
                 name: fullName,
                 email: user.email,
-                linkedStudentIds: [studentDoc.id], // Store Firestore document ID of the student
-                linkedParentIds: [parentId], // Store the Parent ID they entered
+                linkedStudentIds: [],
+                linkedParentIds: [],
                 createdAt: serverTimestamp(),
             });
 
@@ -110,11 +102,6 @@ export default function ParentRegisterPage() {
                              <div className="grid gap-2">
                                 <Label htmlFor="password">Password</Label>
                                 <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
-                            </div>
-                             <div className="grid gap-2">
-                                <Label htmlFor="parentId">Child's Parent ID *</Label>
-                                <Input id="parentId" placeholder="PARENT-XXXX-YYYY-ZZZZ" required value={parentId} onChange={e => setParentId(e.target.value.toUpperCase())} />
-                                <p className="text-xs text-muted-foreground">This ID is provided by your child's school.</p>
                             </div>
                             <Button type="submit" className="w-full" disabled={isLoading}>
                             {isLoading ? 'Creating Account...' : 'Create Account'}

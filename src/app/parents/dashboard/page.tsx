@@ -1,6 +1,7 @@
+
 'use client';
 import { useFirebase, useUser, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
 import StudentProfileContent from '@/components/student-profile-content';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,10 @@ import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Link2, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 type ParentProfile = {
     linkedStudentIds: string[];
@@ -18,49 +22,52 @@ type ParentProfile = {
 export default function ParentDashboardPage() {
     const { firestore, auth, user, isUserLoading } = useFirebase();
     const router = useRouter();
+    const { toast } = useToast();
+
     const [studentIds, setStudentIds] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [parentIdInput, setParentIdInput] = useState('');
+    const [isLinking, setIsLinking] = useState(false);
+
+    const fetchParentProfile = async () => {
+        if (user && firestore) {
+            try {
+                setIsLoading(true);
+                const parentDocRef = doc(firestore, 'parents', user.uid);
+                const parentDocSnap = await getDoc(parentDocRef);
+                if (parentDocSnap.exists()) {
+                    const parentData = parentDocSnap.data() as ParentProfile;
+                    
+                    if (parentData.linkedStudentIds && parentData.linkedStudentIds.length > 0) {
+                        setStudentIds(parentData.linkedStudentIds);
+                    } else {
+                        // No children linked, stay on this page to show the linking form.
+                        setStudentIds([]);
+                    }
+                } else {
+                     const teacherDocRef = doc(firestore, 'users', user.uid);
+                     const teacherDocSnap = await getDoc(teacherDocRef);
+                     if (teacherDocSnap.exists()) {
+                        setError("This appears to be a teacher account. Please log in through the teacher portal.");
+                     } else {
+                        setError("Parent profile not found. Please contact the school administrator.");
+                     }
+                }
+            } catch (e) {
+                setError("Failed to fetch your profile. Please try again later.");
+                console.error("Error fetching parent profile:", e);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    };
 
     useEffect(() => {
-        const fetchParentProfile = async () => {
-            if (user && firestore) {
-                try {
-                    const parentDocRef = doc(firestore, 'parents', user.uid);
-                    const parentDocSnap = await getDoc(parentDocRef);
-                    if (parentDocSnap.exists()) {
-                        const parentData = parentDocSnap.data() as ParentProfile;
-                        
-                        if (parentData.linkedStudentIds && parentData.linkedStudentIds.length > 0) {
-                            setStudentIds(parentData.linkedStudentIds);
-                        } else {
-                            setError("No children are linked to this account.");
-                        }
-                    } else {
-                        // This case can happen if a user is authenticated but has no parent profile.
-                        // We should probably guide them. For now, show an error.
-                         const teacherDocRef = doc(firestore, 'users', user.uid);
-                         const teacherDocSnap = await getDoc(teacherDocRef);
-                         if (teacherDocSnap.exists()) {
-                            setError("This appears to be a teacher account. Please log in through the teacher portal.");
-                         } else {
-                            setError("Parent profile not found. Please contact the school administrator.");
-                         }
-                    }
-                } catch (e) {
-                    setError("Failed to fetch your profile. Please try again later.");
-                    console.error("Error fetching parent profile:", e);
-                } finally {
-                    setIsLoading(false);
-                }
-            }
-        };
-
         if (!isUserLoading) {
             if (user) {
                 fetchParentProfile();
             } else {
-                // If no user, redirect to login
                 router.push('/parents/login');
             }
         }
@@ -70,6 +77,47 @@ export default function ParentDashboardPage() {
         if (!auth) return;
         await signOut(auth);
         router.push('/parents/login');
+    };
+
+    const handleLinkChild = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !firestore || !parentIdInput) return;
+
+        setIsLinking(true);
+        try {
+            const studentQuery = query(collectionGroup(firestore, 'students'), where('parentId', '==', parentIdInput));
+            const studentSnapshot = await getDocs(studentQuery);
+
+            if (studentSnapshot.empty) {
+                throw new Error("Invalid Parent ID. Please check the ID provided by the school and try again.");
+            }
+
+            const studentDoc = studentSnapshot.docs[0];
+            const parentDocRef = doc(firestore, 'parents', user.uid);
+
+            await updateDoc(parentDocRef, {
+                linkedStudentIds: arrayUnion(studentDoc.id),
+                linkedParentIds: arrayUnion(parentIdInput),
+            });
+
+            toast({
+                title: "Child Linked Successfully!",
+                description: "You can now view your child's records.",
+            });
+
+            // Re-fetch profile to update the dashboard
+            await fetchParentProfile();
+
+        } catch (error) {
+            console.error("Error linking child:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Linking Failed',
+                description: error instanceof Error ? error.message : 'An unknown error occurred.',
+            });
+        } finally {
+            setIsLinking(false);
+        }
     };
     
     if (isLoading || isUserLoading) {
@@ -111,8 +159,41 @@ export default function ParentDashboardPage() {
                 </nav>
             </header>
             <main className="flex-1 bg-muted/40 p-4 md:p-8">
-                {/* For now, we only show the first student. A selector could be added later for multiple children. */}
-                {studentIds.length > 0 && <StudentProfileContent studentId={studentIds[0]} readOnly />}
+                {studentIds.length > 0 ? (
+                    <StudentProfileContent studentId={studentIds[0]} readOnly />
+                ) : (
+                    <div className="flex items-center justify-center h-full">
+                        <Card className="w-full max-w-md">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Link2 className="h-5 w-5" />
+                                    Link Your Child's Account
+                                </CardTitle>
+                                <CardDescription>
+                                    Enter the unique Parent ID provided by your child's school to access their academic records.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handleLinkChild} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="parentIdInput">Child's Parent ID</Label>
+                                        <Input
+                                            id="parentIdInput"
+                                            placeholder="PARENT-XXXX-YYYY"
+                                            value={parentIdInput}
+                                            onChange={e => setParentIdInput(e.target.value.toUpperCase())}
+                                            required
+                                        />
+                                    </div>
+                                    <Button type="submit" className="w-full" disabled={isLinking}>
+                                        {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        {isLinking ? 'Linking...' : 'Link Child'}
+                                    </Button>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
             </main>
         </div>
     );
