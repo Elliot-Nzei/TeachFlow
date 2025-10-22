@@ -302,12 +302,13 @@ export default function StudentsPage() {
                                         <SelectValue placeholder="Select a class" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                        {isLoadingClasses ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
-                                        classes?.map(cls => (
-                                            <SelectItem key={cls.id} value={cls.id}>
-                                            {cls.name}
-                                            </SelectItem>
-                                        ))}
+                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                            {isLoadingClasses ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
+                                            classes?.map(cls => (
+                                                <SelectItem key={cls.id} value={cls.id}>
+                                                {cls.name}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>

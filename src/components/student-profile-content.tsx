@@ -189,7 +189,7 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
 
   useEffect(() => {
     if (student) {
-        setEditingClassId(student.classId || '');
+        setEditingClassId(student.classId || 'unassigned');
     }
   }, [student]);
   
@@ -244,7 +244,8 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
         });
     }
 
-    const newClass = classes?.find(c => c.id === editingClassId);
+    const newClassId = editingClassId === 'unassigned' ? '' : editingClassId;
+    const newClass = classes?.find(c => c.id === newClassId);
 
     // 2. Add student to new class (if one is selected)
     if (newClass) {
@@ -366,59 +367,50 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
                     <h2 className="text-2xl font-bold font-headline">{student.name}</h2>
                     <p className="font-mono text-sm text-muted-foreground">{student.studentId}</p>
                     {isEditing ? (
-                        <Select value={editingClassId} onValueChange={setEditingClassId}>
-                            <SelectTrigger className="w-[200px] h-9 mt-1">
-                                <SelectValue placeholder="Select class..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="">Unassigned</SelectItem>
-                                {classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                         <div className="flex items-center gap-2 pt-1">
+                             <Select value={editingClassId} onValueChange={setEditingClassId}>
+                                <SelectTrigger className="w-[200px] h-9">
+                                    <SelectValue placeholder="Select class..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                    {classes?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={handleSaveChanges}><Save className="h-4 w-4"/></Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setIsEditing(false)}><X className="h-4 w-4"/></Button>
+                        </div>
                     ) : (
-                        student.className ? <Badge variant="outline" className="mt-1">{student.className}</Badge> : <Badge variant="destructive" className="mt-1">Unassigned</Badge>
+                       <div className="flex items-center gap-2">
+                        {student.className ? <Badge variant="outline" className="mt-1">{student.className}</Badge> : <Badge variant="destructive" className="mt-1">Unassigned</Badge>}
+                         {!readOnly && <Button variant="ghost" size="icon" className="h-7 w-7 mt-1" onClick={() => setIsEditing(true)}><Edit className="h-4 w-4" /></Button>}
+                       </div>
                     )}
                 </div>
             </div>
-            {!readOnly && (
+            {!readOnly && !isEditing && (
                  <div className="flex flex-col-reverse sm:flex-row gap-2">
-                    {isEditing ? (
-                        <>
-                            <Button variant="outline" size="sm" onClick={() => {setIsEditing(false); setEditingClassId(student.classId || '');}}>
-                                <X className="mr-2 h-4 w-4" /> Cancel
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Student
                             </Button>
-                            <Button size="sm" onClick={handleSaveChanges}>
-                                <Save className="mr-2 h-4 w-4" /> Save Changes
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Profile
-                            </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades, attendance, and traits.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting}>
-                                        {isDeleting ? "Deleting..." : "Delete"}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </>
-                    )}
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and all of their associated data, including grades, attendance, and traits.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting}>
+                                {isDeleting ? "Deleting..." : "Delete"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             )}
         </div>
@@ -633,6 +625,3 @@ function StudentProfileContent({ studentId, student: initialStudent, readOnly = 
 }
 
 export default StudentProfileContent;
-
-
-    
