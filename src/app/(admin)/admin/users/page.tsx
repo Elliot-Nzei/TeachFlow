@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
-import { Search } from 'lucide-react';
+import { Search, Users } from 'lucide-react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 
 export default function AdminUsersPage() {
@@ -39,6 +39,21 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold font-headline">Manage Users</h1>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            {isLoading ? (
+                <Skeleton className="h-8 w-20" />
+            ) : (
+                <div className="text-2xl font-bold">{users?.length || 0}</div>
+            )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>All Registered Users</CardTitle>
