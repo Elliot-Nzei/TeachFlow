@@ -65,8 +65,8 @@ export default function AdminSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 bg-destructive/10 rounded-md">
-            <div>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-destructive/10 rounded-md gap-4">
+            <div className="flex-1">
               <p className="font-semibold">Clear All Platform Data</p>
               <p className="text-sm text-destructive">
                 This will permanently delete every user, class, student, marketplace product, and all other records from the entire platform.
@@ -74,7 +74,7 @@ export default function AdminSettingsPage() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">Delete Everything</Button>
+                <Button variant="destructive" className="w-full md:w-auto">Delete Everything</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>

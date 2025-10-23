@@ -11,6 +11,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
 import { Button } from '@/components/ui/button';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string; value: string | number; icon: React.ReactNode; isLoading?: boolean }) => (
   <Card>
@@ -28,6 +29,7 @@ export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
+    const isMobile = useIsMobile();
 
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
@@ -116,7 +118,6 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     {isLoading ? <Skeleton className="h-[250px] w-full" /> :
                         <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
-                            {/* Mobile Chart */}
                             <div className="md:hidden">
                                 <BarChart accessibilityLayer data={chartData} layout="vertical" margin={{ left: 10, right: 10 }}>
                                     <CartesianGrid horizontal={false} />
@@ -125,12 +126,11 @@ export default function AdminDashboardPage() {
                                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                                     <Bar dataKey="users" radius={5}>
                                          {chartData.map((entry) => (
-                                            <Cell key={entry.plan} fill={entry.fill} />
+                                            <Cell key={`cell-${entry.plan}`} fill={entry.fill} />
                                         ))}
                                     </Bar>
                                 </BarChart>
                             </div>
-                            {/* Desktop Chart */}
                             <div className="hidden md:block">
                                 <BarChart accessibilityLayer data={chartData}>
                                     <CartesianGrid vertical={false} />
@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
                                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                                     <Bar dataKey="users" radius={8}>
                                         {chartData.map((entry) => (
-                                            <Cell key={entry.plan} fill={entry.fill} />
+                                            <Cell key={`cell-${entry.plan}`} fill={entry.fill} />
                                         ))}
                                     </Bar>
                                 </BarChart>

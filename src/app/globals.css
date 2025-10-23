@@ -34,14 +34,14 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 142 60% 25%;
-    --sidebar-foreground: 142 60% 95%;
-    --sidebar-primary: 142 60% 95%;
-    --sidebar-primary-foreground: 142 60% 25%;
-    --sidebar-accent: 142 60% 35%;
-    --sidebar-accent-foreground: 142 60% 95%;
-    --sidebar-border: 142 60% 30%;
-    --sidebar-ring: 142 60% 95%;
+    --sidebar-background: 220 15% 12%;
+    --sidebar-foreground: 220 10% 95%;
+    --sidebar-primary: 142 50% 65%;
+    --sidebar-primary-foreground: 142 50% 10%;
+    --sidebar-accent: 220 15% 20%;
+    --sidebar-accent-foreground: 220 10% 95%;
+    --sidebar-border: 220 15% 25%;
+    --sidebar-ring: 142 50% 65%;
 
     /* TeachFlow Logo Light Theme Colors */
     --logo-bg-color: hsl(var(--background));
