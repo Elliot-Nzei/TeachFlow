@@ -22,14 +22,13 @@ export function Logo({ className, compact = false }: LogoProps) {
     >
       <svg
         width={compact ? 40 : 130}
-        height={compact ? 40 : 65}
-        viewBox={compact ? "100 0 512 512" : "0 0 1024 512"}
+        height={compact ? 40 : 40}
+        viewBox={compact ? "150 100 350 350" : "0 0 1024 512"}
         role="img"
         aria-labelledby={`title-${uniqueId}`}
-        aria-describedby={`desc-${uniqueId}`}
       >
         <title id={`title-${uniqueId}`}>TeachFlow Logo</title>
-        <desc id={`desc-${uniqueId}`}>TeachFlow logo with properly oriented stylized C, white hexagon, and transparent background.</desc>
+        <desc id={`${uniqueId}-desc`}>TeachFlow logo with properly oriented stylized C, white hexagon, and transparent background.</desc>
 
         {/* Stylized C mark (corrected orientation) */}
         <g transform="translate(280,260) scale(2)">
