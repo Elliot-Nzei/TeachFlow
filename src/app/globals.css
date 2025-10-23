@@ -42,6 +42,16 @@ body {
     --sidebar-accent-foreground: 142 60% 95%;
     --sidebar-border: 142 60% 30%;
     --sidebar-ring: 142 60% 95%;
+
+    /* TeachFlow Logo Light Theme Colors */
+    --logo-bg-color: #ffffff; /* Use app background for seamless look */
+    --logo-text-color: #0f3a36;
+    --logo-tagline-color: #123937;
+    --logo-gradient-start: #39d1c6;
+    --logo-gradient-mid: #2bb7a6;
+    --logo-gradient-end: #0e5d4f;
+    --logo-hex-start: #56e3d0;
+    --logo-hex-end: #0b6157;
   }
 
   .dark {
@@ -77,6 +87,16 @@ body {
     --sidebar-accent-foreground: 220 10% 95%;
     --sidebar-border: 220 15% 25%;
     --sidebar-ring: 142 50% 65%;
+
+    /* TeachFlow Logo Dark Theme Colors */
+    --logo-bg-color: hsl(var(--background)); /* Use app background for seamless look */
+    --logo-text-color: #d8fef9;
+    --logo-tagline-color: #9fe1d6;
+    --logo-gradient-start: #47e1d0;
+    --logo-gradient-mid: #2bb7a6;
+    --logo-gradient-end: #0a4036;
+    --logo-hex-start: #71f2e0;
+    --logo-hex-end: #187366;
   }
 }
 
