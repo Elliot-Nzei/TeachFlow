@@ -47,6 +47,7 @@ const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 function UserProfileDisplay() {
@@ -91,10 +92,10 @@ function UserProfileDisplay() {
                {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
             </DropdownMenuItem>
-             <Link href="/admin/settings">
+             <Link href="/settings">
                 <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                    <span>User Settings</span>
                 </DropdownMenuItem>
             </Link>
             <Link href="/dashboard">
@@ -142,7 +143,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarMenu>
         </SidebarContent>
-          <SidebarFooter>
+        <SidebarFooter>
           <SidebarMenu>
               <SidebarMenuItem>
                   <Link href="/">
