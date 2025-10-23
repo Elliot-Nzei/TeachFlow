@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState, useEffect, useMemo } from 'react';
@@ -14,22 +15,22 @@ const plansData = {
 };
 
 const StatCard = ({ title, value, icon, description, isLoading }: { title: string; value: string; icon: React.ReactNode, description?: string, isLoading: boolean }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-      {isLoading ? (
-        <Skeleton className="h-8 w-3/4" />
-      ) : (
-        <>
-            <div className="text-2xl font-bold">{value}</div>
-            {description && <p className="text-xs text-muted-foreground">{description}</p>}
-        </>
-      )}
-    </CardContent>
-  </Card>
+    <Card>
+        <CardContent className="p-4">
+            <div className="flex flex-row items-center justify-between mb-2">
+                <div className="text-sm font-medium text-muted-foreground">{title}</div>
+                {icon}
+            </div>
+            {isLoading ? (
+                <Skeleton className="h-8 w-3/4" />
+            ) : (
+                <div>
+                    <div className="text-2xl font-bold">{value}</div>
+                    {description && <p className="text-xs text-muted-foreground">{description}</p>}
+                </div>
+            )}
+        </CardContent>
+    </Card>
 );
 
 export default function AdminDashboardPage() {
