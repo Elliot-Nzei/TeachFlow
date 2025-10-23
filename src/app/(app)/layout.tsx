@@ -23,6 +23,8 @@ import {
   CreditCard,
   HelpCircle,
   Bot,
+  ShoppingCart,
+  Shield,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -52,7 +54,7 @@ import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SettingsProvider } from '@/contexts/settings-context';
+import { SettingsProvider, SettingsContext } from '@/contexts/settings-context';
 import { PlanProvider, usePlan } from '@/contexts/plan-context';
 import NotificationBell from '@/components/notification-bell';
 import UpgradeModal from '@/components/upgrade-modal';
@@ -63,19 +65,21 @@ import CustomerSupportChat from '@/components/customer-support-chat';
 
 
 const allMenuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/classes', label: 'Classes', icon: Users, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/students', label: 'Students', icon: User, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/academics', label: 'Academics', icon: BookCopy, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/attendance', label: 'Attendance', icon: CalendarCheck, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/timetable', label: 'Timetable', icon: CalendarDays, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/grades', label: 'Grades', icon: Notebook, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/payments', label: 'Payments', icon: DollarSign, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['free_trial', 'basic', 'prime'] },
-  { href: '/transfer', label: 'Data Management', icon: Database, plans: ['prime'] },
-  { href: '/billing', label: 'Billing', icon: CreditCard, plans: ['free_trial', 'basic', 'prime'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/classes', label: 'Classes', icon: Users, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/students', label: 'Students', icon: User, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/academics', label: 'Academics', icon: BookCopy, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/attendance', label: 'Attendance', icon: CalendarCheck, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/timetable', label: 'Timetable', icon: CalendarDays, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/grades', label: 'Grades', icon: Notebook, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/payments', label: 'Payments', icon: DollarSign, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/marketplace', label: 'Marketplace', icon: ShoppingCart, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher', 'marketplace_admin'] },
+  { href: '/admin', label: 'Admin Dashboard', icon: Shield, plans: ['free_trial', 'basic', 'prime'], roles: ['admin'] },
+  { href: '/transfer', label: 'Data Management', icon: Database, plans: ['prime'], roles: ['admin', 'teacher'] },
+  { href: '/billing', label: 'Billing', icon: CreditCard, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
 ];
 
 function UserProfileDisplay() {
@@ -141,10 +145,16 @@ function UserProfileDisplay() {
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { plan, isLocked } = usePlan();
+  const { settings } = useContext(SettingsContext);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const menuItems = allMenuItems.filter(item => plan && item.plans.includes(plan));
+  const menuItems = allMenuItems.filter(item => {
+    const userRole = settings?.role || 'teacher';
+    if (!plan || !item.plans.includes(plan)) return false;
+    if (!item.roles.includes(userRole)) return false;
+    return true;
+  });
 
   return (
     <SidebarProvider>

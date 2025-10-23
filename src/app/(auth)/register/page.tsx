@@ -9,7 +9,7 @@ import { Logo } from "@/components/logo"
 import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, limit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -46,6 +46,7 @@ export default function RegisterPage() {
                     email: user.email,
                     schoolName: schoolName,
                     userCode: userCode,
+                    role: 'teacher', // Default role for standard registration
                     profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`,
                     studentCounter: 0,
                     currentTerm: 'First Term',
@@ -83,7 +84,7 @@ export default function RegisterPage() {
         <Card className="w-full max-w-md">
             <CardHeader className="text-center">
                 <div className="mb-4"><Logo /></div>
-                <CardTitle className="text-3xl font-bold font-headline">Create an Account</CardTitle>
+                <CardTitle className="text-3xl font-bold font-headline">Create a Teacher Account</CardTitle>
                 <CardDescription>Enter your information to get started with TeachFlow.</CardDescription>
             </CardHeader>
             <form onSubmit={handleRegister}>

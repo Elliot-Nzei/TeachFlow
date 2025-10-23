@@ -16,6 +16,11 @@
           "description": "The user's email address.",
           "format": "email"
         },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "teacher", "marketplace_admin"],
+          "description": "The role of the user."
+        },
         "userCode": {
           "type": "string",
           "description": "Unique system-generated code for the user."
@@ -82,7 +87,8 @@
         "name",
         "email",
         "userCode",
-        "schoolName"
+        "schoolName",
+        "role"
       ]
     },
     "Parent": {
@@ -456,6 +462,9 @@
           "items": {
             "$ref": "#/entities/Trait"
           }
+        },
+        "timetable": {
+            "$ref": "#/entities/Timetable"
         }
       },
       "required": [
@@ -523,13 +532,17 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User"},
-      "description": "Stores user profile (teacher/admin) and application settings."
+      "description": "Stores user profile (teacher/admin) and application settings.",
+      "allow": {
+        "read": "request.auth.uid == userId",
+        "create": "request.auth.uid == userId"
+      }
     },
      "/parents/{parentId}": {
       "schema": { "$ref": "#/entities/Parent"},
       "description": "Stores parent user profiles. Parent can create their own account.",
       "allow": {
-          "create": "request.auth != null"
+          "create": "request.auth.uid == parentId"
       }
     },
     "/users/{userId}/classes/{classId}": {
@@ -574,5 +587,3 @@
     }
   }
 }
-
-    
