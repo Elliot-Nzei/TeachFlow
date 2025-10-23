@@ -2,8 +2,7 @@
 'use client';
 import { useContext, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, BookOpen, ClipboardList, UserPlus, Home, CalendarClock, DollarSign } from 'lucide-react';
+import { Users, BookOpen, UserPlus, Home, DollarSign } from 'lucide-react';
 import {
   ChartConfig,
   ChartContainer,
@@ -15,11 +14,12 @@ import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { SettingsContext } from '@/contexts/settings-context';
 import type { Payment, Student } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 
 export default function DashboardPage() {
@@ -117,31 +117,42 @@ export default function DashboardPage() {
     owing: { label: 'Owing', color: 'hsl(var(--chart-5))' },
   } satisfies ChartConfig;
 
-
-  const stats = [
-    { title: 'Total Students', value: students?.length, isLoading: isLoadingStudents, icon: <Users className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Total Classes', value: classes?.length, isLoading: isLoadingClasses, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Total Collected', value: `₦${paymentSummary.totalCollected.toLocaleString()}`, isLoading: isLoadingPayments, icon: <DollarSign className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Total Subjects', value: subjects?.length, isLoading: isLoadingSubjects, icon: <BookOpen className="h-4 w-4 text-muted-foreground" /> },
-  ];
+  const isLoading = isLoadingStudents || isLoadingClasses || isLoadingSubjects || isLoadingPayments || isLoadingGrades;
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              {stat.icon}
-            </CardHeader>
-            <CardContent>
-              {stat.isLoading ? <Skeleton className="h-8 w-1/2 mt-1" /> : (
-                <div className="text-2xl font-bold">{stat.value ?? 0}</div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+       <Card>
+          <CardHeader>
+              <CardTitle>School Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-16 w-full" /> : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                      <Users className="h-6 w-6 text-primary"/>
+                      <p className="text-2xl font-bold">{students?.length ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">Students</p>
+                  </div>
+                   <div className="flex flex-col items-center gap-1">
+                      <Home className="h-6 w-6 text-primary"/>
+                      <p className="text-2xl font-bold">{classes?.length ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">Classes</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                      <BookOpen className="h-6 w-6 text-primary"/>
+                      <p className="text-2xl font-bold">{subjects?.length ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">Subjects</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                      <DollarSign className="h-6 w-6 text-primary"/>
+                      <p className="text-2xl font-bold">₦{paymentSummary.totalCollected.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Collected</p>
+                  </div>
+              </div>
+            )}
+          </CardContent>
+       </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -160,7 +171,7 @@ export default function DashboardPage() {
                       <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="font-semibold">{student.name}</p>
+                      <p className="font-semibold text-sm">{student.name}</p>
                       <p className="text-xs text-muted-foreground">{student.className || 'Unassigned'}</p>
                     </div>
                     <p className="text-xs text-muted-foreground">{student.createdAt ? formatDistanceToNow(student.createdAt.toDate(), {addSuffix: true}) : ''}</p>
@@ -168,6 +179,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
+             <Separator />
             <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center"><Home className="mr-2 h-4 w-4" /> New Classes</h3>
                 <div className="space-y-4">
@@ -178,7 +190,7 @@ export default function DashboardPage() {
                                <Home className="h-5 w-5 text-secondary-foreground" />
                             </div>
                             <div className="flex-1">
-                                <p className="font-semibold">{cls.name}</p>
+                                <p className="font-semibold text-sm">{cls.name}</p>
                                 <p className="text-xs text-muted-foreground">{cls.students?.length || 0} students</p>
                             </div>
                              <p className="text-xs text-muted-foreground">{cls.createdAt ? formatDistanceToNow(cls.createdAt.toDate(), {addSuffix: true}) : ''}</p>
@@ -188,72 +200,82 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
         <div className="lg:col-span-2 space-y-6">
-            <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><DollarSign className="mr-2 h-5 w-5" />Payment Summary</CardTitle>
-                <CardDescription>Overview of fee payments for {settings?.currentTerm}, {settings?.currentSession}.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoadingPayments || isLoadingStudents ? <Skeleton className="h-[250px] w-full" /> : (
-                <>
-                    <ChartContainer config={paymentChartConfig} className="min-h-[250px] w-full">
-                        <BarChart accessibilityLayer data={paymentChartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { right: 20 } : { top: 20 }}>
-                            <CartesianGrid horizontal={isMobile} vertical={!isMobile} />
-                             {isMobile ? (
-                                <>
-                                    <YAxis dataKey="status" type="category" tickLine={false} tickMargin={10} axisLine={false} />
-                                    <XAxis dataKey="count" type="number" hide />
-                                </>
-                            ) : (
-                                <>
-                                    <XAxis dataKey="status" tickLine={false} tickMargin={10} axisLine={false} />
-                                    <YAxis />
-                                </>
-                            )}
-                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
-                            <Bar dataKey="count" radius={8} />
-                        </BarChart>
-                    </ChartContainer>
-                    <div className="mt-4 text-center">
-                        <p className="text-sm text-muted-foreground">Total Outstanding</p>
-                        <p className="font-bold text-2xl text-red-600">₦{paymentSummary.totalOutstanding.toLocaleString()}</p>
-                    </div>
-                </>
-                )}
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader>
-                <CardTitle>Grade Distribution</CardTitle>
-                <CardDescription>A summary of all grades recorded across the school.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoadingGrades ? <Skeleton className="h-[250px] w-full" /> : (
-                    <ChartContainer config={gradeChartConfig} className="min-h-[250px] w-full">
-                    <BarChart accessibilityLayer data={gradeChartData}>
-                        <CartesianGrid vertical={false} />
-                        <XAxis
-                        dataKey="grade"
-                        tickLine={false}
-                        tickMargin={10}
-                        axisLine={false}
-                        tickFormatter={(value) => value}
-                        />
-                        <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="line" />}
-                        />
-                        <Bar dataKey="count" fill="var(--color-count)" radius={8} />
-                    </BarChart>
-                    </ChartContainer>
-                )}
-            </CardContent>
-            </Card>
+            <Tabs defaultValue="payments">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="payments">Payment Summary</TabsTrigger>
+                <TabsTrigger value="grades">Grade Distribution</TabsTrigger>
+              </TabsList>
+              <TabsContent value="payments" className="mt-4">
+                <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center"><DollarSign className="mr-2 h-5 w-5" />Fee Payments</CardTitle>
+                      <CardDescription>{settings?.currentTerm}, {settings?.currentSession}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      {isLoadingPayments || isLoadingStudents ? <Skeleton className="h-[250px] w-full" /> : (
+                      <>
+                          <ChartContainer config={paymentChartConfig} className="min-h-[250px] w-full">
+                              <BarChart accessibilityLayer data={paymentChartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { right: 20 } : { top: 20 }}>
+                                  <CartesianGrid horizontal={isMobile} vertical={!isMobile} />
+                                  {isMobile ? (
+                                      <>
+                                          <YAxis dataKey="status" type="category" tickLine={false} tickMargin={10} axisLine={false} />
+                                          <XAxis dataKey="count" type="number" hide />
+                                      </>
+                                  ) : (
+                                      <>
+                                          <XAxis dataKey="status" tickLine={false} tickMargin={10} axisLine={false} />
+                                          <YAxis />
+                                      </>
+                                  )}
+                                  <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+                                  <Bar dataKey="count" radius={8} />
+                              </BarChart>
+                          </ChartContainer>
+                          <div className="mt-4 text-center">
+                              <p className="text-sm text-muted-foreground">Total Outstanding</p>
+                              <p className="font-bold text-2xl text-red-600">₦{paymentSummary.totalOutstanding.toLocaleString()}</p>
+                          </div>
+                      </>
+                      )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="grades" className="mt-4">
+                 <Card>
+                  <CardHeader>
+                      <CardTitle>Grade Distribution</CardTitle>
+                      <CardDescription>A summary of all grades recorded across the school.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      {isLoadingGrades ? <Skeleton className="h-[250px] w-full" /> : (
+                          <ChartContainer config={gradeChartConfig} className="min-h-[250px] w-full">
+                          <BarChart accessibilityLayer data={gradeChartData}>
+                              <CartesianGrid vertical={false} />
+                              <XAxis
+                              dataKey="grade"
+                              tickLine={false}
+                              tickMargin={10}
+                              axisLine={false}
+                              tickFormatter={(value) => value}
+                              />
+                              <YAxis />
+                              <ChartTooltip
+                              cursor={false}
+                              content={<ChartTooltipContent indicator="line" />}
+                              />
+                              <Bar dataKey="count" fill="var(--color-count)" radius={8} />
+                          </BarChart>
+                          </ChartContainer>
+                      )}
+                  </CardContent>
+                  </Card>
+              </TabsContent>
+            </Tabs>
         </div>
       </div>
     </div>
   );
 }
-
-    
