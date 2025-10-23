@@ -5,16 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, ShoppingCart, DollarSign, Package, MoreHorizontal, Edit, Trash2, Search, UploadCloud } from 'lucide-react';
+import { PlusCircle, ShoppingCart, DollarSign, Package, MoreHorizontal, Edit, Trash2, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirebase, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
-import { collection, query, serverTimestamp, doc, addDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useFirebase, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, query, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
@@ -24,8 +23,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { v4 as uuidv4 } from 'uuid';
-
 
 type Product = {
     id: string;
@@ -38,6 +35,7 @@ type Product = {
     imageUrl?: string;
     locations?: string[];
     createdAt?: any;
+    updatedAt?: any;
 };
 
 const StatCard = ({ title, value, icon, description, isLoading }: { title: string; value: string; icon: React.ReactNode, description: string, isLoading: boolean }) => (
@@ -53,7 +51,7 @@ const StatCard = ({ title, value, icon, description, isLoading }: { title: strin
   </Card>
 );
 
-const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt'>, imageFile?: File | null) => void, onCancel: () => void }) => {
+const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => void, onCancel: () => void }) => {
     const [formData, setFormData] = useState({
         name: product?.name || '',
         description: product?.description || '',
@@ -65,21 +63,6 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
         locations: product?.locations || [],
     });
     const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(product?.imageUrl || null);
-
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -97,7 +80,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
             price: Number(formData.price) || 0,
             stock: Number(formData.stock) || 0,
         };
-        onSave(dataToSave, imageFile);
+        onSave(dataToSave);
     }
 
     return (
@@ -111,21 +94,9 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                     <Label htmlFor="description" className="text-right pt-2">Description</Label>
                     <Textarea id="description" name="description" value={formData.description} onChange={handleInputChange} className="col-span-3" />
                 </div>
-                <div className="grid grid-cols-4 items-start gap-4">
-                    <Label htmlFor="image" className="text-right pt-2">Image</Label>
-                     <div className="col-span-3 space-y-2">
-                        <div className="w-full h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
-                            {imagePreview ? (
-                                <Image src={imagePreview} alt="Product preview" width={128} height={128} className="object-contain h-full w-full rounded-md" />
-                            ) : (
-                                <div className="text-center text-muted-foreground">
-                                    <UploadCloud className="mx-auto h-8 w-8" />
-                                    <p className="text-xs">Image Preview</p>
-                                </div>
-                            )}
-                        </div>
-                        <Input id="image" type="file" accept="image/*" onChange={handleImageChange} className="text-xs" />
-                    </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="imageUrl" className="text-right">Image URL</Label>
+                    <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} className="col-span-3" placeholder="https://example.com/image.png" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -211,7 +182,6 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
 
 export default function MarketplaceAdminPage() {
     const { firestore, user } = useFirebase();
-    const storage = useStorage();
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -220,35 +190,23 @@ export default function MarketplaceAdminPage() {
     const productsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'marketplace_products')) : null, [firestore]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
-    const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt'>, imageFile?: File | null) => {
-        if (!user || !storage || !firestore) return;
-
-        let finalImageUrl = editingProduct?.imageUrl || '';
-        const newProductId = editingProduct?.id || uuidv4();
+    const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+        if (!user || !firestore) return;
 
         try {
-            if (imageFile) {
-                const imageRef = ref(storage, `marketplace_products/${newProductId}/image`);
-                await uploadBytes(imageRef, imageFile);
-                finalImageUrl = await getDownloadURL(imageRef);
-            }
-
-            const productRef = doc(firestore, 'marketplace_products', newProductId);
-            
             if (editingProduct) {
                 // Update existing product
-                updateDocumentNonBlocking(productRef, { ...productData, imageUrl: finalImageUrl, updatedAt: serverTimestamp() });
+                const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
+                await updateDoc(productRef, { ...productData, updatedAt: serverTimestamp() });
                 toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
-
             } else {
                 // Add new product
+                const productRef = doc(collection(firestore, 'marketplace_products'));
                  await setDoc(productRef, { 
                     ...productData, 
-                    imageUrl: finalImageUrl, 
                     sellerId: user.uid, 
                     createdAt: serverTimestamp() 
                 });
-
                 toast({ title: 'Product Added', description: `"${productData.name}" has been added to the marketplace.` });
             }
         } catch (error) {
@@ -386,3 +344,5 @@ export default function MarketplaceAdminPage() {
         </div>
     );
 }
+
+    
