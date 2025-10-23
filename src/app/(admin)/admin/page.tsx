@@ -7,7 +7,7 @@ import { Users, ClipboardList, GraduationCap, DollarSign, Lock, Building } from 
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, getDocs, doc, collectionGroup } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
 import { Button } from '@/components/ui/button';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -125,7 +125,7 @@ export default function AdminDashboardPage() {
                                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                                     <Bar dataKey="users" radius={5}>
                                          {chartData.map((entry) => (
-                                            <YAxis key={entry.plan} fill={entry.fill} />
+                                            <Cell key={entry.plan} fill={entry.fill} />
                                         ))}
                                     </Bar>
                                 </BarChart>
@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
                                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                                     <Bar dataKey="users" radius={8}>
                                         {chartData.map((entry) => (
-                                            <YAxis key={entry.plan} fill={entry.fill} />
+                                            <Cell key={entry.plan} fill={entry.fill} />
                                         ))}
                                     </Bar>
                                 </BarChart>
