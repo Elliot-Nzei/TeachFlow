@@ -32,13 +32,13 @@ export default function AdminDashboardPage() {
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
-    const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'teacher')) : null, [firestore]);
+    const usersQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'users'), where('role', '==', 'teacher')) : null, [firestore, userProfile]);
     const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
-    const classesQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'classes') : null, [firestore]);
+    const classesQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? collectionGroup(firestore, 'classes') : null, [firestore, userProfile]);
     const { data: classes, isLoading: isLoadingClasses } = useCollection(classesQuery);
 
-    const studentsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'students') : null, [firestore]);
+    const studentsQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? collectionGroup(firestore, 'students') : null, [firestore, userProfile]);
     const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
 
 
