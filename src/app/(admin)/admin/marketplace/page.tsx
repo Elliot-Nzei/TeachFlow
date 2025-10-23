@@ -5,15 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, ShoppingCart, DollarSign, Package, MoreHorizontal, Edit, Trash2, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirebase, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { useFirebase, useCollection, useMemoFirebase, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
@@ -38,20 +38,7 @@ type Product = {
     updatedAt?: any;
 };
 
-const StatCard = ({ title, value, icon, description, isLoading }: { title: string; value: string; icon: React.ReactNode, description: string, isLoading: boolean }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-        {isLoading ? <Skeleton className="h-7 w-20" /> : <div className="text-2xl font-bold">{value}</div> }
-        <p className="text-xs text-muted-foreground">{description}</p>
-    </CardContent>
-  </Card>
-);
-
-const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => void, onCancel: () => void }) => {
+const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>, onCancel: () => void }) => {
     const [formData, setFormData] = useState({
         name: product?.name || '',
         description: product?.description || '',
@@ -63,6 +50,8 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
         locations: product?.locations || [],
     });
     const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -73,14 +62,16 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
         setFormData(prev => ({...prev, [name]: value as any }));
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSaving(true);
         const dataToSave = {
             ...formData,
             price: Number(formData.price) || 0,
             stock: Number(formData.stock) || 0,
         };
-        onSave(dataToSave);
+        await onSave(dataToSave);
+        setIsSaving(false);
     }
 
     return (
@@ -101,11 +92,11 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="price">Price (₦)</Label>
-                        <Input id="price" name="price" type="text" value={formData.price} onChange={handleInputChange} required />
+                        <Input id="price" name="price" type="number" value={formData.price} onChange={handleInputChange} required />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="stock">Stock</Label>
-                        <Input id="stock" name="stock" type="text" value={formData.stock} onChange={handleInputChange} />
+                        <Input id="stock" name="stock" type="number" value={formData.stock} onChange={handleInputChange} />
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -173,7 +164,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
             </div>
              <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button type="submit">Save Product</Button>
+                <Button type="submit" disabled={isSaving}>Save Product</Button>
             </DialogFooter>
         </form>
     )
@@ -197,12 +188,12 @@ export default function MarketplaceAdminPage() {
             if (editingProduct) {
                 // Update existing product
                 const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
-                updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
+                await updateDoc(productRef, { ...productData, updatedAt: serverTimestamp() });
                 toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
             } else {
                 // Add new product
                 const productsCollection = collection(firestore, 'marketplace_products');
-                addDocumentNonBlocking(productsCollection, { 
+                await addDoc(productsCollection, { 
                     ...productData, 
                     sellerId: user.uid, 
                     createdAt: serverTimestamp() 
@@ -218,10 +209,10 @@ export default function MarketplaceAdminPage() {
         }
     };
 
-    const handleDeleteProduct = (productId: string, productName: string) => {
+    const handleDeleteProduct = async (productId: string, productName: string) => {
         if (!window.confirm(`Are you sure you want to delete "${productName}"? This cannot be undone.`)) return;
         
-        deleteDocumentNonBlocking(doc(firestore, 'marketplace_products', productId));
+        await deleteDoc(doc(firestore, 'marketplace_products', productId));
         toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
     }
 
@@ -237,22 +228,8 @@ export default function MarketplaceAdminPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>
-                    <p className="text-muted-foreground">Oversee products, orders, and settings for the marketplace.</p>
-                </div>
-                <Button onClick={() => { setEditingProduct(null); setIsDialogOpen(true); }}>
-                    <PlusCircle className="mr-2 h-4 w-4"/> Add New Product
-                </Button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-                <StatCard title="Total Revenue" value="₦0" icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} description="Revenue tracking coming soon" isLoading={false} />
-                <StatCard title="Total Products" value={products?.length.toString() || '0'} icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} description={`${activeProducts} active product(s)`} isLoading={isLoadingProducts} />
-                <StatCard title="New Orders" value="0" icon={<Package className="h-4 w-4 text-muted-foreground" />} description="Order management coming soon" isLoading={false} />
-            </div>
-
+            <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>
+            
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
@@ -271,16 +248,27 @@ export default function MarketplaceAdminPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Marketplace Products</CardTitle>
-                    <CardDescription>A list of all products currently in the marketplace.</CardDescription>
-                     <div className="relative pt-2">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by name or category..." 
-                            className="pl-10 max-w-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div>
+                            <CardTitle>Products</CardTitle>
+                             <CardDescription>
+                                Total: {products?.length || 0} | Active: {activeProducts}
+                            </CardDescription>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+                            <div className="relative flex-1 sm:flex-initial">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Search products..." 
+                                    className="pl-10 w-full"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <Button onClick={() => { setEditingProduct(null); setIsDialogOpen(true); }}>
+                                <PlusCircle className="mr-2 h-4 w-4"/> Add Product
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -299,7 +287,7 @@ export default function MarketplaceAdminPage() {
                             <TableBody>
                                 {isLoadingProducts ? Array.from({length: 3}).map((_, i) => (
                                     <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                                )) : filteredProducts.map((product) => (
+                                )) : filteredProducts.length > 0 ? filteredProducts.map((product) => (
                                     <TableRow key={product.id}>
                                         <TableCell className="font-medium">
                                             <div className="flex items-center gap-3">
@@ -335,7 +323,11 @@ export default function MarketplaceAdminPage() {
                                             </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-24 text-center">No products found.</TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </div>
@@ -344,5 +336,3 @@ export default function MarketplaceAdminPage() {
         </div>
     );
 }
-
-    
