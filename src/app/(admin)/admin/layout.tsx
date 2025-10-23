@@ -8,6 +8,7 @@ import {
   Moon,
   Sun,
   Shield,
+  ShoppingCart,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -42,6 +43,7 @@ import { PlanProvider } from '@/contexts/plan-context';
 const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: Shield },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/marketplace/admin', label: 'Marketplace', icon: ShoppingCart },
 ];
 
 function UserProfileDisplay() {

@@ -77,7 +77,6 @@ const allMenuItems = [
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
   { href: '/marketplace', label: 'Marketplace', icon: ShoppingCart, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
-  { href: '/admin', label: 'Admin Dashboard', icon: Shield, plans: ['free_trial', 'basic', 'prime'], roles: ['admin'] },
   { href: '/transfer', label: 'Data Management', icon: Database, plans: ['prime'], roles: ['admin', 'teacher'] },
   { href: '/billing', label: 'Billing', icon: CreditCard, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
 ];
@@ -120,6 +119,14 @@ function UserProfileDisplay() {
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+             {userProfile.role === 'admin' && (
+              <Link href="/admin">
+                <DropdownMenuItem>
+                    <Shield className="mr-2 h-4 w-4" />
+                    <span>Admin Dashboard</span>
+                </DropdownMenuItem>
+              </Link>
+            )}
             <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
                {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
@@ -150,9 +157,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const menuItems = allMenuItems.filter(item => {
-    const userRole = settings?.role || 'teacher';
     if (!plan || !item.plans.includes(plan)) return false;
-    if (!item.roles.includes(userRole)) return false;
     return true;
   });
 
