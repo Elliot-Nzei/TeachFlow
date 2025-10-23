@@ -11,10 +11,8 @@ interface LogoProps {
 }
 
 export function Logo({ className, compact = false }: LogoProps) {
-  // Generate a unique ID for each instance of the logo to avoid gradient conflicts
   const uniqueId = React.useId();
-  const gradientTealId = `g-teal-${uniqueId}`;
-  const gradientHexId = `g-hex-${uniqueId}`;
+  const bgGradientId = `bg-gradient-${uniqueId}`;
 
   return (
     <Link
@@ -23,70 +21,57 @@ export function Logo({ className, compact = false }: LogoProps) {
       aria-label="TeachFlow Home"
       className={cn("focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm", className)}
     >
-        <svg 
-            viewBox={compact ? "252 50 520 420" : "0 0 1024 750"}
-            width={compact ? 40 : 130}
-            height={40}
-            role="img"
-            aria-labelledby="logo-title logo-desc"
-        >
-            <title id="logo-title">TeachFlow Logo</title>
-            <desc id="logo-desc">TeachFlow brand mark with adaptive color scheme for light and dark modes.</desc>
-            
-             <defs>
-                <linearGradient id={gradientTealId} x1="0" x2="1" y1="0" y2="1">
-                    <stop offset="0" stopColor="var(--logo-gradient-start)" />
-                    <stop offset="0.45" stopColor="var(--logo-gradient-mid)" />
-                    <stop offset="1" stopColor="var(--logo-gradient-end)" />
-                </linearGradient>
+      <svg 
+        width={compact ? 40 : 130}
+        height={40}
+        viewBox={compact ? "140 250 350 450" : "0 0 1024 1024"}
+        role="img"
+        aria-labelledby="logo-title logo-desc"
+      >
+        <title id="logo-title">TeachFlow Logo</title>
+        <desc id="logo-desc">White TeachFlow logo with gradient background and tagline “Less Paperwork, More Passion”.</desc>
 
-                <linearGradient id={gradientHexId} x1="0" x2="1" y1="0" y2="1">
-                    <stop offset="0" stopColor="var(--logo-hex-start)" />
-                    <stop offset="1" stopColor="var(--logo-hex-end)" />
-                </linearGradient>
-            </defs>
+        <defs>
+          <linearGradient id={bgGradientId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#0b2231"/>
+            <stop offset="100%" stopColor="#4ce3c6"/>
+          </linearGradient>
+        </defs>
 
-            <g transform="translate(512,260)">
-                <path d="
-                M -160 -160
-                L  80 -160
-                L 120 -120
-                L 32 -120
-                L 32 120
-                L 120 120
-                L 80 160
-                L -160 160
-                Z"
-                fill={`url(#${gradientTealId})`} />
+        {!compact && (
+          <rect width="100%" height="100%" fill={`url(#${bgGradientId})`} />
+        )}
+        
+        <g transform="translate(300,480) scale(2.2)">
+          <path d="M -80 -80 L 70 -80 L 100 -50 L 20 -50 L 20 50 L 100 50 L 70 80 L -80 80 Z"
+                fill="#ffffff"/>
+          <rect x="-50" y="-50" width="90" height="100" fill={`url(#${bgGradientId})`}/>
+          <polygon points="0,-35 30,-17 30,17 0,35 -30,17 -30,-17" fill="#ffffff"/>
+        </g>
+        
+        {!compact && (
+          <>
+            <text x="600" y="520"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                  fontSize="120"
+                  fontWeight="600"
+                  textAnchor="start"
+                  fill="#ffffff"
+                  style={{letterSpacing:'2px'}}>
+              TeachFlow
+            </text>
 
-                <rect x="-120" y="-120" width="160" height="240" fill="var(--logo-bg-color)" />
-
-                <polygon points="0,-60 52,-30 52,30 0,60 -52,30 -52,-30"
-                        fill={`url(#${gradientHexId})`} />
-            </g>
-
-            {!compact && (
-                <>
-                <text x="512" y="620"
-                    fontFamily="Georgia, 'Times New Roman', serif"
-                    fontSize="160"
-                    fontWeight="600"
-                    textAnchor="middle"
-                    fill="var(--logo-text-color)"
-                    style={{letterSpacing: '2px'}}>
-                    TeachFlow
-                </text>
-                <text x="512" y="700"
-                    fontFamily="Georgia, 'Times New Roman', serif"
-                    fontSize="24"
-                    textAnchor="middle"
-                    fill="var(--logo-tagline-color)"
-                    style={{letterSpacing: '6px', textTransform: 'uppercase'}}>
-                    LESS PAPERWORK, MORE PASSION
-                </text>
-                </>
-            )}
-        </svg>
+            <text x="600" y="580"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                  fontSize="26"
+                  textAnchor="start"
+                  fill="#ffffff"
+                  style={{letterSpacing:'6px', textTransform:'uppercase'}}>
+              LESS PAPERWORK, MORE PASSION
+            </text>
+          </>
+        )}
+      </svg>
     </Link>
   );
 }
