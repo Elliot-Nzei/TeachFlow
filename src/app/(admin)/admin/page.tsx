@@ -10,6 +10,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer }
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
 import { Button } from '@/components/ui/button';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const StatCard = ({ 
   title, 
@@ -41,6 +42,7 @@ export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
+    const isMobile = useIsMobile();
 
     // Get user profile to check admin role
     const userProfileQuery = useMemoFirebase(
@@ -150,7 +152,7 @@ export default function AdminDashboardPage() {
     }
     
     return (
-        <div className="space-y-6 p-4 md:p-6">
+        <div className="space-y-6">
             <div>
                 <h1 className="text-2xl md:text-3xl font-bold font-headline">
                     Admin Dashboard
@@ -161,7 +163,7 @@ export default function AdminDashboardPage() {
             </div>
             
             {/* Stats Grid */}
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <StatCard 
                     title="Total Users" 
                     value={users?.length || 0} 
@@ -200,39 +202,37 @@ export default function AdminDashboardPage() {
                     {isDataLoading ? (
                         <Skeleton className="h-[300px] w-full" />
                     ) : (
-                        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart 
-                                    data={chartData}
-                                    margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis 
-                                        dataKey="plan" 
-                                        tickLine={false} 
-                                        axisLine={false}
-                                        tick={{ fontSize: 12 }}
-                                    />
-                                    <YAxis 
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tick={{ fontSize: 12 }}
-                                    />
-                                    <ChartTooltip 
-                                        cursor={false} 
-                                        content={<ChartTooltipContent />} 
-                                    />
-                                    <Bar 
-                                        dataKey="users" 
-                                        radius={[8, 8, 0, 0]}
-                                    >
-                                        {chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
+                                {isMobile ? (
+                                    // Mobile vertical chart
+                                    <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                        <YAxis dataKey="plan" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={80} />
+                                        <XAxis type="number" hide />
+                                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                                        <Bar dataKey="users" radius={[0, 4, 4, 0]}>
+                                            {chartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                ) : (
+                                    // Desktop horizontal chart
+                                    <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="plan" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                                        <Bar dataKey="users" radius={[8, 8, 0, 0]}>
+                                            {chartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                )}
                             </ResponsiveContainer>
-                        </ChartContainer>
+                        </div>
                     )}
                 </CardContent>
             </Card>
