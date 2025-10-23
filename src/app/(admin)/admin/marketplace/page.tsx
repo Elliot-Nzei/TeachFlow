@@ -12,8 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirebase, useCollection, useMemoFirebase, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
@@ -188,12 +188,12 @@ export default function MarketplaceAdminPage() {
             if (editingProduct) {
                 // Update existing product
                 const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
-                await updateDoc(productRef, { ...productData, updatedAt: serverTimestamp() });
+                updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
                 toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
             } else {
                 // Add new product
                 const productsCollection = collection(firestore, 'marketplace_products');
-                await addDoc(productsCollection, { 
+                addDocumentNonBlocking(productsCollection, { 
                     ...productData, 
                     sellerId: user.uid, 
                     createdAt: serverTimestamp() 
@@ -212,7 +212,8 @@ export default function MarketplaceAdminPage() {
     const handleDeleteProduct = async (productId: string, productName: string) => {
         if (!window.confirm(`Are you sure you want to delete "${productName}"? This cannot be undone.`)) return;
         
-        await deleteDoc(doc(firestore, 'marketplace_products', productId));
+        const productRef = doc(firestore, 'marketplace_products', productId);
+        deleteDocumentNonBlocking(productRef);
         toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
     }
 
@@ -265,18 +266,55 @@ export default function MarketplaceAdminPage() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Button onClick={() => { setEditingProduct(null); setIsDialogOpen(true); }}>
+                            <Button onClick={() => { setEditingProduct(null); setIsDialogOpen(true); }} className="w-full sm:w-auto">
                                 <PlusCircle className="mr-2 h-4 w-4"/> Add Product
                             </Button>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="border rounded-md">
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-4">
+                        {isLoadingProducts ? (
+                            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
+                        ) : filteredProducts.length > 0 ? (
+                            filteredProducts.map((product) => (
+                                <Card key={product.id} className="flex gap-4 p-4">
+                                    <Image src={product.imageUrl || `https://picsum.photos/seed/${product.id}/80/80`} alt={product.name} width={80} height={80} className="rounded-md object-cover bg-muted h-20 w-20" />
+                                    <div className="flex-1 space-y-1">
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-semibold">{product.name}</p>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => { setEditingProduct(product); setIsDialogOpen(true); }}>Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteProduct(product.id, product.name)}>Delete</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">₦{product.price.toLocaleString()}</p>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant={product.status === 'active' ? 'default' : 'secondary'}>{toTitleCase(product.status)}</Badge>
+                                            <Badge variant="outline">{product.category}</Badge>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))
+                        ) : (
+                             <div className="h-24 text-center flex items-center justify-center">No products found.</div>
+                        )}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block border rounded-md">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                <TableHead className="w-[250px]">Product</TableHead>
+                                <TableHead className="w-[300px]">Product</TableHead>
                                 <TableHead>Category</TableHead>
                                 <TableHead>Price (₦)</TableHead>
                                 <TableHead>Stock</TableHead>
@@ -289,7 +327,7 @@ export default function MarketplaceAdminPage() {
                                     <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                                 )) : filteredProducts.length > 0 ? filteredProducts.map((product) => (
                                     <TableRow key={product.id}>
-                                        <TableCell className="font-medium">
+                                        <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Image src={product.imageUrl || `https://picsum.photos/seed/${product.id}/40/40`} alt={product.name} width={40} height={40} className="rounded-md object-cover bg-muted" />
                                                 <div className="flex-1 truncate">
