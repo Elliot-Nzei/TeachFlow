@@ -91,7 +91,7 @@ function UserProfileDisplay() {
                {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
             </DropdownMenuItem>
-             <Link href="/settings">
+             <Link href="/admin/settings">
                 <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
