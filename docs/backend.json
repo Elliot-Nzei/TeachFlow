@@ -548,11 +548,17 @@
     },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
-      "description": "Stores classes for a user."
+      "description": "Stores classes for a user.",
+       "allow": {
+        "list": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
     },
     "/users/{userId}/students/{studentId}": {
       "schema": { "$ref": "#/entities/Student" },
-      "description": "Stores students for a user."
+      "description": "Stores students for a user.",
+       "allow": {
+        "list": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
     },
     "/users/{userId}/subjects/{subjectId}": {
       "schema": { "$ref": "#/entities/Subject" },
@@ -588,5 +594,3 @@
     }
   }
 }
-
-    
