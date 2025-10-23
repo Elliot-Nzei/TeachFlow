@@ -80,7 +80,7 @@ export default function Home() {
                 <Button variant="ghost">About Us</Button>
             </Link>
             <Link href="/login" passHref>
-                <Button variant="ghost">Teacher Login</Button>
+                <Button variant="ghost">Login</Button>
             </Link>
             <Link href="/register" passHref>
                 <Button variant="default">
@@ -99,7 +99,7 @@ export default function Home() {
                 <DropdownMenuContent align="end">
                     <Link href="/parents" passHref><DropdownMenuItem>Parents</DropdownMenuItem></Link>
                     <Link href="/about" passHref><DropdownMenuItem>About Us</DropdownMenuItem></Link>
-                    <Link href="/login" passHref><DropdownMenuItem>Teacher Login</DropdownMenuItem></Link>
+                    <Link href="/login" passHref><DropdownMenuItem>Login</DropdownMenuItem></Link>
                     <Link href="/register" passHref><DropdownMenuItem>Start for Free</DropdownMenuItem></Link>
                 </DropdownMenuContent>
             </DropdownMenu>

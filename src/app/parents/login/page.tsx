@@ -52,7 +52,7 @@ export default function ParentLoginPage() {
             <Logo compact={false} />
             <nav className="ml-auto flex gap-2 sm:gap-4">
             <Link href="/login" passHref>
-                <Button variant="outline">Teacher Login</Button>
+                <Button variant="outline">Login</Button>
             </Link>
             </nav>
         </header>

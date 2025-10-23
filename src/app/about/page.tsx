@@ -41,7 +41,7 @@ export default function AboutPage() {
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
             <Link href="/#features" passHref><Button variant="ghost">Features</Button></Link>
             <Link href="/about" passHref><Button variant="ghost">About Us</Button></Link>
-            <Link href="/login" passHref><Button variant="outline">Teacher Login</Button></Link>
+            <Link href="/login" passHref><Button variant="outline">Login</Button></Link>
             <Link href="/register" passHref><Button>Start for Free</Button></Link>
         </nav>
         <div className="ml-auto md:hidden flex items-center gap-2">
@@ -55,7 +55,7 @@ export default function AboutPage() {
                 <DropdownMenuContent align="end">
                     <Link href="/#features" passHref><DropdownMenuItem>Features</DropdownMenuItem></Link>
                     <Link href="/about" passHref><DropdownMenuItem>About Us</DropdownMenuItem></Link>
-                    <Link href="/login" passHref><DropdownMenuItem>Teacher Login</DropdownMenuItem></Link>
+                    <Link href="/login" passHref><DropdownMenuItem>Login</DropdownMenuItem></Link>
                     <Link href="/register" passHref><DropdownMenuItem>Start for Free</DropdownMenuItem></Link>
                 </DropdownMenuContent>
             </DropdownMenu>
