@@ -176,7 +176,7 @@ export default function BillingPage() {
                 const displayPrice = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
                 
                 return (
-                    <Card key={plan.id} className={cn("flex flex-col h-full", plan.isFeatured ? "border-primary border-2 shadow-lg" : "")}>
+                    <Card key={plan.id} className={cn("flex flex-col", plan.isFeatured ? "border-primary border-2 shadow-lg" : "")}>
                         <CardHeader className="relative">
                             {plan.isFeatured && (
                                 <Badge className="absolute top-0 right-4 -mt-3 w-fit">RECOMMENDED</Badge>
@@ -186,17 +186,19 @@ export default function BillingPage() {
                                 <span className="text-4xl font-bold">
                                     {plan.id === 'free_trial' ? '₦0' : displayPrice}
                                 </span>
-                                {plan.id !== 'free_trial' && (
+                                {plan.id !== 'free_trial' ? (
                                     <span className="text-sm text-muted-foreground">
                                         /{billingCycle === 'monthly' ? 'month' : 'year'}
                                     </span>
+                                ) : (
+                                    <span className="text-sm text-muted-foreground">/7 days</span>
                                 )}
                             </div>
                             <CardDescription>{plan.description}</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1 space-y-4">
+                        <CardContent className="space-y-4">
                             <p className="font-semibold text-sm">
-                                {plan.id === 'free_trial' ? 'Free for 7 days, then upgrade.' : 'Features include:'}
+                                {plan.id === 'free_trial' ? 'Features include:' : 'All features from previous plans, plus:'}
                             </p>
                             <ul className="space-y-3 text-sm">
                                 {plan.features.map((feature, index) => (
@@ -211,7 +213,7 @@ export default function BillingPage() {
                                 ))}
                             </ul>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="mt-auto">
                            <PaystackButton
                                 email={user?.email || ''}
                                 amount={price}
