@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState, useEffect, useMemo } from 'react';
@@ -50,14 +49,16 @@ export default function AdminDashboardPage() {
     const totalRevenue = useMemo(() => {
         if (!allUsers) return 0;
 
-        return allUsers.reduce((total, u) => {
-            const plan = u.plan as keyof typeof plansData;
-            const cycle = u.subscriptionCycle as 'monthly' | 'annually';
-            if (plan && cycle && plansData[plan]) {
-                return total + (plansData[plan][cycle] || 0);
-            }
-            return total;
-        }, 0);
+        return allUsers
+            .filter(u => u.role !== 'admin') // Exclude admin user from revenue calculation
+            .reduce((total, u) => {
+                const plan = u.plan as keyof typeof plansData;
+                const cycle = u.subscriptionCycle as 'monthly' | 'annually';
+                if (plan && cycle && plansData[plan]) {
+                    return total + (plansData[plan][cycle] || 0);
+                }
+                return total;
+            }, 0);
     }, [allUsers]);
 
     useEffect(() => {
