@@ -4,17 +4,15 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
-  experimental: {
-    allowedDevOrigins: [
-        "https://3000-firebase-studio-1759929584345.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev",
-        "https://6000-firebase-studio-1759929584345.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev",
-    ]
-  },
+  allowedDevOrigins: [
+    "https://3000-firebase-studio-1759929584345.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev",
+    "https://6000-firebase-studio-1759929584345.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev",
+  ],
   async headers() {
     return [
       {
@@ -65,3 +63,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
