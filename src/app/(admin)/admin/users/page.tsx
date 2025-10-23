@@ -70,32 +70,22 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           {/* Mobile Card View */}
-          <div className="md:hidden space-y-4">
+          <div className="md:hidden space-y-2">
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : (
               filteredUsers.map(user => (
-                <Card key={user.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-base">{user.name}</CardTitle>
-                      <Badge variant={user.plan === 'free_trial' ? 'destructive' : user.plan === 'prime' ? 'default' : 'secondary'}>
-                        {toTitleCase(user.plan?.replace('_', ' ') || 'Free Trial')}
-                      </Badge>
+                <div key={user.id} className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted">
+                    <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{user.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                     </div>
-                    <CardDescription>{user.email}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-sm space-y-1">
-                    <div>
-                      <p className="text-muted-foreground">School</p>
-                      <p className="font-medium">{user.schoolName}</p>
+                    <div className="ml-4 flex-shrink-0">
+                        <Badge variant={user.plan === 'free_trial' ? 'destructive' : user.plan === 'prime' ? 'default' : 'secondary'}>
+                            {toTitleCase(user.plan?.replace('_', ' ') || 'Free Trial')}
+                        </Badge>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Joined</p>
-                      <p className="font-medium">{user.planStartDate?.toDate ? format(user.planStartDate.toDate(), 'PPP') : 'N/A'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                </div>
               ))
             )}
           </div>
