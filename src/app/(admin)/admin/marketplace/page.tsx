@@ -76,29 +76,42 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
 
     return (
         <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-1">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input id="name" name="name" value={formData.name} onChange={handleInputChange} className="col-span-3" required />
+            <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto px-2 -mx-2">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Product Name</Label>
+                    <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
                 </div>
-                 <div className="grid grid-cols-4 items-start gap-4">
-                    <Label htmlFor="description" className="text-right pt-2">Description</Label>
-                    <Textarea id="description" name="description" value={formData.description} onChange={handleInputChange} className="col-span-3" />
+                 <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea id="description" name="description" value={formData.description} onChange={handleInputChange} />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="imageUrl" className="text-right">Image URL</Label>
-                    <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} className="col-span-3" placeholder="https://example.com/image.png" />
+                <div className="space-y-2">
+                    <Label htmlFor="imageUrl">Image URL</Label>
+                    <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} placeholder="https://example.com/image.png" />
+                    {formData.imageUrl && (
+                         <div className="mt-2 flex justify-center p-2 border rounded-md bg-muted aspect-video relative">
+                            <Image 
+                                src={formData.imageUrl} 
+                                alt="Product Preview" 
+                                fill 
+                                className="object-contain" 
+                                onError={(e) => e.currentTarget.style.display = 'none'}
+                            />
+                         </div>
+                    )}
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="price">Price (₦)</Label>
                         <Input id="price" name="price" type="number" value={formData.price} onChange={handleInputChange} required />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="stock">Stock</Label>
-                        <Input id="stock" name="stock" type="number" value={formData.stock} onChange={handleInputChange} />
+                        <Label htmlFor="stock">Stock Quantity</Label>
+                        <Input id="stock" name="stock" type="number" value={formData.stock} onChange={handleInputChange} placeholder="0 for unlimited" />
                     </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="category">Category</Label>
@@ -122,13 +135,14 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                         </Select>
                     </div>
                 </div>
+
                  <div className="space-y-2">
-                    <Label>Locations</Label>
+                    <Label>Available Locations</Label>
                      <Popover open={locationPopoverOpen} onOpenChange={setLocationPopoverOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-auto min-h-10">
                                 <div className="flex flex-wrap gap-1">
-                                    {formData.locations?.length > 0 ? formData.locations.map(loc => <Badge key={loc}>{loc}</Badge>) : 'Select locations...'}
+                                    {formData.locations?.length > 0 ? formData.locations.map(loc => <Badge key={loc} variant="secondary">{loc}</Badge>) : 'Select locations...'}
                                 </div>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -148,7 +162,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                                             const next = current.includes(state)
                                                 ? current.filter(s => s !== state)
                                                 : [...current, state];
-                                            setFormData(prev => ({...prev, locations: next}));
+                                            setFormData(prev => ({...prev, locations: next.sort()}));
                                         }}
                                     >
                                         <Check className={cn("mr-2 h-4 w-4", formData.locations?.includes(state) ? "opacity-100" : "opacity-0")} />
@@ -160,11 +174,14 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                         </Command>
                         </PopoverContent>
                     </Popover>
+                    <p className="text-xs text-muted-foreground">Leave empty for nationwide availability.</p>
                  </div>
             </div>
-             <DialogFooter className="pt-4">
+             <DialogFooter className="pt-4 mt-4 border-t">
                 <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" disabled={isSaving}>Save Product</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : (product ? 'Save Changes' : 'Create Product')}
+                </Button>
             </DialogFooter>
         </form>
     )
@@ -212,6 +229,7 @@ export default function MarketplaceAdminPage() {
     const handleDeleteProduct = async (productId: string, productName: string) => {
         if (!window.confirm(`Are you sure you want to delete "${productName}"? This cannot be undone.`)) return;
         
+        if (!firestore) return;
         const productRef = doc(firestore, 'marketplace_products', productId);
         deleteDocumentNonBlocking(productRef);
         toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
@@ -231,7 +249,12 @@ export default function MarketplaceAdminPage() {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>
             
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+              if(!isOpen) {
+                setEditingProduct(null);
+              }
+              setIsDialogOpen(isOpen);
+            }}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
