@@ -50,37 +50,33 @@ export async function deleteAllData(): Promise<{ success: boolean; error?: strin
   try {
     const { db, auth } = initializeAdmin();
 
-    // 1. Delete all users from Firebase Authentication
+    // 1. List all users that need to be deleted from Auth later.
     const listUsersResult = await auth.listUsers(1000);
     const uidsToDelete = listUsersResult.users.map(userRecord => userRecord.uid);
-    if (uidsToDelete.length > 0) {
-        await auth.deleteUsers(uidsToDelete);
-    }
+    const deletedUserCount = uidsToDelete.length;
 
-    // 2. Delete all top-level collections and their subcollections from Firestore
+    // 2. Delete all Firestore data first.
     const collections = ['users', 'parents', 'marketplace_products'];
     for (const collectionName of collections) {
       const collectionRef = db.collection(collectionName);
       const docs = await collectionRef.listDocuments();
 
       for (const docRef of docs) {
-         // This is a simplified approach. A more robust solution for very large subcollections
-         // would involve a recursive deletion function. For this app's scale, it's okay.
          const subcollections = await docRef.listCollections();
          for (const subcollection of subcollections) {
              await deleteCollection(db, subcollection.path, 100);
          }
+         // Delete the main document after its subcollections.
          await docRef.delete();
       }
     }
     
-    // An extra check to ensure collections are empty if they weren't deleted above
-    // This is good for collections that might not have subcollections like 'parents'
-    for (const collectionName of collections) {
-        await deleteCollection(db, collectionName, 100);
+    // 3. Now, delete all users from Firebase Authentication.
+    if (deletedUserCount > 0) {
+        await auth.deleteUsers(uidsToDelete);
     }
 
-    return { success: true, deletedUsers: uidsToDelete.length };
+    return { success: true, deletedUsers: deletedUserCount };
 
   } catch (error) {
     console.error("Error deleting all data:", error);
