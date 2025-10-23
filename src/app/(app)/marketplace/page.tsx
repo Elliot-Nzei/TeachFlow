@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { usePlan } from '@/contexts/plan-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Lock, Search, Filter, X } from 'lucide-react';
+import { Loader2, Lock, Search, Filter, X, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -19,6 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { nigerianStates } from '@/lib/nigerian-states';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import dynamic from 'next/dynamic';
+
+const PaystackButton = dynamic(() => import('@/components/paystack/PaystackButton'), { ssr: false });
 
 type Product = {
     id: string;
@@ -56,7 +59,7 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
     return (
         <SheetTrigger asChild>
              <div onClick={onClick} className="group cursor-pointer">
-                <Card className="overflow-hidden flex flex-col h-full">
+                <Card className="overflow-hidden flex flex-col h-full transition-shadow duration-300 hover:shadow-xl">
                     <CardHeader className="p-0">
                         <div className="aspect-[4/3] relative overflow-hidden">
                             <Image
@@ -140,7 +143,7 @@ export default function MarketplacePage() {
     const { plan, isTrial } = usePlan();
     const router = useRouter();
     const { toast } = useToast();
-    const { firestore } = useFirebase();
+    const { firestore, user } = useFirebase();
 
     const [isLoadingPlan, setIsLoadingPlan] = useState(true);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -191,6 +194,18 @@ export default function MarketplacePage() {
     const handleClearFilters = () => {
         setFilters({ searchTerm: '', category: 'All', location: 'All' });
     };
+    
+    const handlePurchaseSuccess = (reference: { reference: string }) => {
+        toast({
+            title: 'Purchase Successful!',
+            description: `Your payment for "${selectedProduct?.name}" was completed. Ref: ${reference.reference}`
+        });
+        setSelectedProduct(null);
+    }
+    
+    const handlePurchaseClose = () => {
+        toast({ title: 'Purchase Cancelled', description: 'The payment process was not completed.' });
+    }
 
     if (isLoadingPlan) {
         return (
@@ -290,6 +305,15 @@ export default function MarketplacePage() {
                                 <h3 className="font-semibold mb-2">Stock</h3>
                                 <p className="text-sm text-muted-foreground">{selectedProduct.stock > 0 ? `${selectedProduct.stock} available` : 'Digital or unlimited stock'}</p>
                             </div>
+                        </div>
+                        <div className="py-6 border-t">
+                            <PaystackButton
+                                email={user?.email || ''}
+                                amount={selectedProduct.price}
+                                onSuccess={handlePurchaseSuccess}
+                                onClose={handlePurchaseClose}
+                                isPurchase={true}
+                            />
                         </div>
                     </ScrollArea>
                 )}
