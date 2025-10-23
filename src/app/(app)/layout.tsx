@@ -212,10 +212,23 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                         <Bot className="h-5 w-5" />
                         <span className="sr-only">Open AI Assistant</span>
                     </Button>
-                     <Button variant="ghost" size="icon" onClick={() => setIsHelpOpen(true)}>
-                        <HelpCircle className="h-5 w-5" />
-                        <span className="sr-only">Open Help</span>
-                    </Button>
+                     <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <HelpCircle className="h-5 w-5" />
+                                <span className="sr-only">Open Help</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                                <DialogTitle>Help Guide</DialogTitle>
+                                <DialogDescription>
+                                    Find information about the current page and its features.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <HelpGuide pathname={pathname} />
+                        </DialogContent>
+                    </Dialog>
                     <NotificationBell />
                     <UserProfileDisplay />
                 </div>
@@ -225,6 +238,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <UpgradeModal />
+          <CustomerSupportChat isOpen={isChatOpen} onOpenChange={setIsChatOpen} />
         </div>
       </div>
   )
