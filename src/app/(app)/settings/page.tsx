@@ -36,11 +36,15 @@ export default function SettingsPage() {
     const CONFIRMATION_PHRASE = 'DELETE';
 
     useEffect(() => {
-        if (settings) {
+        // Prevent infinite loop by only updating if the fetched settings are different.
+        // A simple string comparison is sufficient here.
+        if (settings && JSON.stringify(settings) !== JSON.stringify(localSettings)) {
             setLocalSettings(settings);
-            setPreviewLogo(settings.schoolLogo || null);
+            if (!previewLogo) { // Only set preview logo if it hasn't been changed by the user
+                setPreviewLogo(settings.schoolLogo || null);
+            }
         }
-    }, [settings]);
+    }, [settings, localSettings, previewLogo]);
     
     useEffect(() => {
         if (!isAlertOpen) {
