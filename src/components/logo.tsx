@@ -12,7 +12,6 @@ interface LogoProps {
 
 export function Logo({ className, compact = false }: LogoProps) {
   const uniqueId = React.useId();
-  const bgGradientId = `bg-gradient-${uniqueId}`;
 
   return (
     <Link
@@ -21,37 +20,39 @@ export function Logo({ className, compact = false }: LogoProps) {
       aria-label="TeachFlow Home"
       className={cn("focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm", className)}
     >
-      <svg 
+      <svg
         width={compact ? 40 : 130}
-        height={40}
-        viewBox={compact ? "140 250 350 450" : "0 0 1024 1024"}
+        height={compact ? 40 : 65}
+        viewBox={compact ? "100 0 512 512" : "0 0 1024 512"}
         role="img"
-        aria-labelledby="logo-title logo-desc"
+        aria-labelledby={`title-${uniqueId}`}
+        aria-describedby={`desc-${uniqueId}`}
       >
-        <title id="logo-title">TeachFlow Logo</title>
-        <desc id="logo-desc">White TeachFlow logo with gradient background and tagline “Less Paperwork, More Passion”.</desc>
+        <title id={`title-${uniqueId}`}>TeachFlow Logo</title>
+        <desc id={`desc-${uniqueId}`}>TeachFlow logo with properly oriented stylized C, white hexagon, and transparent background.</desc>
 
-        <defs>
-          <linearGradient id={bgGradientId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#0b2231"/>
-            <stop offset="100%" stopColor="#4ce3c6"/>
-          </linearGradient>
-        </defs>
-
-        {!compact && (
-          <rect width="100%" height="100%" fill={`url(#${bgGradientId})`} />
-        )}
-        
-        <g transform="translate(300,480) scale(2.2)">
-          <path d="M -80 -80 L 70 -80 L 100 -50 L 20 -50 L 20 50 L 100 50 L 70 80 L -80 80 Z"
+        {/* Stylized C mark (corrected orientation) */}
+        <g transform="translate(280,260) scale(2)">
+          {/* Outer C facing inward (both tips point to the center) */}
+          <path d="M -80 -80 
+                   L 80 -80 
+                   L 40 -40 
+                   L -40 -40 
+                   L -40 40 
+                   L 40 40 
+                   L 80 80 
+                   L -80 80 Z"
                 fill="#ffffff"/>
-          <rect x="-50" y="-50" width="90" height="100" fill={`url(#${bgGradientId})`}/>
+          {/* Inner cutout (transparent) */}
+          <rect x="-40" y="-40" width="80" height="80" fill="transparent"/>
+          {/* Hexagon */}
           <polygon points="0,-35 30,-17 30,17 0,35 -30,17 -30,-17" fill="#ffffff"/>
         </g>
-        
+
         {!compact && (
           <>
-            <text x="600" y="520"
+            {/* Wordmark */}
+            <text x="580" y="270"
                   fontFamily="Georgia, 'Times New Roman', serif"
                   fontSize="120"
                   fontWeight="600"
@@ -61,7 +62,8 @@ export function Logo({ className, compact = false }: LogoProps) {
               TeachFlow
             </text>
 
-            <text x="600" y="580"
+            {/* Tagline */}
+            <text x="580" y="330"
                   fontFamily="Georgia, 'Times New Roman', serif"
                   fontSize="26"
                   textAnchor="start"
