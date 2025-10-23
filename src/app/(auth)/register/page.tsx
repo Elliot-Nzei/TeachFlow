@@ -43,7 +43,9 @@ export default function RegisterPage() {
                 
                 const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
                 const role = adminExists ? 'teacher' : 'admin';
-                
+                const plan = adminExists ? 'free_trial' : 'prime';
+                const subscriptionCycle = adminExists ? null : 'annually';
+
                 await setDoc(doc(firestore, "users", user.uid), {
                     uid: user.uid,
                     name: fullName,
@@ -55,7 +57,8 @@ export default function RegisterPage() {
                     studentCounter: 0,
                     currentTerm: 'First Term',
                     currentSession: '2023/2024',
-                    plan: 'free_trial',
+                    plan: plan,
+                    subscriptionCycle: subscriptionCycle,
                     planStartDate: serverTimestamp(),
                 });
                 
