@@ -37,11 +37,10 @@ export default function SettingsPage() {
 
     useEffect(() => {
         // Prevent infinite loop by only updating if the fetched settings are different.
-        // A simple string comparison is sufficient here.
         if (settings && JSON.stringify(settings) !== JSON.stringify(localSettings)) {
             setLocalSettings(settings);
-            if (!previewLogo) { // Only set preview logo if it hasn't been changed by the user
-                setPreviewLogo(settings.schoolLogo || null);
+            if (!previewLogo && settings.schoolLogo) { 
+                setPreviewLogo(settings.schoolLogo);
             }
         }
     }, [settings, localSettings, previewLogo]);
@@ -259,28 +258,8 @@ export default function SettingsPage() {
             <CardDescription>Update your personal and school details.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
-                <div className="grid md:grid-cols-2 gap-8 items-start">
-                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                           <Label>School Logo</Label>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2">
-                            <Avatar className="h-24 w-24 rounded-md">
-                                <AvatarImage src={previewLogo || undefined} className="object-contain"/>
-                                <AvatarFallback className="rounded-md">
-                                    <School className="h-10 w-10 text-muted-foreground" />
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="grid w-full max-w-sm items-center gap-1.5">
-                                <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange}/>
-                                <p className="text-xs text-muted-foreground">Recommended: Square PNG/JPG.</p>
-                                <Button onClick={handleSaveLogo} disabled={isSavingLogo} size="sm" className="w-fit">
-                                    {isSavingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    Save Logo
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                <div className="p-4 border rounded-lg bg-muted/50 text-center">
+                    <p className="text-sm font-medium text-muted-foreground">School Logo Upload - Coming Soon!</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
