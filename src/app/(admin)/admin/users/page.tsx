@@ -38,21 +38,17 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">Manage Users</h1>
-      
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            {isLoading ? (
-                <Skeleton className="h-8 w-20" />
-            ) : (
-                <div className="text-2xl font-bold">{users?.length || 0}</div>
-            )}
-        </CardContent>
-      </Card>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <h1 className="text-3xl font-bold font-headline">Manage Users</h1>
+            <Card>
+                <CardContent className="p-3 flex items-center gap-4">
+                    <div className="text-sm font-medium text-muted-foreground">Total Users</div>
+                     {isLoading ? <Skeleton className="h-6 w-12" /> : (
+                        <div className="font-bold text-lg">{users?.length || 0}</div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
 
       <Card>
         <CardHeader>
