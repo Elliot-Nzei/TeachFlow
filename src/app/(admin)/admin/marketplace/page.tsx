@@ -40,6 +40,16 @@ type Product = {
 
 const ALLOWED_IMAGE_HOSTS = ['images.unsplash.com', 'picsum.photos', 'drive.google.com', 'lh3.googleusercontent.com'];
 
+const isValidImageUrl = (url: string | undefined): boolean => {
+    if (!url) return false;
+    try {
+        const urlObj = new URL(url);
+        return ALLOWED_IMAGE_HOSTS.includes(urlObj.hostname);
+    } catch (error) {
+        return false;
+    }
+};
+
 const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>, onCancel: () => void }) => {
     const [formData, setFormData] = useState({
         name: product?.name || '',
@@ -54,14 +64,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
     const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    const isValidImageUrl = useMemo(() => {
-        try {
-            const url = new URL(formData.imageUrl);
-            return ALLOWED_IMAGE_HOSTS.includes(url.hostname);
-        } catch (error) {
-            return false;
-        }
-    }, [formData.imageUrl]);
+    const showPreview = useMemo(() => isValidImageUrl(formData.imageUrl), [formData.imageUrl]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -99,7 +102,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                 <div className="space-y-2">
                     <Label htmlFor="imageUrl">Image URL</Label>
                     <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} placeholder="https://picsum.photos/seed/1/200/300" />
-                    {formData.imageUrl && isValidImageUrl && (
+                    {formData.imageUrl && showPreview && (
                          <div className="mt-2 flex justify-center p-2 border rounded-md bg-muted aspect-video relative">
                             <Image 
                                 src={formData.imageUrl} 
@@ -255,6 +258,14 @@ export default function MarketplaceAdminPage() {
 
     const activeProducts = useMemo(() => products?.filter(p => p.status === 'active').length || 0, [products]);
 
+    const getSafeImageUrl = (product: Product, size: 'small' | 'large') => {
+        if (isValidImageUrl(product.imageUrl)) {
+            return product.imageUrl!;
+        }
+        const dimensions = size === 'small' ? '40/40' : '80/80';
+        return `https://picsum.photos/seed/${product.id}/${dimensions}`;
+    };
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>
@@ -313,7 +324,7 @@ export default function MarketplaceAdminPage() {
                         ) : filteredProducts.length > 0 ? (
                             filteredProducts.map((product) => (
                                 <Card key={product.id} className="flex gap-4 p-4">
-                                    <Image src={product.imageUrl || `https://picsum.photos/seed/${product.id}/80/80`} alt={product.name} width={80} height={80} className="rounded-md object-cover bg-muted h-20 w-20" />
+                                    <Image src={getSafeImageUrl(product, 'large')} alt={product.name} width={80} height={80} className="rounded-md object-cover bg-muted h-20 w-20" />
                                     <div className="flex-1 space-y-1">
                                         <div className="flex justify-between items-start">
                                             <p className="font-semibold">{product.name}</p>
@@ -362,7 +373,7 @@ export default function MarketplaceAdminPage() {
                                     <TableRow key={product.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <Image src={product.imageUrl || `https://picsum.photos/seed/${product.id}/40/40`} alt={product.name} width={40} height={40} className="rounded-md object-cover bg-muted" />
+                                                <Image src={getSafeImageUrl(product, 'small')} alt={product.name} width={40} height={40} className="rounded-md object-cover bg-muted" />
                                                 <div className="flex-1 truncate">
                                                     <p className="font-semibold truncate">{product.name}</p>
                                                     <p className="text-xs text-muted-foreground truncate">{product.description}</p>
@@ -407,7 +418,3 @@ export default function MarketplaceAdminPage() {
         </div>
     );
 }
-
-    
-
-    
