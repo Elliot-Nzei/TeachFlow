@@ -118,7 +118,7 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     {isLoading ? <Skeleton className="h-[250px] w-full" /> :
                         <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
-                            <BarChart accessibilityLayer data={chartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { left: 10 } : undefined}>
+                            <BarChart accessibilityLayer data={chartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { right: 20 } : { top: 20 }}>
                                 <CartesianGrid vertical={isMobile} horizontal={!isMobile} />
                                 {isMobile ? (
                                     <>
