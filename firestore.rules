@@ -1,248 +1,47 @@
-/**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for most data,
- *              with some exceptions for public marketplace data. It prioritizes
- *              security and data isolation between users while allowing for rapid
- *              prototyping and flexible data shapes.
- *
- * Data Structure:
- * - User profiles are stored under /users/{userId}.
- * - Most school-related data (classes, students, grades, etc.) is nested under /users/{userId}.
- * - Marketplace products are stored in a top-level collection /marketplace_products/{productId}.
- * - Parent profiles are stored under /parents/{parentId}.
- *
- * Key Security Decisions:
- * - Users can only access their own data under /users/{userId}.
- * - Listing of users is disallowed.
- * - Marketplace products are publicly readable but only writable by marketplace admins.
- * - Parents can create their own profiles and link them to students.
- * - All write operations require an authenticated user.
- * - Relational integrity is enforced where necessary to maintain data consistency.
- * - No data shape validation is performed beyond authorization checks (prototyping mode).
- *
- * Denormalization for Authorization:
- * - For simplicity and performance, authorization decisions rely on the authenticated
- *   user's UID and data present directly in the documents being accessed.  This
- *   avoids costly `get()` calls to other documents.
- *
- * Structural Segregation:
- * - Public marketplace data is stored in a separate top-level collection to avoid
- *   mixing public and private data within the user's data tree.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    function isAdmin() {
+      // Check if the requesting user has the 'admin' role in their own user document.
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isMarketplaceAdmin() {
-        return isSignedIn() && request.auth.token.role == 'marketplace_admin';
-    }
-
-    /**
-     * @description Protects user profile data; only the owner can read and write.
-     * @path /users/{userId}
-     * @allow (get, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can read their profile at /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @deny (get, create, update, delete) User 'anotherUser' cannot read the profile at /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces document ownership for all operations.
-     */
+    // Rules for the top-level 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      // An admin can read any user's document.
+      // A user can read or write their own document.
+      allow get: if isAdmin() || isOwner(userId);
+      allow list: if isAdmin();
+      allow create, update, delete: if isOwner(userId) || isAdmin();
+
+      // Rules for all subcollections under a user
+      match /{allPaths=**} {
+        // An admin can read/write any subcollection document.
+        // A user can read/write documents in their own subcollections.
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+    }
+    
+    // Rule for the collection group 'students'
+    match /{path=**}/students/{studentId} {
+        // Allow an admin to perform a 'list' query across all users' students subcollections.
+        allow list: if isAdmin();
     }
 
-     /**
-     * @description Allows parents to create their own profiles, and only access/modify their own.
-     * @path /parents/{parentId}
-     * @allow (create) Parent 'someParentId' can create their profile at /parents/someParentId if authenticated as 'someParentId'.
-     * @allow (get, update, delete) Parent 'someParentId' can read, update, and delete their profile at /parents/someParentId.
-     * @deny (get, create, update, delete) Parent 'anotherParentId' cannot access the profile at /parents/someParentId.
-     * @principle Allows self-creation and ownership-based access control for parent profiles.
-     */
-    match /parents/{parentId} {
-      allow get: if isOwner(parentId);
-      allow list: if false;
-      allow create: if isOwner(parentId) && request.resource.data.id == parentId;
-      allow update: if isExistingOwner(parentId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(parentId);
-    }
-
-    /**
-     * @description Allows public read access to marketplace products, but restricts writes to marketplace admins only.
-     * @path /marketplace_products/{productId}
-     * @allow (get, list) Any user can read marketplace products.
-     * @allow (create, update, delete) Only marketplace admins can create, update, or delete products.
-     * @deny (create, update, delete) Regular users cannot modify marketplace products.
-     * @principle Provides public read access with restricted write access based on admin roles.
-     */
+    // Rules for top-level collections accessible by any authenticated user
     match /marketplace_products/{productId} {
-      allow get, list: if true;
-      allow create: if isMarketplaceAdmin();
-      allow update: if isMarketplaceAdmin() && resource != null;
-      allow delete: if isMarketplaceAdmin() && resource != null;
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
     }
-
-    /**
-     * @description Protects class data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/classes/{classId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their classes.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access classes under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/classes/{classId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects student data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/students/{studentId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their students.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access students under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/students/{studentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.parentId != null;
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects subject data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/subjects/{subjectId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their subjects.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access subjects under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects grade data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/grades/{gradeId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their grades.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access grades under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/grades/{gradeId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects attendance data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their attendance records.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access attendance records under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/attendance/{attendanceId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects trait data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/traits/{traitId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage student traits.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access student traits under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/traits/{traitId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects incoming transfer requests under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their incoming transfer requests.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access incoming transfer requests under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects outgoing transfer requests under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/outgoingTransfers/{transferId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their outgoing transfer requests.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access outgoing transfer requests under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/outgoingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects payment data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/payments/{paymentId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their payment records.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access payment records under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/payments/{paymentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects timetable data under a user's profile; only the owner can read and write.
-     * @path /users/{userId}/timetables/{timetableId}
-     * @allow (get, list, create, update, delete) User 'oj5U5KypqcR22Qye5vwT5L5uwIS2' can manage their timetables.
-     * @deny (get, list, create, update, delete) User 'anotherUser' cannot access timetables under /users/oj5U5KypqcR22Qye5vwT5L5uwIS2.
-     * @principle Enforces user-specific data isolation.
-     */
-    match /users/{userId}/timetables/{timetableId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    
+    match /parents/{parentId} {
+        allow read, write: if request.auth != null && request.auth.uid == parentId;
     }
   }
 }
