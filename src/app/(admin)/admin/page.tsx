@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -107,7 +108,7 @@ export default function AdminDashboardPage() {
     // Loading state for initial page load
     if (isLoading) {
         return (
-            <div className="space-y-6 p-4 md:p-6">
+            <div className="space-y-6">
                 <Skeleton className="h-9 w-64" />
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     {Array.from({length: 4}).map((_, i) => (
@@ -203,35 +204,40 @@ export default function AdminDashboardPage() {
                         <Skeleton className="h-[300px] w-full" />
                     ) : (
                         <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                {isMobile ? (
-                                    // Mobile vertical chart
-                                    <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                        <YAxis dataKey="plan" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={80} />
-                                        <XAxis type="number" hide />
-                                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                                        <Bar dataKey="users" radius={[0, 4, 4, 0]}>
-                                            {chartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                ) : (
-                                    // Desktop horizontal chart
-                                    <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="plan" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
-                                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
-                                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                                        <Bar dataKey="users" radius={[8, 8, 0, 0]}>
-                                            {chartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                )}
-                            </ResponsiveContainer>
+                            <div className="md:hidden">
+                                <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <YAxis dataKey="plan" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={80} />
+                                            <XAxis type="number" hide />
+                                            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                                            <Bar dataKey="users" radius={[0, 4, 4, 0]}>
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </ChartContainer>
+                            </div>
+                            <div className="hidden md:block">
+                                <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                            <XAxis dataKey="plan" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                                            <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                                            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                                            <Bar dataKey="users" radius={[8, 8, 0, 0]}>
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </ChartContainer>
+                            </div>
                         </div>
                     )}
                 </CardContent>
