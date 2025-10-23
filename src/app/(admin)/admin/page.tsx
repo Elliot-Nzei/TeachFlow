@@ -118,22 +118,23 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     {isLoading ? <Skeleton className="h-[250px] w-full" /> :
                         <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
-                            <BarChart accessibilityLayer data={chartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { right: 20 } : { top: 20 }}>
-                                <CartesianGrid vertical={!isMobile} horizontal={isMobile} />
-                                {isMobile ? (
-                                    <>
-                                        <YAxis dataKey="plan" type="category" tickLine={false} tickMargin={10} axisLine={false} />
-                                        <XAxis dataKey="users" type="number" hide />
-                                    </>
-                                ) : (
-                                    <>
-                                        <XAxis dataKey="plan" tickLine={false} tickMargin={10} axisLine={false} />
-                                        <YAxis />
-                                    </>
-                                )}
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="users" fill="var(--color-users)" radius={8} />
-                            </BarChart>
+                           {isMobile ? (
+                                <BarChart accessibilityLayer data={chartData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                                    <CartesianGrid horizontal={false} />
+                                    <YAxis dataKey="plan" type="category" tickLine={false} tickMargin={10} axisLine={false} />
+                                    <XAxis dataKey="users" type="number" hide />
+                                    <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                                    <Bar dataKey="users" fill="var(--color-users)" radius={5} />
+                                </BarChart>
+                            ) : (
+                                <BarChart accessibilityLayer data={chartData}>
+                                    <CartesianGrid vertical={false} />
+                                    <XAxis dataKey="plan" tickLine={false} tickMargin={10} axisLine={false} />
+                                    <YAxis />
+                                    <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                                    <Bar dataKey="users" fill="var(--color-users)" radius={8} />
+                                </BarChart>
+                           )}
                         </ChartContainer>
                     }
                 </CardContent>
