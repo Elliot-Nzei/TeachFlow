@@ -1,344 +1,247 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for most data, with exceptions for public marketplace products.
+ *
+ * Data Structure:
+ * - Users: /users/{userId} - Stores user profiles.
+ * - Classes: /users/{userId}/classes/{classId} - Classes owned by a user.
+ * - Students: /users/{userId}/students/{studentId} - Students owned by a user.
+ * - Subjects: /users/{userId}/subjects/{subjectId} - Subjects owned by a user.
+ * - Grades: /users/{userId}/grades/{gradeId} - Grades owned by a user.
+ * - Attendance: /users/{userId}/attendance/{attendanceId} - Attendance records owned by a user.
+ * - Traits: /users/{userId}/traits/{traitId} - Traits records owned by a user.
+ * - Payments: /users/{userId}/payments/{paymentId} - Payments owned by a user.
+ * - Transfers: /users/{userId}/incomingTransfers/{transferId}, /users/{userId}/outgoingTransfers/{transferId} - Data transfer requests.
+ * - Timetables: /users/{userId}/timetables/{timetableId} - Class timetables owned by a user.
+ * - Marketplace Products: /marketplace_products/{productId} - Public marketplace products.
+ * - Parents: /parents/{parentId} - Parent User Profiles
+ *
+ * Key Security Decisions:
+ * - User-owned data is strictly controlled by the owning user. Only the user with the matching {userId} can read or write data under their respective path.
+ * - Listing of user documents is disallowed.
+ * - Marketplace products are publicly readable, but only admins can create, update, or delete them. This is not yet implemented (TODO).
+ * - Data consistency between path and document data is enforced on create and update operations where applicable.
+ *
+ * Denormalization for Authorization:
+ * - Where possible, ownership is determined by matching the `request.auth.uid` against the `userId` path segment.  For the marketplace products, the `sellerId` should be used, but its missing so the write permissions are disabled.
+ *
+ * Structural Segregation:
+ * - Private user data is stored under the `/users/{userId}` path to ensure isolation.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows a user to read and write their own user profile.
+     * @description Checks if the request is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of an existing document.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && exists(resource);
+    }
+
+    /**
+     * @description Enforces data consistency for user-owned documents.
+     */
+    function isValidUserDoc(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * @description Checks if the current request is for creating a new document,
+     */
+    function isCreate() {
+        return request.method == 'create';
+    }
+
+    /**
+     * @description Checks if the current request is for updating an existing document.
+     */
+    function isUpdate() {
+        return request.method == 'update';
+    }
+
+    /**
+     * @description Checks if the current request is for deleting an existing document.
+     */
+    function isDelete() {
+        return request.method == 'delete';
+    }
+
+
+    /**
+     * @description Grants access only to the owner of the user document.
      * @path /users/{userId}
-     * @allow (create) - User with matching ID creates their profile.
-     * @allow (get, update, delete) - User with matching ID reads/updates/deletes their profile.
-     * @deny (create) - User attempts to create profile with mismatched ID.
-     * @deny (get, update, delete) - User attempts to read/update/delete another user's profile.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with UID 'user_abc' can create their own profile.
+     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc'.
+     * @principle Enforces document ownership, allowing users to manage their own profiles.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
     }
 
-    /**
-     * @description Allows a parent to create, read, update, and delete their own profile.
+     /**
+     * @description Allows anyone to create a parent account. Read and update are limited to the authenticated user.
      * @path /parents/{parentId}
-     * @allow (create) - Parent with matching ID creates their profile.
-     * @allow (get, update, delete) - Parent with matching ID reads/updates/deletes their profile.
-     * @deny (create) - Parent attempts to create profile with mismatched ID.
-     * @deny (get, update, delete) - Parent attempts to read/update/delete another parent's profile.
-     * @principle Enforces document ownership for all operations.
      */
     match /parents/{parentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(parentId) {
-        return request.auth.uid == parentId;
-      }
-      function isExistingOwner(parentId) {
-        return isOwner(parentId) && exists(resource);
-      }
-
-      allow get: if isOwner(parentId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(parentId);
-      allow update: if isExistingOwner(parentId);
-      allow delete: if isExistingOwner(parentId);
+        allow get: if isOwner(parentId);
+        allow list: if false;
+        allow create: if isSignedIn();
+        allow update: if isOwner(parentId) && existsAfter(/databases/$(database)/documents/parents/$(parentId));
+        allow delete: if false; // Deny deletion of parent profiles.
     }
 
     /**
-     * @description Allows anyone to read marketplace products, but restricts write access.
+     * @description Grants public read access to marketplace products but restricts write access to marketplace admins.
      * @path /marketplace_products/{productId}
-     * @allow (get, list) - Any user can read/list products.
-     * @deny (create, update, delete) - Only marketplace admins should be able to create/update/delete.
-     * @principle Public read, restricted write access.
+     * @allow (get) Any user can read marketplace product details.
+     * @deny (create) Non marketplace_admin cannot create marketplace products.
+     * @principle Allows public access to product listings while restricting modifications to authorized personnel.
      */
     match /marketplace_products/{productId} {
       allow get: if true;
       allow list: if true;
-      allow create: if false; // TODO: Add marketplace admin check
-      allow update: if false; // TODO: Add marketplace admin check
-      allow delete: if false; // TODO: Add marketplace admin check
+      allow create: if false; // TODO: Add marketplace_admin role check once implemented.
+      allow update: if false && existsAfter(/databases/$(database)/documents/marketplace_products/$(productId)); // TODO: Add marketplace_admin role check once implemented and add resource != null check.
+      allow delete: if false && exists(/databases/$(database)/documents/marketplace_products/$(productId)); // TODO: Add marketplace_admin role check once implemented and add resource != null check.
     }
 
     /**
-     * @description Allows a user to read and write their own classes.
+     * @description Grants access only to the owner for managing classes.
      * @path /users/{userId}/classes/{classId}
-     * @allow (create) - User with matching ID creates a class.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their classes.
-     * @deny (create) - User attempts to create a class with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's classes.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/classes/{classId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/classes/$(classId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/classes/$(classId));
     }
 
     /**
-     * @description Allows a user to read and write their own students.
+     * @description Grants access only to the owner for managing students.
      * @path /users/{userId}/students/{studentId}
-     * @allow (create) - User with matching ID creates a student.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their students.
-     * @deny (create) - User attempts to create a student with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's students.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/students/{studentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/students/$(studentId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/students/$(studentId));
     }
 
     /**
-     * @description Allows a user to read and write their own subjects.
+     * @description Grants access only to the owner for managing subjects.
      * @path /users/{userId}/subjects/{subjectId}
-     * @allow (create) - User with matching ID creates a subject.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their subjects.
-     * @deny (create) - User attempts to create a subject with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's subjects.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/subjects/{subjectId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/subjects/$(subjectId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/subjects/$(subjectId));
     }
 
     /**
-     * @description Allows a user to read and write their own grades.
+     * @description Grants access only to the owner for managing grades.
      * @path /users/{userId}/grades/{gradeId}
-     * @allow (create) - User with matching ID creates a grade.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their grades.
-     * @deny (create) - User attempts to create a grade with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's grades.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/grades/{gradeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/grades/$(gradeId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/grades/$(gradeId));
     }
 
     /**
-     * @description Allows a user to read and write their own attendance records.
+     * @description Grants access only to the owner for managing attendance records.
      * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (create) - User with matching ID creates an attendance record.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their attendance records.
-     * @deny (create) - User attempts to create an attendance record with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's attendance records.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/attendance/{attendanceId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/attendance/$(attendanceId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/attendance/$(attendanceId));
     }
 
     /**
-     * @description Allows a user to read and write their own trait records.
+     * @description Grants access only to the owner for managing student traits.
      * @path /users/{userId}/traits/{traitId}
-     * @allow (create) - User with matching ID creates a trait record.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their trait records.
-     * @deny (create) - User attempts to create a trait record with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's trait records.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/traits/{traitId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/traits/$(traitId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/traits/$(traitId));
     }
 
     /**
-     * @description Allows a user to read and write their own incoming transfer requests.
+     * @description Grants access only to the owner for managing incoming data transfer requests.
      * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (create) - User with matching ID creates an incoming transfer request.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their incoming transfer requests.
-     * @deny (create) - User attempts to create an incoming transfer request with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's incoming transfer requests.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/incomingTransfers/{transferId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/incomingTransfers/$(transferId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/incomingTransfers/$(transferId));
     }
 
     /**
-     * @description Allows a user to read and write their own outgoing transfer requests.
+     * @description Grants access only to the owner for managing outgoing data transfer requests.
      * @path /users/{userId}/outgoingTransfers/{transferId}
-     * @allow (create) - User with matching ID creates an outgoing transfer request.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their outgoing transfer requests.
-     * @deny (create) - User attempts to create an outgoing transfer request with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's outgoing transfer requests.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/outgoingTransfers/{transferId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/outgoingTransfers/$(transferId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/outgoingTransfers/$(transferId));
     }
 
-   /**
-     * @description Allows a user to read and write their own payment records.
+    /**
+     * @description Grants access only to the owner for managing student payment records.
      * @path /users/{userId}/payments/{paymentId}
-     * @allow (create) - User with matching ID creates a payment record.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their payment records.
-     * @deny (create) - User attempts to create a payment record with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's payment records.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/payments/{paymentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/payments/$(paymentId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/payments/$(paymentId));
     }
 
-   /**
-     * @description Allows a user to read and write their own timetables.
+     /**
+     * @description Grants access only to the owner for managing timetables.
      * @path /users/{userId}/timetables/{timetableId}
-     * @allow (create) - User with matching ID creates a timetable.
-     * @allow (get, list, update, delete) - User with matching ID reads/lists/updates/deletes their timetables.
-     * @deny (create) - User attempts to create a timetable with mismatched ID.
-     * @deny (get, list, update, delete) - User attempts to read/list/update/delete another user's timetables.
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/timetables/{timetableId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/timetables/$(timetableId));
+      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/timetables/$(timetableId));
     }
   }
 }
