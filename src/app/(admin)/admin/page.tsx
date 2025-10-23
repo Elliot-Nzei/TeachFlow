@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Users, ClipboardList, GraduationCap, DollarSign, Lock, Building } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, collectionGroup, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
@@ -35,10 +35,18 @@ export default function AdminDashboardPage() {
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'teacher')) : null, [firestore]);
     const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
-    const classesQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'classes') : null, [firestore]);
+    const activeUserIds = useMemo(() => users?.map(u => u.id) || [], [users]);
+
+    const classesQuery = useMemoFirebase(() => {
+        if (!firestore || activeUserIds.length === 0) return null;
+        return query(collection(firestore, 'classes'), where('__name__', 'in', activeUserIds.flatMap(id => `/users/${id}/classes`)));
+    }, [firestore, activeUserIds]);
     const { data: classes, isLoading: isLoadingClasses } = useCollection(classesQuery);
     
-    const studentsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'students') : null, [firestore]);
+    const studentsQuery = useMemoFirebase(() => {
+        if (!firestore || activeUserIds.length === 0) return null;
+        return query(collection(firestore, 'students'), where('__name__', 'in', activeUserIds.flatMap(id => `/users/${id}/students`)));
+    }, [firestore, activeUserIds]);
     const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
 
 
