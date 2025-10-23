@@ -188,14 +188,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <SidebarFooter>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <Link href="/settings">
-                        <SidebarMenuButton isActive={pathname === '/settings'} tooltip={{children: 'Settings'}}>
-                            <Settings />
-                            <span>Settings</span>
-                        </SidebarMenuButton>
-                    </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
                     <Link href="/">
                         <SidebarMenuButton tooltip={{children: 'Logout'}}>
                             <LogOut />
