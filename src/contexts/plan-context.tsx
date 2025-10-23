@@ -129,7 +129,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   
   const isLocked = useMemo(() => {
     const publicPaths = ['/billing', '/settings'];
-    if(publicPaths.includes(pathname)) return false;
+    if(pathname && publicPaths.includes(pathname)) return false;
     
     return isSubscriptionExpired;
   }, [isSubscriptionExpired, pathname]);
