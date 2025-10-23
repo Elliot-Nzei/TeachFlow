@@ -163,7 +163,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <SidebarHeader>
@@ -228,19 +227,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
           <UpgradeModal />
         </div>
       </div>
-       <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Page Guide</DialogTitle>
-            <DialogDescription>
-              A quick guide on how to use the current page.
-            </DialogDescription>
-          </DialogHeader>
-          <HelpGuide pathname={pathname} />
-        </DialogContent>
-      </Dialog>
-      <CustomerSupportChat isOpen={isChatOpen} onOpenChange={setIsChatOpen} />
-    </SidebarProvider>
   )
 }
 
@@ -249,7 +235,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <PlanProvider>
-        <AppLayoutContent>{children}</AppLayoutContent>
+        <SidebarProvider>
+          <AppLayoutContent>{children}</AppLayoutContent>
+        </SidebarProvider>
       </PlanProvider>
     </SettingsProvider>
   );
