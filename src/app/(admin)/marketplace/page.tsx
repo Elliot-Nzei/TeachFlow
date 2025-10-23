@@ -1,4 +1,3 @@
-
 'use client';
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -43,7 +42,7 @@ export default function MarketplaceAdminPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>
                     <p className="text-muted-foreground">Oversee products, orders, and settings for the marketplace.</p>
@@ -92,30 +91,58 @@ export default function MarketplaceAdminPage() {
                     <CardDescription>A list of all products in the marketplace.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Product Name</TableHead>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Price (₦)</TableHead>
-                            <TableHead>Stock</TableHead>
-                            <TableHead>Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {products.map((product) => (
-                                <TableRow key={product.id}>
-                                    <TableCell className="font-medium">{product.name}</TableCell>
-                                    <TableCell>{product.category}</TableCell>
-                                    <TableCell>{product.price.toLocaleString()}</TableCell>
-                                    <TableCell>{product.stock}</TableCell>
-                                    <TableCell>
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-4">
+                        {products.map((product) => (
+                            <Card key={product.id}>
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-base">{product.name}</CardTitle>
                                         <Badge variant={product.status === 'Active' ? 'default' : 'secondary'}>{product.status}</Badge>
-                                    </TableCell>
+                                    </div>
+                                    <CardDescription>{product.category}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="grid grid-cols-2 text-sm">
+                                    <div>
+                                        <p className="text-muted-foreground">Price</p>
+                                        <p className="font-semibold">₦{product.price.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-muted-foreground">Stock</p>
+                                        <p className="font-semibold">{product.stock}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Product Name</TableHead>
+                                <TableHead>Category</TableHead>
+                                <TableHead>Price (₦)</TableHead>
+                                <TableHead>Stock</TableHead>
+                                <TableHead>Status</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {products.map((product) => (
+                                    <TableRow key={product.id}>
+                                        <TableCell className="font-medium">{product.name}</TableCell>
+                                        <TableCell>{product.category}</TableCell>
+                                        <TableCell>₦{product.price.toLocaleString()}</TableCell>
+                                        <TableCell>{product.stock}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={product.status === 'Active' ? 'default' : 'secondary'}>{product.status}</Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
