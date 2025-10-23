@@ -19,12 +19,14 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { SettingsContext } from '@/contexts/settings-context';
 import type { Payment, Student } from '@/lib/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 export default function DashboardPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const { settings, isLoading: isLoadingSettings } = useContext(SettingsContext);
+  const isMobile = useIsMobile();
 
   const studentsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'students')) : null, [firestore, user]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
@@ -196,10 +198,19 @@ export default function DashboardPage() {
                 {isLoadingPayments || isLoadingStudents ? <Skeleton className="h-[250px] w-full" /> : (
                 <>
                     <ChartContainer config={paymentChartConfig} className="min-h-[250px] w-full">
-                        <BarChart accessibilityLayer data={paymentChartData} layout="vertical" margin={{ left: 10 }}>
-                            <CartesianGrid horizontal={false} />
-                            <YAxis dataKey="status" type="category" tickLine={false} tickMargin={10} axisLine={false} />
-                            <XAxis dataKey="count" type="number" hide />
+                        <BarChart accessibilityLayer data={paymentChartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { right: 20 } : { top: 20 }}>
+                            <CartesianGrid horizontal={isMobile} vertical={!isMobile} />
+                             {isMobile ? (
+                                <>
+                                    <YAxis dataKey="status" type="category" tickLine={false} tickMargin={10} axisLine={false} />
+                                    <XAxis dataKey="count" type="number" hide />
+                                </>
+                            ) : (
+                                <>
+                                    <XAxis dataKey="status" tickLine={false} tickMargin={10} axisLine={false} />
+                                    <YAxis />
+                                </>
+                            )}
                             <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
                             <Bar dataKey="count" radius={8} />
                         </BarChart>
@@ -244,3 +255,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
