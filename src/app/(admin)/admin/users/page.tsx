@@ -1,22 +1,30 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
 import { Search } from 'lucide-react';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 export default function AdminUsersPage() {
   const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
-  const { data: users, isLoading } = useCollection(usersQuery);
+  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
+  
+  const usersQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
+
+  const isLoading = isUserLoading || isLoadingProfile || isLoadingUsers;
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
