@@ -73,7 +73,6 @@ export default function Home() {
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50 border-b">
         <Logo />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
-            <Link href="/marketplace" passHref><Button variant="ghost">Marketplace</Button></Link>
             <Link href="/parents" passHref>
                 <Button variant="ghost">Parents</Button>
             </Link>
@@ -98,7 +97,6 @@ export default function Home() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <Link href="/marketplace" passHref><DropdownMenuItem>Marketplace</DropdownMenuItem></Link>
                     <Link href="/parents" passHref><DropdownMenuItem>Parents</DropdownMenuItem></Link>
                     <Link href="/about" passHref><DropdownMenuItem>About Us</DropdownMenuItem></Link>
                     <Link href="/login" passHref><DropdownMenuItem>Teacher Login</DropdownMenuItem></Link>
