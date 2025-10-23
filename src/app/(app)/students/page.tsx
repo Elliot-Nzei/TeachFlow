@@ -217,30 +217,29 @@ export default function StudentsPage() {
   return (
     <>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-        <h1 className="text-3xl font-bold font-headline">All Students</h1>
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-            <div className="relative w-full sm:max-w-xs">
+        <div>
+            <h1 className="text-3xl font-bold font-headline">All Students</h1>
+             <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Student Limit:</span>
+                {isLoadingStudents ? <Skeleton className="h-5 w-10" /> : (
+                    <span className="font-semibold text-foreground flex items-center gap-1">
+                        {students?.length || 0} / 
+                        {features.studentLimit === 'Unlimited' ? <InfinityIcon className="h-4 w-4" /> : features.studentLimit}
+                    </span>
+                )}
+            </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full sm:w-auto flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                   type="search"
                   placeholder="Search students..."
-                  className="pl-10"
+                  className="pl-10 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-             <Card className="w-full md:w-auto">
-                <CardContent className="p-3 flex items-center gap-4">
-                    <div className="text-sm text-muted-foreground">Student Limit</div>
-                    {isLoadingStudents ? <Skeleton className="h-6 w-12" /> : (
-                        <div className="flex items-center gap-1 font-bold text-lg">
-                            <span>{students?.length || 0}</span>
-                            <span>/</span>
-                            {features.studentLimit === 'Unlimited' ? <InfinityIcon className="h-5 w-5" /> : <span>{features.studentLimit}</span>}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
             <Dialog open={isAddStudentOpen} onOpenChange={setAddStudentOpen}>
                 <Tooltip>
                     <TooltipTrigger asChild>
