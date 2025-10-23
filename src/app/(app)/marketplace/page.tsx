@@ -53,7 +53,7 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
     return (
          <Card className="overflow-hidden flex flex-col group">
             <CardHeader className="p-0">
-                <div className="aspect-video relative overflow-hidden">
+                <div className="aspect-[4/3] relative overflow-hidden">
                     <Image
                         src={getSafeImageUrl(product)}
                         alt={product.name}
@@ -64,24 +64,24 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
                     />
                 </div>
             </CardHeader>
-            <CardContent className="p-4 flex-grow flex flex-col">
+            <CardContent className="p-3 flex-grow flex flex-col">
                 <div className="flex-grow">
                     <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg font-headline">{product.name}</CardTitle>
-                        <Badge variant="secondary">{product.category}</Badge>
+                        <CardTitle className="text-base font-headline">{product.name}</CardTitle>
+                        <Badge variant="secondary" className="text-xs shrink-0">{product.category}</Badge>
                     </div>
                     <CardDescription className="mt-1 text-xs line-clamp-2">{product.description}</CardDescription>
                 </div>
                  {product.locations && product.locations.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-3">
+                    <div className="flex flex-wrap gap-1 mt-2">
                         {product.locations.slice(0, 3).map(loc => <Badge key={loc} variant="outline" className="text-xs">{loc}</Badge>)}
                         {product.locations.length > 3 && <Badge variant="outline" className="text-xs">+{product.locations.length - 3} more</Badge>}
                     </div>
                 )}
             </CardContent>
-            <CardFooter className="p-4 pt-0 flex justify-between items-center bg-muted/50">
-                <p className="text-lg font-bold text-primary">₦{product.price.toLocaleString()}</p>
-                <Button size="sm">View Details</Button>
+            <CardFooter className="p-3 pt-0 flex justify-between items-center bg-muted/50">
+                <p className="text-base font-bold text-primary">₦{product.price.toLocaleString()}</p>
+                <Button size="sm" variant="ghost">Details</Button>
             </CardFooter>
         </Card>
     )
@@ -234,11 +234,11 @@ export default function MarketplacePage() {
                 </div>
 
                 {isLoadingProducts ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-72 w-full" />)}
                     </div>
                 ) : filteredProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                         {filteredProducts.map((product, index) => <ProductCard key={product.id} product={product} index={index} />)}
                     </div>
                 ) : (
