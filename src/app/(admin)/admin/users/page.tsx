@@ -51,10 +51,12 @@ export default function AdminUsersPage() {
         </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>All Registered Users</CardTitle>
-          <CardDescription>View and manage all users on the TeachFlow platform.</CardDescription>
-          <div className="relative pt-4">
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <CardTitle>All Registered Users</CardTitle>
+            <CardDescription>View and manage all users on the TeachFlow platform.</CardDescription>
+          </div>
+          <div className="relative w-full md:max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Search by name, email, or school..." 
