@@ -123,7 +123,11 @@ export default function AdminDashboardPage() {
                                     <YAxis dataKey="plan" type="category" tickLine={false} tickMargin={10} axisLine={false} />
                                     <XAxis dataKey="users" type="number" hide />
                                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="users" fill="var(--color-users)" radius={5} />
+                                    <Bar dataKey="users" radius={5}>
+                                         {chartData.map((entry) => (
+                                            <YAxis key={entry.plan} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </div>
                             {/* Desktop Chart */}
@@ -133,7 +137,11 @@ export default function AdminDashboardPage() {
                                     <XAxis dataKey="plan" tickLine={false} tickMargin={10} axisLine={false} />
                                     <YAxis />
                                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="users" fill="var(--color-users)" radius={8} />
+                                    <Bar dataKey="users" radius={8}>
+                                        {chartData.map((entry) => (
+                                            <YAxis key={entry.plan} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </div>
                         </ChartContainer>
