@@ -217,12 +217,12 @@ export default function PaymentsPage() {
                     </CardHeader>
                     {selectedClass && (
                         <CardContent>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
+                            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
                                 <Card><CardHeader className="p-3 pb-2"><CardDescription className="text-xs">Total Students</CardDescription><CardTitle className="text-2xl">{summary.totalStudents}</CardTitle></CardHeader></Card>
                                 <Card><CardHeader className="p-3 pb-2"><CardDescription className="text-xs">Fully Paid</CardDescription><CardTitle className="text-2xl text-green-600">{summary.paidInFull}</CardTitle></CardHeader></Card>
                                 <Card><CardHeader className="p-3 pb-2"><CardDescription className="text-xs">Partially Paid</CardDescription><CardTitle className="text-2xl text-yellow-600">{summary.partiallyPaid}</CardTitle></CardHeader></Card>
                                 <Card><CardHeader className="p-3 pb-2"><CardDescription className="text-xs">Owing</CardDescription><CardTitle className="text-2xl text-red-600">{summary.owing}</CardTitle></CardHeader></Card>
-                                <Card className="bg-primary text-primary-foreground"><CardHeader className="p-3 pb-2"><CardDescription className="text-xs text-primary-foreground/80">Total Collected</CardDescription><CardTitle className="text-2xl">₦{summary.totalCollected.toLocaleString()}</CardTitle></CardHeader></Card>
+                                <Card className="bg-primary text-primary-foreground col-span-2 lg:col-span-4"><CardHeader className="p-3 pb-2"><CardDescription className="text-xs text-primary-foreground/80">Total Collected</CardDescription><CardTitle className="text-2xl">₦{summary.totalCollected.toLocaleString()}</CardTitle></CardHeader></Card>
                             </div>
                             <div className="relative mb-4">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
