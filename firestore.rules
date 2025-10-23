@@ -1,247 +1,262 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for most data, with exceptions for public marketplace products.
+ * @description This ruleset enforces a strict user-ownership model for most data,
+ *              allowing users to manage their own data while restricting access to others' data.
+ *              Marketplace products are publicly readable but only writable by marketplace admins.
  *
  * Data Structure:
- * - Users: /users/{userId} - Stores user profiles.
- * - Classes: /users/{userId}/classes/{classId} - Classes owned by a user.
- * - Students: /users/{userId}/students/{studentId} - Students owned by a user.
- * - Subjects: /users/{userId}/subjects/{subjectId} - Subjects owned by a user.
- * - Grades: /users/{userId}/grades/{gradeId} - Grades owned by a user.
- * - Attendance: /users/{userId}/attendance/{attendanceId} - Attendance records owned by a user.
- * - Traits: /users/{userId}/traits/{traitId} - Traits records owned by a user.
- * - Payments: /users/{userId}/payments/{paymentId} - Payments owned by a user.
- * - Transfers: /users/{userId}/incomingTransfers/{transferId}, /users/{userId}/outgoingTransfers/{transferId} - Data transfer requests.
- * - Timetables: /users/{userId}/timetables/{timetableId} - Class timetables owned by a user.
- * - Marketplace Products: /marketplace_products/{productId} - Public marketplace products.
- * - Parents: /parents/{parentId} - Parent User Profiles
+ * - /users/{userId}: User profiles and settings, owned by the user.
+ * - /parents/{parentId}: Parent profiles. Parents can create their own accounts.
+ * - /marketplace_products/{productId}: Products for sale, managed by marketplace admins.
+ * - /users/{userId}/classes/{classId}: Classes created by the user.
+ * - /users/{userId}/students/{studentId}: Students created by the user.
+ * - /users/{userId}/subjects/{subjectId}: Subjects created by the user.
+ * - /users/{userId}/grades/{gradeId}: Grades created by the user.
+ * - /users/{userId}/attendance/{attendanceId}: Attendance records created by the user.
+ * - /users/{userId}/traits/{traitId}: Trait records created by the user.
+ * - /users/{userId}/payments/{paymentId}: Payment records created by the user.
+ * - /users/{userId}/incomingTransfers/{transferId}: Incoming transfer requests.
+ * - /users/{userId}/outgoingTransfers/{transferId}: Outgoing transfer requests.
+ * - /users/{userId}/timetables/{timetableId}: Timetables created by the user.
  *
  * Key Security Decisions:
- * - User-owned data is strictly controlled by the owning user. Only the user with the matching {userId} can read or write data under their respective path.
- * - Listing of user documents is disallowed.
- * - Marketplace products are publicly readable, but only admins can create, update, or delete them. This is not yet implemented (TODO).
- * - Data consistency between path and document data is enforced on create and update operations where applicable.
- *
- * Denormalization for Authorization:
- * - Where possible, ownership is determined by matching the `request.auth.uid` against the `userId` path segment.  For the marketplace products, the `sellerId` should be used, but its missing so the write permissions are disabled.
- *
- * Structural Segregation:
- * - Private user data is stored under the `/users/{userId}` path to ensure isolation.
+ * - User data is strictly controlled by the user's ID.
+ * - Listing the root collection is denied to prevent unauthorized data discovery.
+ * - Marketplace products are publicly readable, but creation/modification is restricted to marketplace admins.
+ * - Data consistency is enforced where possible by comparing document IDs with user IDs.
+ * - Write operations MUST NEVER use `if true;`. All writes must be protected by an authorization check (e.g., `isOwner()`).
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
+     * @description Root-level listing is not allowed. This prevents unauthenticated
+     *              or unauthorized users from discovering collections in the database.
+     * @path /databases/{database}/documents
+     * @allow (list) -
+     * @deny (list) Any request.
+     * @principle Prevents unauthorized collection discovery.
      */
+    match /{path=**} {
+      allow list: if false;
+    }
+
+    /**
+     * @description Allows a user to manage their own profile.
+     * @path /users/{userId}
+     * @allow (create) If the user's ID matches the document ID.
+     * @allow (get, update, delete) If the user is the owner of the document.
+     * @deny (create) If the user's ID does not match the document ID.
+     * @deny (get, update, delete) If the user is not the owner of the document.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userCode == userId;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userCode == resource.data.userCode;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a parent to manage their own profile.
+     *              Parents can create their own account and link their students.
+     * @path /parents/{parentId}
+     * @allow (create) If the user is signed in and the parentId matches request.auth.uid.
+     * @allow (get, update, delete) If the user is the owner of the document.
+     * @deny (create) If the parentId does not match request.auth.uid.
+     * @deny (get, update, delete) If the user is not the owner of the document.
+     * @principle Enforces document ownership for writes.
+     */
+     match /parents/{parentId} {
+        allow create: if isSignedIn() && isOwner(parentId);
+        allow get: if isSignedIn() && isOwner(parentId);
+        allow list: if false;
+        allow update: if isSignedIn() && isExistingOwner(parentId);
+        allow delete: if isSignedIn() && isExistingOwner(parentId);
+    }
+
+    /**
+     * @description Allows marketplace admins to manage products, and allows anyone to read them.
+     * @path /marketplace_products/{productId}
+     * @allow (get, list) Any user can read the products.
+     * @allow (create, update, delete) Only marketplace admins can write.
+     * @deny (create, update, delete) If the user is not a marketplace admin.
+     * @principle Open reads, restricted writes based on user role.
+     */
+    match /marketplace_products/{productId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Allows a user to manage their own classes.
+     * @path /users/{userId}/classes/{classId}
+     * @allow (create) If the user is signed in and owns the class.
+     * @allow (get, list, update, delete) If the user is the owner of the class.
+     * @deny (create, update, delete) If the user is not the owner of the class.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/classes/{classId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own students.
+     * @path /users/{userId}/students/{studentId}
+     * @allow (create) If the user is signed in and owns the student.
+     * @allow (get, list, update, delete) If the user is the owner of the student.
+     * @deny (create, update, delete) If the user is not the owner of the student.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/students/{studentId} {
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.parentId != null;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own subjects.
+     * @path /users/{userId}/subjects/{subjectId}
+     * @allow (create) If the user is signed in and owns the subject.
+     * @allow (get, list, update, delete) If the user is the owner of the subject.
+     * @deny (create, update, delete) If the user is not the owner of the subject.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/subjects/{subjectId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own grades.
+     * @path /users/{userId}/grades/{gradeId}
+     * @allow (create) If the user is signed in and owns the grade.
+     * @allow (get, list, update, delete) If the user is the owner of the grade.
+     * @deny (create, update, delete) If the user is not the owner of the grade.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/grades/{gradeId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own attendance records.
+     * @path /users/{userId}/attendance/{attendanceId}
+     * @allow (create) If the user is signed in and owns the attendance record.
+     * @allow (get, list, update, delete) If the user is the owner of the attendance record.
+     * @deny (create, update, delete) If the user is not the owner of the attendance record.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/attendance/{attendanceId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own trait records.
+     * @path /users/{userId}/traits/{traitId}
+     * @allow (create) If the user is signed in and owns the trait record.
+     * @allow (get, list, update, delete) If the user is the owner of the trait record.
+     * @deny (create, update, delete) If the user is not the owner of the trait record.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/traits/{traitId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own payment records.
+     * @path /users/{userId}/payments/{paymentId}
+     * @allow (create) If the user is signed in and owns the payment record.
+     * @allow (get, list, update, delete) If the user is the owner of the payment record.
+     * @deny (create, update, delete) If the user is not the owner of the payment record.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/payments/{paymentId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own incoming transfer requests.
+     * @path /users/{userId}/incomingTransfers/{transferId}
+     * @allow (create) If the user is signed in and owns the transfer request.
+     * @allow (get, list, update, delete) If the user is the owner of the transfer request.
+     * @deny (create, update, delete) If the user is not the owner of the transfer request.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own outgoing transfer requests.
+     * @path /users/{userId}/outgoingTransfers/{transferId}
+     * @allow (create) If the user is signed in and owns the transfer request.
+     * @allow (get, list, update, delete) If the user is the owner of the transfer request.
+     * @deny (create, update, delete) If the user is not the owner of the transfer request.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/outgoingTransfers/{transferId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to manage their own timetables.
+     * @path /users/{userId}/timetables/{timetableId}
+     * @allow (create) If the user is signed in and owns the timetable.
+     * @allow (get, list, update, delete) If the user is the owner of the timetable.
+     * @deny (create, update, delete) If the user is not the owner of the timetable.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/timetables/{timetableId} {
+      allow create: if isSignedIn() && isOwner(userId);
+      allow get, list: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the authenticated user is the owner of an existing document.
-     */
     function isExistingOwner(userId) {
-      return isOwner(userId) && exists(resource);
+        return isOwner(userId) && resource != null;
     }
 
-    /**
-     * @description Enforces data consistency for user-owned documents.
-     */
-    function isValidUserDoc(userId) {
-      return request.resource.data.id == userId;
-    }
-
-    /**
-     * @description Checks if the current request is for creating a new document,
-     */
-    function isCreate() {
-        return request.method == 'create';
-    }
-
-    /**
-     * @description Checks if the current request is for updating an existing document.
-     */
-    function isUpdate() {
-        return request.method == 'update';
-    }
-
-    /**
-     * @description Checks if the current request is for deleting an existing document.
-     */
-    function isDelete() {
-        return request.method == 'delete';
-    }
-
-
-    /**
-     * @description Grants access only to the owner of the user document.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create their own profile.
-     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc'.
-     * @principle Enforces document ownership, allowing users to manage their own profiles.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
-    }
-
-     /**
-     * @description Allows anyone to create a parent account. Read and update are limited to the authenticated user.
-     * @path /parents/{parentId}
-     */
-    match /parents/{parentId} {
-        allow get: if isOwner(parentId);
-        allow list: if false;
-        allow create: if isSignedIn();
-        allow update: if isOwner(parentId) && existsAfter(/databases/$(database)/documents/parents/$(parentId));
-        allow delete: if false; // Deny deletion of parent profiles.
-    }
-
-    /**
-     * @description Grants public read access to marketplace products but restricts write access to marketplace admins.
-     * @path /marketplace_products/{productId}
-     * @allow (get) Any user can read marketplace product details.
-     * @deny (create) Non marketplace_admin cannot create marketplace products.
-     * @principle Allows public access to product listings while restricting modifications to authorized personnel.
-     */
-    match /marketplace_products/{productId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false; // TODO: Add marketplace_admin role check once implemented.
-      allow update: if false && existsAfter(/databases/$(database)/documents/marketplace_products/$(productId)); // TODO: Add marketplace_admin role check once implemented and add resource != null check.
-      allow delete: if false && exists(/databases/$(database)/documents/marketplace_products/$(productId)); // TODO: Add marketplace_admin role check once implemented and add resource != null check.
-    }
-
-    /**
-     * @description Grants access only to the owner for managing classes.
-     * @path /users/{userId}/classes/{classId}
-     */
-    match /users/{userId}/classes/{classId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/classes/$(classId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/classes/$(classId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing students.
-     * @path /users/{userId}/students/{studentId}
-     */
-    match /users/{userId}/students/{studentId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/students/$(studentId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/students/$(studentId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing subjects.
-     * @path /users/{userId}/subjects/{subjectId}
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/subjects/$(subjectId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/subjects/$(subjectId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing grades.
-     * @path /users/{userId}/grades/{gradeId}
-     */
-    match /users/{userId}/grades/{gradeId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/grades/$(gradeId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/grades/$(gradeId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing attendance records.
-     * @path /users/{userId}/attendance/{attendanceId}
-     */
-    match /users/{userId}/attendance/{attendanceId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/attendance/$(attendanceId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/attendance/$(attendanceId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing student traits.
-     * @path /users/{userId}/traits/{traitId}
-     */
-    match /users/{userId}/traits/{traitId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/traits/$(traitId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/traits/$(traitId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing incoming data transfer requests.
-     * @path /users/{userId}/incomingTransfers/{transferId}
-     */
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/incomingTransfers/$(transferId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/incomingTransfers/$(transferId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing outgoing data transfer requests.
-     * @path /users/{userId}/outgoingTransfers/{transferId}
-     */
-    match /users/{userId}/outgoingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/outgoingTransfers/$(transferId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/outgoingTransfers/$(transferId));
-    }
-
-    /**
-     * @description Grants access only to the owner for managing student payment records.
-     * @path /users/{userId}/payments/{paymentId}
-     */
-    match /users/{userId}/payments/{paymentId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/payments/$(paymentId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/payments/$(paymentId));
-    }
-
-     /**
-     * @description Grants access only to the owner for managing timetables.
-     * @path /users/{userId}/timetables/{timetableId}
-     */
-    match /users/{userId}/timetables/{timetableId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/timetables/$(timetableId));
-      allow delete: if isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId)/timetables/$(timetableId));
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'marketplace_admin';
     }
   }
 }
