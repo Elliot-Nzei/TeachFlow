@@ -532,33 +532,19 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User"},
-      "description": "Stores user profile (teacher/admin) and application settings.",
-      "allow": {
-        "list": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
-        "read": "request.auth.uid == userId",
-        "create": "request.auth.uid == userId"
-      }
+      "description": "Stores user profile (teacher/admin) and application settings."
     },
      "/parents/{parentId}": {
       "schema": { "$ref": "#/entities/Parent"},
-      "description": "Stores parent user profiles. Parent can create their own account.",
-      "allow": {
-          "create": "request.auth.uid == parentId"
-      }
+      "description": "Stores parent user profiles. Parent can create their own account."
     },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
-      "description": "Stores classes for a user.",
-       "allow": {
-        "list": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
-      }
+      "description": "Stores classes for a user."
     },
     "/users/{userId}/students/{studentId}": {
       "schema": { "$ref": "#/entities/Student" },
-      "description": "Stores students for a user.",
-       "allow": {
-        "list": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
-      }
+      "description": "Stores students for a user."
     },
     "/users/{userId}/subjects/{subjectId}": {
       "schema": { "$ref": "#/entities/Subject" },
