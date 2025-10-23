@@ -184,16 +184,20 @@ export default function BillingPage() {
                             <CardTitle className="font-headline">{plan.name}</CardTitle>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-4xl font-bold">
-                                    {displayPrice}
+                                    {plan.id === 'free_trial' ? '₦0' : displayPrice}
                                 </span>
-                                <span className="text-sm text-muted-foreground">
-                                    /{billingCycle === 'monthly' ? 'month' : 'year'}
-                                </span>
+                                {plan.id !== 'free_trial' && (
+                                    <span className="text-sm text-muted-foreground">
+                                        /{billingCycle === 'monthly' ? 'month' : 'year'}
+                                    </span>
+                                )}
                             </div>
                             <CardDescription>{plan.description}</CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 space-y-4">
-                            <p className="font-semibold text-sm">Features include:</p>
+                            <p className="font-semibold text-sm">
+                                {plan.id === 'free_trial' ? 'Free for 7 days, then upgrade.' : 'Features include:'}
+                            </p>
                             <ul className="space-y-3 text-sm">
                                 {plan.features.map((feature, index) => (
                                     <li key={index} className="flex items-start gap-3">
