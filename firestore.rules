@@ -3,7 +3,7 @@
  *
  * @corePhilosophy This ruleset enforces a strict user-ownership model, where users can only
  *   access and modify data that belongs to them. Admin users have elevated permissions to
- *   view platform-wide data for dashboard and management purposes. Public read access is granted to classes.
+ *   view platform-wide data for dashboard and management purposes.
  *
  * @dataStructure The data is organized under the `/users/{userId}` path, with subcollections for
  *   classes, students, subjects, grades, attendance, traits, payments, timetables and transfers.
@@ -13,12 +13,13 @@
  * @keySecurityDecisions
  *   - Admin users can list all users and query collection groups for dashboard data.
  *   - Regular user listing is disallowed for non-admins.
- *   - The 'classes' collection is readable by all authenticated users, with write access restricted to the owner.
- *   - For data transfers, separate collections are used for incoming and outgoing transfers to
- *     simplify authorization logic.
- *   - Flexible data validation is applied, focusing on authorization and relational integrity, not schema compliance.
+ *   - Collection group queries are explicitly allowed for admins.
+ *   - All write operations are restricted to authenticated users.
+ *   - Parents can only create and read their own profiles.
+ *   - Data consistency is enforced between user IDs in the path and the document data for specific collections.
  *
- * @denormalizationForAuthorization  Admin status is checked via a `get()` call on the user document in the `isAdmin()` function.
+ * @denormalizationForAuthorization
+ *   - The 'role' field is denormalized into the `/users/{userId}` document to avoid costly `get()` operations when checking for admin privileges.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -35,7 +36,7 @@ service cloud.firestore {
      * @description Checks if the requesting user is the owner of the resource.
      */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
@@ -50,17 +51,22 @@ service cloud.firestore {
      * @principle Admins need elevated permissions to view platform-wide data.
      */
     function isAdmin() {
-      return isSignedIn() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     /**
      * @description Rules for user profiles.
      * @path /users/{userId}
+     * @allow (get) Users can read their own profile, or admins can read any profile.
      * @allow (list) Admin users can list all users for the admin dashboard.
-     * @allow (get) Users can read their own profile.
-     * @allow (create/update/delete) Users can only modify their own profile.
-     * @principle Enforces user-ownership and admin override.
+     * @allow (create) Users can create their own profile if the userId matches their auth.
+     * @allow (update) Users can only modify their own profile.
+     * @allow (delete) Users can only delete their own profile.
+     * @deny   (get)  Non-owners cannot get other user profiles.
+     * @deny   (create) Non-owners cannot create profiles for other users.
+     * @deny   (update) Non-owners cannot update other user profiles.
+     * @deny   (delete) Non-owners cannot delete other user profiles.
+     * @principle Enforces document ownership for writes; allows admin read access.
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
@@ -74,14 +80,16 @@ service cloud.firestore {
      * @description Rules for parent profiles.
      * @path /parents/{parentId}
      * @allow (get) Parents can read their own profile.
-     * @allow (create) Parents can create their own profile using their UID as the document ID.
-     * @deny (list/update/delete) Parents cannot list, update, or delete profiles.
-     * @principle Enforces parent-ownership for profile creation.
+     * @allow (create) Parents can create their own profile if the parentId matches their auth.
+     * @deny (list) Prevents listing of parent profiles.
+     * @deny (update) Parents cannot update their profiles.
+     * @deny (delete) Parents cannot delete their profiles.
+     * @principle Parents can only create and read their own profiles.
      */
     match /parents/{parentId} {
-      allow get: if isSignedIn() && request.auth.uid == parentId;
+      allow get: if isOwner(parentId);
       allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == parentId;
+      allow create: if isOwner(parentId);
       allow update: if false;
       allow delete: if false;
     }
@@ -91,7 +99,12 @@ service cloud.firestore {
      * @path /users/{userId}/classes/{classId}
      * @allow (get) Any authenticated user can read a class (for selection purposes).
      * @allow (list) Owner or admin can list classes.
-     * @allow (create/update/delete) Only the owner can manage classes.
+     * @allow (create) Only the owner can create a class.
+     * @allow (update) Only the owner can update a class.
+     * @allow (delete) Only the owner can delete a class.
+     * @deny   (create) Non-owners cannot create classes for other users.
+     * @deny   (update) Non-owners cannot update classes for other users.
+     * @deny   (delete) Non-owners cannot delete classes for other users.
      * @principle Admins can query all classes via collectionGroup for dashboard statistics.
      */
     match /users/{userId}/classes/{classId} {
@@ -103,11 +116,28 @@ service cloud.firestore {
     }
 
     /**
+     * @description Collection group rule for classes.
+     * @principle Allows admins to query all classes across all users for dashboard statistics.
+     */
+    match /{path=**}/classes/{classId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
      * @description Rules for students belonging to a user.
      * @path /users/{userId}/students/{studentId}
-     * @allow (get) Owner or admin can read student data.
+     * @allow (get) Owner or admin can get students.
      * @allow (list) Owner or admin can list students.
-     * @allow (create/update/delete) Only the owner can manage students.
+     * @allow (create) Only the owner can create a student.
+     * @allow (update) Only the owner can update a student.
+     * @allow (delete) Only the owner can delete a student.
+     * @deny   (create) Non-owners cannot create students for other users.
+     * @deny   (update) Non-owners cannot update students for other users.
+     * @deny   (delete) Non-owners cannot delete students for other users.
      * @principle Admins can query all students via collectionGroup for dashboard statistics.
      */
     match /users/{userId}/students/{studentId} {
@@ -119,10 +149,28 @@ service cloud.firestore {
     }
 
     /**
+     * @description Collection group rule for students.
+     * @principle Allows admins to query all students across all users for dashboard statistics.
+     */
+    match /{path=**}/students/{studentId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
      * @description Rules for subjects belonging to a user.
      * @path /users/{userId}/subjects/{subjectId}
-     * @allow (get/list/create/update/delete) Only the owner can manage subjects.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the subject.
+     *  @allow (list) Owner can list the subjects.
+     *  @allow (create) Owner can create subjects.
+     *  @allow (update) Owner can update subjects.
+     *  @allow (delete) Owner can delete subjects.
+     * @deny   (create) Non-owners cannot create subjects for other users.
+     * @deny   (update) Non-owners cannot update subjects for other users.
+     * @deny   (delete) Non-owners cannot delete subjects for other users.
      */
     match /users/{userId}/subjects/{subjectId} {
       allow get: if isOwner(userId);
@@ -135,8 +183,14 @@ service cloud.firestore {
     /**
      * @description Rules for grades belonging to a user.
      * @path /users/{userId}/grades/{gradeId}
-     * @allow (get/list/create/update/delete) Only the owner can manage grades.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the grades.
+     *  @allow (list) Owner can list the grades.
+     *  @allow (create) Owner can create grades.
+     *  @allow (update) Owner can update grades.
+     *  @allow (delete) Owner can delete grades.
+     * @deny   (create) Non-owners cannot create grades for other users.
+     * @deny   (update) Non-owners cannot update grades for other users.
+     * @deny   (delete) Non-owners cannot delete grades for other users.
      */
     match /users/{userId}/grades/{gradeId} {
       allow get: if isOwner(userId);
@@ -149,8 +203,14 @@ service cloud.firestore {
     /**
      * @description Rules for attendance records belonging to a user.
      * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (get/list/create/update/delete) Only the owner can manage attendance.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the attendance.
+     *  @allow (list) Owner can list the attendance.
+     *  @allow (create) Owner can create attendance.
+     *  @allow (update) Owner can update attendance.
+     *  @allow (delete) Owner can delete attendance.
+     * @deny   (create) Non-owners cannot create attendance for other users.
+     * @deny   (update) Non-owners cannot update attendance for other users.
+     * @deny   (delete) Non-owners cannot delete attendance for other users.
      */
     match /users/{userId}/attendance/{attendanceId} {
       allow get: if isOwner(userId);
@@ -163,8 +223,14 @@ service cloud.firestore {
     /**
      * @description Rules for trait records belonging to a user.
      * @path /users/{userId}/traits/{traitId}
-     * @allow (get/list/create/update/delete) Only the owner can manage traits.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the traits.
+     *  @allow (list) Owner can list the traits.
+     *  @allow (create) Owner can create traits.
+     *  @allow (update) Owner can update traits.
+     *  @allow (delete) Owner can delete traits.
+     * @deny   (create) Non-owners cannot create traits for other users.
+     * @deny   (update) Non-owners cannot update traits for other users.
+     * @deny   (delete) Non-owners cannot delete traits for other users.
      */
     match /users/{userId}/traits/{traitId} {
       allow get: if isOwner(userId);
@@ -177,10 +243,11 @@ service cloud.firestore {
     /**
      * @description Rules for incoming transfer requests.
      * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (get/list) Only the owner can read incoming transfer requests.
-     * @deny (create/delete) No one can create or delete incoming transfers directly.
-     * @allow (update) Only the owner can update incoming transfers (e.g., accept/reject).
-     * @principle Prevents external creation of transfer requests.
+     *  @allow (get) Owner can get the incomingTransfers.
+     *  @allow (list) Owner can list the incomingTransfers.
+     * @deny (create) No one can create incomingTransfers (only the system).
+     *  @allow (update) Owner can update incomingTransfers.
+     * @deny (delete) No one can delete incomingTransfers.
      */
     match /users/{userId}/incomingTransfers/{transferId} {
       allow get: if isOwner(userId);
@@ -193,8 +260,11 @@ service cloud.firestore {
     /**
      * @description Rules for outgoing transfer requests.
      * @path /users/{userId}/outgoingTransfers/{transferId}
-     * @allow (get/list/create/update/delete) Only the owner can manage outgoing transfers.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the outgoingTransfers.
+     *  @allow (list) Owner can list the outgoingTransfers.
+     *  @allow (create) Owner can create outgoingTransfers.
+     *  @allow (update) Owner can update outgoingTransfers.
+     *  @allow (delete) Owner can delete outgoingTransfers.
      */
     match /users/{userId}/outgoingTransfers/{transferId} {
       allow get: if isOwner(userId);
@@ -207,8 +277,11 @@ service cloud.firestore {
     /**
      * @description Rules for payment records belonging to a user.
      * @path /users/{userId}/payments/{paymentId}
-     * @allow (get/list/create/update/delete) Only the owner can manage payments.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the payments.
+     *  @allow (list) Owner can list the payments.
+     *  @allow (create) Owner can create payments.
+     *  @allow (update) Owner can update payments.
+     *  @allow (delete) Owner can delete payments.
      */
     match /users/{userId}/payments/{paymentId} {
       allow get: if isOwner(userId);
@@ -221,8 +294,11 @@ service cloud.firestore {
     /**
      * @description Rules for timetables belonging to a user.
      * @path /users/{userId}/timetables/{timetableId}
-     * @allow (get/list/create/update/delete) Only the owner can manage timetables.
-     * @principle Enforces user-ownership.
+     *  @allow (get) Owner can get the timetables.
+     *  @allow (list) Owner can list the timetables.
+     *  @allow (create) Owner can create timetables.
+     *  @allow (update) Owner can update timetables.
+     *  @allow (delete) Owner can delete timetables.
      */
     match /users/{userId}/timetables/{timetableId} {
       allow get: if isOwner(userId);
