@@ -18,28 +18,15 @@ export function Logo({ className, compact = false }: LogoProps) {
       className={cn("focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm", className)}
     >
         <svg 
-            viewBox="0 0 1024 750" // Adjusted viewBox for better framing without extra space
-            width={compact ? 80 : 130}
-            height={compact ? 24 : 40}
+            viewBox={compact ? "252 50 520 420" : "0 0 1024 750"}
+            width={compact ? 40 : 130}
+            height={40}
             role="img"
             aria-labelledby="logo-title logo-desc"
         >
             <title id="logo-title">TeachFlow Logo</title>
             <desc id="logo-desc">TeachFlow brand mark with adaptive color scheme for light and dark modes.</desc>
-            <defs>
-                <linearGradient id="g-teal" x1="0" x2="1" y1="0" y2="1">
-                    <stop offset="0" stopColor="var(--logo-gradient-start)" />
-                    <stop offset="0.45" stopColor="var(--logo-gradient-mid)" />
-                    <stop offset="1" stopColor="var(--logo-gradient-end)" />
-                </linearGradient>
-
-                <linearGradient id="g-hex" x1="0" x2="1" y1="0" y2="1">
-                    <stop offset="0" stopColor="var(--logo-hex-start)" />
-                    <stop offset="1" stopColor="var(--logo-hex-end)" />
-                </linearGradient>
-            </defs>
-
-            {/* Logo Mark */}
+            
             <g transform="translate(512,260)">
                 <path d="
                 M -160 -160
@@ -59,7 +46,6 @@ export function Logo({ className, compact = false }: LogoProps) {
                         fill="url(#g-hex)" />
             </g>
 
-            {/* Wordmark */}
             {!compact && (
                 <>
                 <text x="512" y="620"
@@ -71,8 +57,6 @@ export function Logo({ className, compact = false }: LogoProps) {
                     style={{letterSpacing: '2px'}}>
                     TeachFlow
                 </text>
-
-                {/* Tagline */}
                 <text x="512" y="700"
                     fontFamily="Georgia, 'Times New Roman', serif"
                     fontSize="24"

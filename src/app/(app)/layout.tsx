@@ -37,6 +37,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -151,8 +152,8 @@ function UserProfileDisplay() {
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { plan, isLocked } = usePlan();
-  const { settings } = useContext(SettingsContext);
+  const { plan } = usePlan();
+  const { state: sidebarState } = useSidebar();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
@@ -166,7 +167,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <SidebarHeader>
-            <Logo />
+            <Logo compact={sidebarState === 'collapsed'} />
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>

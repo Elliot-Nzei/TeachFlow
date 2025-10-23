@@ -23,6 +23,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +40,7 @@ import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SettingsProvider, SettingsContext } from '@/contexts/settings-context';
+import { SettingsProvider } from '@/contexts/settings-context';
 import { PlanProvider } from '@/contexts/plan-context';
 
 const adminMenuItems = [
@@ -116,13 +117,14 @@ function UserProfileDisplay() {
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { state: sidebarState } = useSidebar();
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <SidebarHeader>
-            <Logo />
+            <Logo compact={sidebarState === 'collapsed'} />
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
