@@ -532,18 +532,11 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User"},
-      "description": "Stores user profile (teacher/admin) and application settings.",
-      "allow": {
-        "read": "request.auth.uid == userId",
-        "create": "request.auth.uid == userId"
-      }
+      "description": "Stores user profile (teacher/admin) and application settings."
     },
      "/parents/{parentId}": {
       "schema": { "$ref": "#/entities/Parent"},
-      "description": "Stores parent user profiles. Parent can create their own account.",
-      "allow": {
-          "create": "request.auth.uid == parentId"
-      }
+      "description": "Stores parent user profiles. Parent can create their own account."
     },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
