@@ -109,7 +109,8 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
     const gradesQuery = query(
       collection(firestore, 'users', user.uid, 'grades'),
       where('classId', '==', classId),
-      where('session', '==', settings.currentSession)
+      where('session', '==', settings.currentSession),
+      where('term', '==', settings.currentTerm)
     );
 
     const gradesSnapshot = await getDocs(gradesQuery);
@@ -420,5 +421,3 @@ function ClassDetailsContent({ classId, onClose }: { classId: string, onClose: (
 }
 
 export default ClassDetailsContent;
-
-    

@@ -144,11 +144,11 @@ export type DataTransfer = {
   outgoingTransferId?: string;
   data?: any; 
   students?: Student[];
-  traits?: Trait[];
-  lessonNote?: LessonNote;
   grades?: Grade[];
   attendance?: Attendance[];
+  traits?: Trait[];
   timetable?: Timetable;
+  lessonNote?: LessonNote;
 };
 
 export type Settings = {
