@@ -204,6 +204,7 @@ export default function AdminDashboardPage() {
                         <Skeleton className="h-[300px] w-full" />
                     ) : (
                         <div className="h-[300px] w-full">
+                            {/* Mobile Chart View (Vertical) */}
                             <div className="md:hidden">
                                 <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -221,6 +222,7 @@ export default function AdminDashboardPage() {
                                     </ResponsiveContainer>
                                 </ChartContainer>
                             </div>
+                            {/* Desktop Chart View (Horizontal) */}
                             <div className="hidden md:block">
                                 <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">

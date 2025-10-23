@@ -100,7 +100,7 @@ function UserProfileDisplay() {
             <Link href="/dashboard">
                 <DropdownMenuItem>
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Go to Dashboard</span>
+                    <span>Go to App</span>
                 </DropdownMenuItem>
             </Link>
             <DropdownMenuSeparator />
