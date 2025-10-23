@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
                                     </>
                                 )}
                                 <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="users" radius={8} fill="var(--color-users)" />
+                                <Bar dataKey="users" fill="var(--color-users)" radius={8} />
                             </BarChart>
                         </ChartContainer>
                     }
