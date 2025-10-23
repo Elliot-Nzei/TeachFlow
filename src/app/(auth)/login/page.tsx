@@ -35,13 +35,19 @@ export default function LoginPage() {
       const userDocRef = doc(firestore, 'users', userCredential.user.uid);
       const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
-        await auth.signOut();
-        throw new Error('This account does not have teacher privileges.');
+      if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.role === 'admin') {
+              router.push('/admin');
+          } else {
+              router.push('/dashboard');
+          }
+      } else {
+         // This case should ideally not happen if registration is done correctly
+         await auth.signOut();
+         throw new Error('User profile not found.');
       }
       
-      router.push('/dashboard');
-
     } catch (error) {
         console.error("Error during login:", error);
         let description = 'An unexpected error occurred. Please try again.';

@@ -16,6 +16,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ToastAction } from "@/components/ui/toast";
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { checkIfAdminExists } from '@/app/actions/user-actions';
 
 const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -34,11 +35,14 @@ export default function RegisterPage() {
         e.preventDefault();
         setIsLoading(true);
         try {
+            const adminExists = await checkIfAdminExists();
+
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             if (userCredential && userCredential.user) {
                 const user = userCredential.user;
                 
                 const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+                const role = adminExists ? 'teacher' : 'admin';
                 
                 await setDoc(doc(firestore, "users", user.uid), {
                     uid: user.uid,
@@ -46,7 +50,7 @@ export default function RegisterPage() {
                     email: user.email,
                     schoolName: schoolName,
                     userCode: userCode,
-                    role: 'teacher', // Default role for standard registration
+                    role: role,
                     profilePicture: `https://picsum.photos/seed/${user.uid}/100/100`,
                     studentCounter: 0,
                     currentTerm: 'First Term',
@@ -54,8 +58,12 @@ export default function RegisterPage() {
                     plan: 'free_trial',
                     planStartDate: serverTimestamp(),
                 });
-
-                router.push('/dashboard');
+                
+                if (role === 'admin') {
+                    router.push('/admin');
+                } else {
+                    router.push('/dashboard');
+                }
             }
         } catch (error) {
             console.error("Error during registration:", error);
@@ -84,7 +92,7 @@ export default function RegisterPage() {
         <Card className="w-full max-w-md">
             <CardHeader className="text-center">
                 <div className="mb-4"><Logo /></div>
-                <CardTitle className="text-3xl font-bold font-headline">Create a Teacher Account</CardTitle>
+                <CardTitle className="text-3xl font-bold font-headline">Create an Account</CardTitle>
                 <CardDescription>Enter your information to get started with TeachFlow.</CardDescription>
             </CardHeader>
             <form onSubmit={handleRegister}>
