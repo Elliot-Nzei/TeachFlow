@@ -119,7 +119,7 @@ export default function AdminDashboardPage() {
                     {isLoading ? <Skeleton className="h-[250px] w-full" /> :
                         <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
                             <BarChart accessibilityLayer data={chartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { right: 20 } : { top: 20 }}>
-                                <CartesianGrid vertical={isMobile} horizontal={!isMobile} />
+                                <CartesianGrid vertical={!isMobile} horizontal={isMobile} />
                                 {isMobile ? (
                                     <>
                                         <YAxis dataKey="plan" type="category" tickLine={false} tickMargin={10} axisLine={false} />

@@ -54,42 +54,76 @@ export default function AdminUsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>School Name</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Joined</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                filteredUsers.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.schoolName}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.plan === 'free_trial' ? 'destructive' : 'default'}>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+            ) : (
+              filteredUsers.map(user => (
+                <Card key={user.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-base">{user.name}</CardTitle>
+                      <Badge variant={user.plan === 'free_trial' ? 'destructive' : user.plan === 'prime' ? 'default' : 'secondary'}>
                         {toTitleCase(user.plan?.replace('_', ' ') || 'Free Trial')}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {user.planStartDate?.toDate ? format(user.planStartDate.toDate(), 'PPP') : 'N/A'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    </div>
+                    <CardDescription>{user.email}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    <div>
+                      <p className="text-muted-foreground">School</p>
+                      <p className="font-medium">{user.schoolName}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Joined</p>
+                      <p className="font-medium">{user.planStartDate?.toDate ? format(user.planStartDate.toDate(), 'PPP') : 'N/A'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>School Name</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Joined</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  filteredUsers.map(user => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.schoolName}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.plan === 'free_trial' ? 'destructive' : user.plan === 'prime' ? 'default' : 'secondary'}>
+                          {toTitleCase(user.plan?.replace('_', ' ') || 'Free Trial')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.planStartDate?.toDate ? format(user.planStartDate.toDate(), 'PPP') : 'N/A'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
