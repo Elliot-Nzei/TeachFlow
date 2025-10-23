@@ -120,57 +120,55 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { state: sidebarState } = useSidebar();
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <Sidebar>
-          <SidebarHeader>
-            <Logo compact={sidebarState === 'collapsed'} />
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarMenu>
-              {adminMenuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <Link href={item.href}>
-                    <SidebarMenuButton
-                      isActive={pathname === item.href}
-                      tooltip={{ children: item.label }}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
+    <div className="flex min-h-screen w-full">
+      <Sidebar>
+        <SidebarHeader>
+          <Logo compact={sidebarState === 'collapsed'} />
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            {adminMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <Link href={item.href}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    tooltip={{ children: item.label }}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+          <SidebarFooter>
+          <SidebarMenu>
+              <SidebarMenuItem>
+                  <Link href="/">
+                      <SidebarMenuButton tooltip={{children: 'Logout'}}>
+                          <LogOut />
+                          <span>Logout</span>
+                      </SidebarMenuButton>
                   </Link>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-           <SidebarFooter>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <Link href="/">
-                        <SidebarMenuButton tooltip={{children: 'Logout'}}>
-                            <LogOut />
-                            <span>Logout</span>
-                        </SidebarMenuButton>
-                    </Link>
-                </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarFooter>
-        </Sidebar>
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-            <SidebarTrigger className="md:hidden" />
-            <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-                <div className="ml-auto flex items-center gap-4">
-                    <UserProfileDisplay />
-                </div>
-            </div>
-          </header>
-          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-            {children}
-          </main>
-        </div>
+              </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <div className="flex flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+          <SidebarTrigger className="md:hidden" />
+          <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+              <div className="ml-auto flex items-center gap-4">
+                  <UserProfileDisplay />
+              </div>
+          </div>
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          {children}
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   )
 }
 
@@ -178,7 +176,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <SettingsProvider>
       <PlanProvider>
-        <AdminLayoutContent>{children}</AdminLayoutContent>
+        <SidebarProvider>
+          <AdminLayoutContent>{children}</AdminLayoutContent>
+        </SidebarProvider>
       </PlanProvider>
     </SettingsProvider>
   );
