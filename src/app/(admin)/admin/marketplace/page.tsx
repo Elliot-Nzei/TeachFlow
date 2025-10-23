@@ -38,6 +38,8 @@ type Product = {
     updatedAt?: any;
 };
 
+const ALLOWED_IMAGE_HOSTS = ['images.unsplash.com', 'picsum.photos', 'drive.google.com', 'lh3.googleusercontent.com'];
+
 const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>, onCancel: () => void }) => {
     const [formData, setFormData] = useState({
         name: product?.name || '',
@@ -51,6 +53,15 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
     });
     const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    const isValidImageUrl = useMemo(() => {
+        try {
+            const url = new URL(formData.imageUrl);
+            return ALLOWED_IMAGE_HOSTS.includes(url.hostname);
+        } catch (error) {
+            return false;
+        }
+    }, [formData.imageUrl]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -87,15 +98,14 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="imageUrl">Image URL</Label>
-                    <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} placeholder="https://example.com/image.png" />
-                    {formData.imageUrl && (
+                    <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} placeholder="https://picsum.photos/seed/1/200/300" />
+                    {formData.imageUrl && isValidImageUrl && (
                          <div className="mt-2 flex justify-center p-2 border rounded-md bg-muted aspect-video relative">
                             <Image 
                                 src={formData.imageUrl} 
                                 alt="Product Preview" 
                                 fill 
-                                className="object-contain" 
-                                onError={(e) => e.currentTarget.style.display = 'none'}
+                                className="object-contain"
                             />
                          </div>
                     )}
@@ -397,5 +407,7 @@ export default function MarketplaceAdminPage() {
         </div>
     );
 }
+
+    
 
     
