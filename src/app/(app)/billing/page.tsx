@@ -26,9 +26,7 @@ const plansData = [
     features: [
       { text: 'Up to 25 Students' },
       { text: 'Up to 5 Classes' },
-      { text: 'AI Report Card Generation (3/mo)', included: true },
-      { text: 'AI Lesson Note Generation (3/mo)', included: true },
-      { text: 'AI Exam Question Generation (3/mo)', included: true },
+      { text: 'Limited AI Generations (3/mo)', included: true },
       { text: 'Secure Data Transfer', included: false },
       { text: 'Full System Export', included: false },
     ],
@@ -43,9 +41,7 @@ const plansData = [
     features: [
       { text: 'Up to 150 Students' },
       { text: 'Unlimited Classes' },
-      { text: 'AI Report Card Generation (15/mo)', included: true },
-      { text: 'AI Lesson Note Generation (15/mo)', included: true },
-      { text: 'AI Exam Question Generation (15/mo)', included: true },
+      { text: 'Standard AI Generations (15/mo)', included: true },
       { text: 'Secure Data Transfer', included: false },
       { text: 'Full System Export', included: false },
     ],
@@ -67,44 +63,10 @@ const plansData = [
   },
 ];
 
-const SubscriptionStatusCard = () => {
-    const { plan, isTrial, subscriptionCycle, daysRemaining } = usePlan();
-
-    if (isTrial || !plan || plan === 'free_trial') {
-        return null;
-    }
-
-    return (
-        <Card className="bg-primary text-primary-foreground">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Zap /> Your Current Plan</CardTitle>
-                 <CardDescription className="text-primary-foreground/80">
-                    You are currently subscribed to the {toTitleCase(plan)} plan.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
-                <div className="bg-primary-foreground/10 p-3 rounded-lg">
-                    <p className="text-sm text-primary-foreground/80">Plan</p>
-                    <p className="text-xl font-bold">{toTitleCase(plan)}</p>
-                </div>
-                <div className="bg-primary-foreground/10 p-3 rounded-lg">
-                    <p className="text-sm text-primary-foreground/80">Billing Cycle</p>
-                    <p className="text-xl font-bold">{subscriptionCycle ? toTitleCase(subscriptionCycle) : 'N/A'}</p>
-                </div>
-                <div className="bg-primary-foreground/10 p-3 rounded-lg col-span-2 md:col-span-1">
-                    <p className="text-sm text-primary-foreground/80">
-                        {daysRemaining > 0 ? 'Days Remaining' : 'Status'}
-                    </p>
-                    <p className="text-xl font-bold font-mono">{daysRemaining > 0 ? daysRemaining : 'Expired'}</p>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 export default function BillingPage() {
-  const { plan: currentPlanId, isSubscriptionExpired } = usePlan();
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
+  const { plan: currentPlanId, subscriptionCycle: currentCycle, isSubscriptionExpired, daysRemaining } = usePlan();
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>(currentCycle || 'monthly');
   const { user } = useFirebase();
   const { toast } = useToast();
 
@@ -185,9 +147,14 @@ export default function BillingPage() {
             <p className="text-muted-foreground mt-2">
                 Unlock more features and power up your school. Select the plan that fits your needs.
             </p>
+             {currentPlanId && currentPlanId !== 'free_trial' && (
+                <div className="mt-4 text-sm text-center">
+                    <p>You are currently on the <b className="text-primary">{toTitleCase(currentPlanId)}</b> plan.
+                    {daysRemaining > 0 ? ` Your plan renews in ${daysRemaining} day(s).` : ' Your subscription has expired.'}
+                    </p>
+                </div>
+            )}
         </div>
-
-        <SubscriptionStatusCard />
         
         <div className="flex items-center justify-center space-x-2">
             <Label htmlFor="billing-cycle">Monthly</Label>
