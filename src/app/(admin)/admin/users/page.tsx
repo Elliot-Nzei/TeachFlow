@@ -21,9 +21,10 @@ export default function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter(user =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.name && user.email &&
+      (user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.schoolName.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.schoolName && user.schoolName.toLowerCase().includes(searchTerm.toLowerCase())))
     );
   }, [users, searchTerm]);
 
@@ -74,7 +75,7 @@ export default function AdminUsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {user.planStartDate ? format(user.planStartDate.toDate(), 'PPP') : 'N/A'}
+                      {user.planStartDate?.toDate ? format(user.planStartDate.toDate(), 'PPP') : 'N/A'}
                     </TableCell>
                   </TableRow>
                 ))
