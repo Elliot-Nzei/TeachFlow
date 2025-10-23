@@ -1,13 +1,15 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Users, ClipboardList, GraduationCap, DollarSign, Lock, Building } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, collectionGroup } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
+import { Button } from '@/components/ui/button';
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string; value: string | number; icon: React.ReactNode; isLoading?: boolean }) => (
   <Card>
@@ -28,10 +30,10 @@ export default function AdminDashboardPage() {
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'teacher')) : null, [firestore]);
     const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
-    const classesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'classes') : null, [firestore]);
+    const classesQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'classes') : null, [firestore]);
     const { data: classes, isLoading: isLoadingClasses } = useCollection(classesQuery);
     
-    const studentsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'students') : null, [firestore]);
+    const studentsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'students') : null, [firestore]);
     const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
 
     const userProfileQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users'), where('uid', '==', user.uid)) : null, [firestore, user]);

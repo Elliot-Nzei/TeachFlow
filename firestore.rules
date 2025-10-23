@@ -1,258 +1,285 @@
 /**
- * @file Firestore Security Rules for PeerPrep App
+ * @file Firebase Security Rules for TeachFlow School Management System
  *
- * @description
- * This ruleset enforces a strict user-ownership model, where users can only
- * access data associated with their own accounts. It also allows public
- * access to student data for parents via a unique parentId.
+ * @corePhilosophy This ruleset enforces a strict user-ownership model, where users can only
+ *   access and modify data that belongs to them.  Data consistency is enforced where applicable,
+ *   particularly for resource creation. Read access to most collections is restricted to the owner.
+ *   The 'classes' collection is readable by all authenticated users for easy data management and
+ *   selection within the frontend.
  *
- * Data Structure:
- * - /users/{userId}: User profiles and settings.
- * - /users/{userId}/classes/{classId}: Classes created by the user.
- * - /users/{userId}/students/{studentId}: Students belonging to the user.
- * - /users/{userId}/subjects/{subjectId}: Subjects created by the user.
- * - /users/{userId}/grades/{gradeId}: Grades created by the user.
- * - /users/{userId}/attendance/{attendanceId}: Attendance records created by the user.
- * - /users/{userId}/traits/{traitId}: Traits data created by the user.
- * - /users/{userId}/incomingTransfers/{transferId}: Incoming data transfer requests.
- * - /users/{userId}/outgoingTransfers/{transferId}: Outgoing data transfer requests.
- * - /students/{studentId}: Public collection of students, accessible by teachers and parents.
+ * @dataStructure The data is organized under the `/users/{userId}` path, with subcollections for
+ *   classes, students, subjects, grades, attendance, traits, payments, timetables and transfers.
+ *   Parents have their own top-level collection at `/parents/{parentId}` and can only
+ *   access their own data.
  *
- * Key Security Decisions:
- * - User-owned data: Most data is stored under the /users/{userId} path and
- *   is strictly controlled by the authenticated user's ID.
- * - No user listing: Listing all users is disallowed to protect privacy.
- * - Parent Portal Access: Parents can only access student data via a secure
- *   parentId-based query on the /students collection.
+ * @keySecurityDecisions
+ *   - User listing is disallowed.
+ *   - The 'classes' collection is readable by all authenticated users, with write access restricted to the owner.
+ *   - For data transfers, separate collections are used for incoming and outgoing transfers to
+ *     simplify authorization logic.
+ *   - Flexible data validation is applied, focusing on authorization and relational integrity, not schema compliance.
  *
- * Denormalization for Authorization:
- * - The /students collection has a 'userId' field to link it to the owning teacher.
- *   This allows filtering by `userId` for teacher access and `parentId` for parent access.
+ * @denormalizationForAuthorization Not applicable in this version.
+ * @structuralSegregation Private user data is stored under `/users/{userId}`, and there are no public collections.
  */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Helper function to check if the user is authenticated.
-     * @returns {boolean} True if the user is authenticated, false otherwise.
+     * @description Checks if the requesting user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Authentication required for all protected resources.
      */
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Helper function to check if the authenticated user is the owner of the resource.
-     * @param {string} userId The user ID to compare against the authenticated user's ID.
-     * @returns {boolean} True if the user is the owner, false otherwise.
+     * @description Checks if the requesting user is the owner of the resource.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces ownership for data access.
      */
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     /**
-     * @description Rules for the top-level 'users' collection
+     * @description Checks if the requesting user is the existing owner of the resource, ensuring the document exists.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Combines ownership and existence checks for destructive operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for user profiles.
      * @path /users/{userId}
-     * @allow (get) Authenticated user can read their own document.
-     * @allow (list) Authenticated user can search for other users by userCode.
-     * @allow (write) Authenticated user can create and update their own document.
-     * @deny (get) Another user attempts to read a different user's document.
-     * @deny (list) Unauthenticated user attempts to list users.
-     * @deny (write) Another user attempts to write to a different user's document.
-     * @principle Enforces document ownership and prevents unauthorized access to user data.
+     * @allow (create) User with UID 'user123' creating their own profile.
+     * @allow (get) User with UID 'user123' reading their own profile.
+     * @allow (update) User with UID 'user123' updating their own profile.
+     * @allow (delete) User with UID 'user123' deleting their own profile.
+     * @deny (create) User with UID 'user456' attempting to create a profile for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read the profile of 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      // Allow users to read their own document
       allow get: if isOwner(userId);
-      // Allow any authenticated user to search for other users by userCode (for transfers)
-      allow list: if isAuthenticated();
-      // Allow users to create and update their own document
-      allow write: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
 
-      /**
-       * @description Rules for classes
-       * @path /users/{userId}/classes/{classId}
-       * @allow (read, write) Owner has full access to their own classes
-       * @deny (read, write) Non-owner attempts to read or write to a class
-       * @principle Enforces ownership for classes.
-       */
-      match /classes/{classId} {
-        // Owner has full access to their own classes
-        allow read, write: if isOwner(userId);
-
-        /**
-         * @description Nested students in a class
-         * @path /users/{userId}/classes/{classId}/students/{studentId}
-         * @allow (read, write) Owner has full access to their own students
-         * @deny (read, write) Non-owner attempts to read or write to a student
-         * @principle Enforces ownership for nested students.
-         */
-        match /students/{studentId} {
-          allow read, write: if isOwner(userId);
-        }
-
-        /**
-         * @description Any other nested collections
-         * @path /users/{userId}/classes/{classId}/{nested=**}
-         * @allow (read, write) Owner has full access to any other nested collection
-         * @deny (read, write) Non-owner attempts to read or write to any other nested collection
-         * @principle Enforces ownership for any other nested collections.
-         */
-        match /{nested=**} {
-          allow read, write: if isOwner(userId);
-        }
-      }
-
-      /**
-       * @description Rules for students
-       * @path /users/{userId}/students/{studentId}
-       * @allow (read, write) Owner has full access to their own students
-       * @deny (read, write) Non-owner attempts to read or write to a student
-       * @principle Enforces ownership for students.
-       */
-      match /students/{studentId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      /**
-       * @description Rules for subjects
-       * @path /users/{userId}/subjects/{subjectId}
-       * @allow (read, write) Owner has full access to their own subjects
-       * @deny (read, write) Non-owner attempts to read or write to a subject
-       * @principle Enforces ownership for subjects.
-       */
-      match /subjects/{subjectId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      /**
-       * @description Rules for grades
-       * @path /users/{userId}/grades/{gradeId}
-       * @allow (read, write) Owner has full access to their own grades
-       * @deny (read, write) Non-owner attempts to read or write to a grade
-       * @principle Enforces ownership for grades.
-       */
-      match /grades/{gradeId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      /**
-       * @description Rules for attendance
-       * @path /users/{userId}/attendance/{attendanceId}
-       * @allow (read, write) Owner has full access to their own attendance
-       * @deny (read, write) Non-owner attempts to read or write to attendance
-       * @principle Enforces ownership for attendance.
-       */
-      match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      /**
-       * @description Rules for traits
-       * @path /users/{userId}/traits/{traitId}
-       * @allow (read, write) Owner has full access to their own traits
-       * @deny (read, write) Non-owner attempts to read or write to traits
-       * @principle Enforces ownership for traits.
-       */
-      match /traits/{traitId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      /**
-       * @description Rules for managing INCOMING transfers
-       * @path /users/{userId}/incomingTransfers/{transferId}
-       * @allow (read) User can read their own incoming transfers
-       * @allow (create) Any authenticated user can create an incoming transfer for another user
-       * @allow (update, delete) User can update and delete their own incoming transfer
-       * @deny (read) Another user attempts to read a different user's incoming transfer
-       * @deny (create) Unauthenticated user attempts to create an incoming transfer
-       * @deny (update, delete) Another user attempts to update or delete a different user's incoming transfer
-       * @principle Enforces ownership and authentication for incoming transfers.
-       */
-      match /incomingTransfers/{transferId} {
-        // User can read their own incoming transfers
-        allow read: if isOwner(userId);
-        // Any authenticated user can create an incoming transfer for another user
-        allow create: if isAuthenticated() && request.resource.data.toUserId == userId;
-        // User can update and delete their own incoming transfer
-        allow update, delete: if isOwner(userId);
-      }
-
-      /**
-       * @description Rules for managing OUTGOING transfers
-       * @path /users/{userId}/outgoingTransfers/{transferId}
-       * @allow (read, write) User can read and write their own outgoing transfers
-       * @allow (get) Recipient can read a specific outgoing transfer by ID
-       * @allow (update) Recipient can update the status of the sender's outgoing transfer
-       * @deny (read, write) Non-owner attempts to read or write to a different user's outgoing transfer
-       * @deny (get) Unauthenticated user attempts to read an outgoing transfer
-       * @deny (update) Non-recipient attempts to update the status of the sender's outgoing transfer
-       * @principle Enforces ownership and authentication for outgoing transfers, and allows the recipient to manage the transfer.
-       */
-      match /outgoingTransfers/{transferId} {
-        // User can read and write their own outgoing transfers
-        allow read, write: if isOwner(userId);
-
-        // CRITICAL: Allow the recipient to read a specific outgoing transfer by ID
-        allow get: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
-
-        // CRITICAL: Allow the recipient to update the status of the sender's outgoing transfer
-        allow update: if isAuthenticated() &&
-                         resource.data.toUserId == request.auth.uid &&
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'processedAt']);
-      }
-
-      /**
-       * @description Catch-all for any other subcollections
-       * @path /users/{userId}/{subcollection}/{docId}
-       * @allow (read, write) Owner has full access to any other subcollection
-       * @deny (read, write) Non-owner attempts to read or write to any other subcollection
-       * @principle Enforces ownership for any other subcollections.
-       */
-      match /{subcollection}/{docId} {
-        allow read, write: if isOwner(userId);
-
-        /**
-         * @description Nested catch-all for any nested subcollections
-         * @path /users/{userId}/{subcollection}/{docId}/{nested=**}
-         * @allow (read, write) Owner has full access to any nested subcollection
-         * @deny (read, write) Non-owner attempts to read or write to any nested subcollection
-         * @principle Enforces ownership for any nested subcollections.
-         */
-        match /{nested=**} {
-           allow read, write: if isOwner(userId);
-        }
-      }
+     /**
+     * @description Rules for parent profiles.
+     * @path /parents/{parentId}
+     * @allow (create) Parent with UID 'parent123' creating their own profile.
+     * @allow (get) Parent with UID 'parent123' reading their own profile.
+     * @deny (create) Parent with UID 'parent456' attempting to create a profile for 'parent123'.
+     * @deny (get) Parent with UID 'parent456' attempting to read the profile of 'parent123'.
+     * @principle Parents can only create and read their own profiles.
+     */
+    match /parents/{parentId} {
+      allow get: if isSignedIn() && request.auth.uid == parentId;
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == parentId;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Rules for the top-level 'students' collection, accessible by teachers and parents
-     * @path /students/{studentId}
-     * @allow (read, write) A logged-in user can read/write a student document if they are the owner (their UID matches the student's userId).
-     * @allow (list) ANYONE (unauthenticated) can LIST students ONLY IF they are querying specifically by the 'parentId'. This is secure.
-     * @deny (read, write) A user attempts to access a student document that does not belong to them (mismatched UID).
-     * @deny (list) An unauthenticated user attempts to list all students without filtering by parentId.
-     * @principle Securely allows teacher and parent access to student data.
+     * @description Rules for classes belonging to a user.
+     * @path /users/{userId}/classes/{classId}
+     * @allow (create) User with UID 'user123' creating a class.
+     * @allow (get) User with UID 'user123' reading a class.
+     * @allow (update) User with UID 'user123' updating a class.
+     * @allow (delete) User with UID 'user123' deleting a class.
+     * @deny (create) User with UID 'user456' attempting to create a class for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a class belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
-    match /students/{studentId} {
-      // 1. TEACHER ACCESS: Allow a logged-in user to read/write a student
-      //    document if they are the owner (their UID matches the student's userId).
-      allow read, write: if request.auth.uid == resource.data.userId;
-
-      // 2. PARENT ACCESS: Allow ANYONE (unauthenticated) to LIST students
-      //    ONLY IF they are querying specifically by the 'parentId'. This is secure.
-      allow list: if request.query.keys.hasOnly(['parentId']);
+    match /users/{userId}/classes/{classId} {
+      allow get: if isSignedIn();
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Catch-all rule to deny access to any other document
-     * @path /{document=**}
-     * @allow (read, write) false
-     * @principle Denies all read and write access by default to prevent accidental exposure.
+     * @description Rules for students belonging to a user.
+     * @path /users/{userId}/students/{studentId}
+     * @allow (create) User with UID 'user123' creating a student.
+     * @allow (get) User with UID 'user123' reading a student.
+     * @allow (update) User with UID 'user123' updating a student.
+     * @allow (delete) User with UID 'user123' deleting a student.
+     * @deny (create) User with UID 'user456' attempting to create a student for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a student belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
-    match /{document=**} {
-      allow read, write: if false;
+    match /users/{userId}/students/{studentId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for subjects belonging to a user.
+     * @path /users/{userId}/subjects/{subjectId}
+     * @allow (create) User with UID 'user123' creating a subject.
+     * @allow (get) User with UID 'user123' reading a subject.
+     * @allow (update) User with UID 'user123' updating a subject.
+     * @allow (delete) User with UID 'user123' deleting a subject.
+     * @deny (create) User with UID 'user456' attempting to create a subject for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a subject belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/subjects/{subjectId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for grades belonging to a user.
+     * @path /users/{userId}/grades/{gradeId}
+     * @allow (create) User with UID 'user123' creating a grade.
+     * @allow (get) User with UID 'user123' reading a grade.
+     * @allow (update) User with UID 'user123' updating a grade.
+     * @allow (delete) User with UID 'user123' deleting a grade.
+     * @deny (create) User with UID 'user456' attempting to create a grade for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a grade belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/grades/{gradeId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for attendance records belonging to a user.
+     * @path /users/{userId}/attendance/{attendanceId}
+     * @allow (create) User with UID 'user123' creating an attendance record.
+     * @allow (get) User with UID 'user123' reading an attendance record.
+     * @allow (update) User with UID 'user123' updating an attendance record.
+     * @allow (delete) User with UID 'user123' deleting an attendance record.
+     * @deny (create) User with UID 'user456' attempting to create an attendance record for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read an attendance record belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/attendance/{attendanceId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for trait records belonging to a user.
+     * @path /users/{userId}/traits/{traitId}
+     * @allow (create) User with UID 'user123' creating a trait record.
+     * @allow (get) User with UID 'user123' reading a trait record.
+     * @allow (update) User with UID 'user123' updating a trait record.
+     * @allow (delete) User with UID 'user123' deleting a trait record.
+     * @deny (create) User with UID 'user456' attempting to create a trait record for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a trait record belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/traits/{traitId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for incoming transfer requests.
+     * @path /users/{userId}/incomingTransfers/{transferId}
+     * @allow (get) User with UID 'user123' reading an incoming transfer.
+     * @allow (list) User with UID 'user123' listing incoming transfers.
+     * @deny (create) Any user creating an incoming transfer directly (only the system should create these).
+     * @deny (update) User with UID 'user456' attempting to update an incoming transfer for 'user123'.
+     * @principle Protects incoming transfer requests by enforcing ownership and restricting creation.
+     */
+    match /users/{userId}/incomingTransfers/{transferId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if false;
+      allow update: if isExistingOwner(userId);
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for outgoing transfer requests.
+     * @path /users/{userId}/outgoingTransfers/{transferId}
+     * @allow (create) User with UID 'user123' creating an outgoing transfer.
+     * @allow (get) User with UID 'user123' reading an outgoing transfer.
+     * @allow (list) User with UID 'user123' listing outgoing transfers.
+     * @deny (update) User with UID 'user456' attempting to update an outgoing transfer for 'user123'.
+     * @deny (delete) User with UID 'user456' attempting to delete an outgoing transfer for 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/outgoingTransfers/{transferId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for payment records belonging to a user.
+     * @path /users/{userId}/payments/{paymentId}
+     * @allow (create) User with UID 'user123' creating a payment record.
+     * @allow (get) User with UID 'user123' reading a payment record.
+     * @allow (update) User with UID 'user123' updating a payment record.
+     * @allow (delete) User with UID 'user123' deleting a payment record.
+     * @deny (create) User with UID 'user456' attempting to create a payment record for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a payment record belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/payments/{paymentId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for timetables belonging to a user.
+     * @path /users/{userId}/timetables/{timetableId}
+     * @allow (create) User with UID 'user123' creating a timetable.
+     * @allow (get) User with UID 'user123' reading a timetable.
+     * @allow (update) User with UID 'user123' updating a timetable.
+     * @allow (delete) User with UID 'user123' deleting a timetable.
+     * @deny (create) User with UID 'user456' attempting to create a timetable for 'user123'.
+     * @deny (get) User with UID 'user456' attempting to read a timetable belonging to 'user123'.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/timetables/{timetableId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
   }
 }
