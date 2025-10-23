@@ -197,12 +197,12 @@ export default function MarketplaceAdminPage() {
             if (editingProduct) {
                 // Update existing product
                 const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
-                await updateDoc(productRef, { ...productData, updatedAt: serverTimestamp() });
+                updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
                 toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
             } else {
                 // Add new product
-                const productRef = doc(collection(firestore, 'marketplace_products'));
-                 await setDoc(productRef, { 
+                const productsCollection = collection(firestore, 'marketplace_products');
+                addDocumentNonBlocking(productsCollection, { 
                     ...productData, 
                     sellerId: user.uid, 
                     createdAt: serverTimestamp() 
