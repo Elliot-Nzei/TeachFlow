@@ -6,7 +6,7 @@ import { useUser, useFirebase, useMemoFirebase, useCollection } from '@/firebase
 import { doc, collection, query, collectionGroup } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, ClipboardList, DollarSign } from 'lucide-react';
+import { Users, ClipboardList, DollarSign, GraduationCap } from 'lucide-react';
 
 const plansData = {
   basic: { monthly: 1500, annually: 15000 },
@@ -44,8 +44,8 @@ export default function AdminDashboardPage() {
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
     const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery);
 
-    const classesQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'classes')) : null, [firestore]);
-    const { data: allClasses, isLoading: isLoadingClasses } = useCollection<any>(classesQuery);
+    const studentsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'students')) : null, [firestore]);
+    const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
 
     const totalRevenue = useMemo(() => {
         if (!allUsers) return 0;
@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
         }
     }, []);
 
-    const isLoading = isLoadingUsers || isLoadingClasses;
+    const isLoading = isLoadingUsers || isLoadingStudents;
 
     return (
         <div className="space-y-6 p-4 md:p-6">
@@ -89,9 +89,9 @@ export default function AdminDashboardPage() {
                     isLoading={isLoading} 
                 />
                 <StatCard 
-                    title="Total Classes" 
-                    value={allClasses?.length?.toString() || '0'} 
-                    icon={<ClipboardList className="h-4 w-4 text-muted-foreground" />} 
+                    title="Total Students" 
+                    value={allStudents?.length?.toString() || '0'} 
+                    icon={<GraduationCap className="h-4 w-4 text-muted-foreground" />} 
                     isLoading={isLoading} 
                 />
                 <StatCard 
