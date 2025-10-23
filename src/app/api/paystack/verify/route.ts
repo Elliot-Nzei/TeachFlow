@@ -1,9 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { serviceAccount } from '@/firebase/service-account';
 
 // Helper function to initialize Firebase Admin SDK
 function initializeFirebaseAdmin() {
@@ -11,18 +9,15 @@ function initializeFirebaseAdmin() {
     return;
   }
   try {
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    } as admin.ServiceAccount;
-
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        throw new Error('Firebase Admin SDK service account credentials are not fully configured in environment variables.');
+    // Directly use the imported service account object
+    const creds = serviceAccount as admin.ServiceAccount;
+    
+    if (!creds.project_id || !creds.client_email || !creds.private_key) {
+        throw new Error('Service account is missing required fields (project_id, client_email, private_key).');
     }
 
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(creds),
     });
   } catch (error: any) {
     console.error('Firebase Admin initialization error:', error.message);

@@ -68,47 +68,9 @@ const plansData = [
 ];
 
 const SubscriptionStatusCard = () => {
-    const { plan, isTrial, subscriptionCycle, renewalDate } = usePlan();
-    const [timeLeft, setTimeLeft] = useState('');
+    const { plan, isTrial, subscriptionCycle, daysRemaining } = usePlan();
 
-    const planName = useMemo(() => {
-        if (!plan) return 'Free';
-        return plan.charAt(0).toUpperCase() + plan.slice(1);
-    }, [plan]);
-
-    useEffect(() => {
-        if (!renewalDate) {
-            setTimeLeft('N/A');
-            return;
-        }
-
-        const interval = setInterval(() => {
-            const now = new Date();
-            const secondsRemaining = Math.max(0, Math.floor((renewalDate.getTime() - now.getTime()) / 1000));
-            
-            if (secondsRemaining <= 0) {
-                setTimeLeft('Expired');
-                clearInterval(interval);
-                return;
-            }
-            
-            const hours = Math.floor(secondsRemaining / 3600);
-            const minutes = Math.floor((secondsRemaining % 3600) / 60);
-            const seconds = secondsRemaining % 60;
-            
-            if (hours > 0) {
-              setTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-            } else {
-              setTimeLeft(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-            }
-
-
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [renewalDate]);
-
-    if (isTrial || !plan || !renewalDate || timeLeft === 'N/A' || plan === 'free_trial') {
+    if (isTrial || !plan || plan === 'free_trial') {
         return null;
     }
 
@@ -131,9 +93,9 @@ const SubscriptionStatusCard = () => {
                 </div>
                 <div className="bg-primary-foreground/10 p-3 rounded-lg col-span-2 md:col-span-1">
                     <p className="text-sm text-primary-foreground/80">
-                        {timeLeft === 'Expired' ? 'Status' : 'Time Remaining'}
+                        {daysRemaining > 0 ? 'Days Remaining' : 'Status'}
                     </p>
-                    <p className="text-xl font-bold font-mono">{timeLeft}</p>
+                    <p className="text-xl font-bold font-mono">{daysRemaining > 0 ? daysRemaining : 'Expired'}</p>
                 </div>
             </CardContent>
         </Card>
@@ -166,8 +128,13 @@ export default function BillingPage() {
         throw new Error(`${result.message || 'Verification failed.'} ${errorDetails} ${errorSuggestion}`);
       }
       
-      toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded.' });
-      window.location.reload();
+      toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded. The page will now reload.' });
+      
+      // Reload the page to get the new plan details from the context
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

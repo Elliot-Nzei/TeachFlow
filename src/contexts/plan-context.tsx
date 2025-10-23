@@ -52,7 +52,6 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const [plan, setPlan] = useState<Plan>(null);
   const [subscriptionCycle, setSubscriptionCycle] = useState<BillingCycle>(null);
   const [renewalDate, setRenewalDate] = useState<Date | null>(null);
-  const [daysRemaining, setDaysRemaining] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [aiUsage, setAiUsage] = useState({
@@ -63,10 +62,10 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
-    // Set up a timer that updates the current time every second.
+    // Set up a timer that updates the current time every minute to reduce re-renders.
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 60000); // 60 seconds
 
     // Clean up the timer when the component unmounts.
     return () => {
@@ -97,7 +96,6 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     const startDate = settings.planStartDate?.toDate();
     if (!startDate) {
         setRenewalDate(null);
-        setDaysRemaining(0);
         return;
     }
 
@@ -108,24 +106,32 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     } else { // basic or prime
         if (subscriptionCycle === 'annually') {
             endDate = add(startDate, { years: ANNUAL_DURATION_YEARS });
-        } else { // monthly
+        } else { // monthly or default
             endDate = add(startDate, { days: MONTHLY_DURATION_DAYS });
         }
     }
     
     setRenewalDate(endDate);
-    setDaysRemaining(differenceInDays(endDate, new Date()));
 
   }, [plan, subscriptionCycle, settings]);
   
+  const daysRemaining = useMemo(() => {
+    if (!renewalDate) return 0;
+    // Calculate difference in days and ensure it's not negative
+    return Math.max(0, differenceInDays(renewalDate, currentTime));
+  }, [renewalDate, currentTime]);
+  
   const isSubscriptionExpired = useMemo(() => {
-    if (isSettingsLoading || isUserLoading || !renewalDate) return false;
-    // Re-calculate whenever currentTime updates.
+    if (isSettingsLoading || isUserLoading) return false; // Don't lock out while loading
+    if (!renewalDate) return true; // If no date, assume expired.
     return isAfter(currentTime, renewalDate);
   }, [renewalDate, isSettingsLoading, isUserLoading, currentTime]);
   
   const isLocked = useMemo(() => {
-    return isSubscriptionExpired && pathname !== '/billing';
+    const publicPaths = ['/billing', '/settings'];
+    if(publicPaths.includes(pathname)) return false;
+    
+    return isSubscriptionExpired;
   }, [isSubscriptionExpired, pathname]);
 
   const features = useMemo(() => {
