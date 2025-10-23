@@ -1,76 +1,53 @@
 
 'use client';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 export default function MarketplacePage() {
-    const [userId, setUserId] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const { user, isUserLoading } = useUser();
+    const [isLoading, setIsLoading] = useState(true);
     const [hasAccess, setHasAccess] = useState(false);
     const { toast } = useToast();
     const { firestore } = useFirebase();
 
-    const handleAccessMarketplace = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-
-        if (!userId) {
-            toast({
-                variant: 'destructive',
-                title: 'User ID Required',
-                description: 'Please enter your user ID to access the marketplace.',
-            });
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            // This is a simplified access check. In a real app, you'd have more robust logic.
-            const userRef = doc(firestore, 'users', userId);
-            const userSnap = await getDoc(userRef);
-
-            // A more realistic scenario would check a specific claim or role.
-            // For now, we'll just check if the user exists.
-            if (userSnap.exists()) {
-                setHasAccess(true);
-                toast({
-                    title: 'Access Granted',
-                    description: 'Welcome to the marketplace!',
-                });
-            } else {
-                // Check if it's a marketplace admin
-                const adminRef = doc(firestore, 'marketplace_admins', userId);
-                const adminSnap = await getDoc(adminRef);
-                if (adminSnap.exists()) {
-                    setHasAccess(true);
-                     toast({
-                        title: 'Admin Access Granted',
-                        description: 'Welcome, marketplace administrator!',
-                    });
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Access Denied',
-                        description: 'Invalid user ID. Please check and try again.',
-                    });
-                }
+    useEffect(() => {
+        const checkAccess = async () => {
+            if (isUserLoading) {
+                return;
             }
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not verify user ID. Please try again later.',
-            });
-        } finally {
+
+            if (user) {
+                // In a real app, you might have more complex logic, but here we just grant access.
+                setHasAccess(true);
+            } else {
+                setHasAccess(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Authentication Error',
+                    description: 'Could not verify user. Please log in again.',
+                });
+            }
             setIsLoading(false);
-        }
-    };
+        };
+
+        checkAccess();
+    }, [user, isUserLoading, toast]);
+    
+    if (isLoading || isUserLoading) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Verifying access...</p>
+                </div>
+            </div>
+        );
+    }
     
     if (hasAccess) {
         return (
@@ -104,31 +81,14 @@ export default function MarketplacePage() {
     }
 
     return (
-        <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-md">
+         <div className="flex items-center justify-center h-full">
+            <Card className="w-full max-w-md text-center">
                 <CardHeader>
-                    <CardTitle>Enter Marketplace</CardTitle>
-                    <CardDescription>Please enter your User ID to access the marketplace.</CardDescription>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>
+                        You must be logged in to access the marketplace.
+                    </CardDescription>
                 </CardHeader>
-                <form onSubmit={handleAccessMarketplace}>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="user-id">Your User ID</Label>
-                            <Input
-                                id="user-id"
-                                placeholder="e.g., NSMS-0914L"
-                                value={userId}
-                                onChange={(e) => setUserId(e.target.value.toUpperCase())}
-                                required
-                            />
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                            {isLoading ? 'Verifying...' : 'Continue'}
-                        </Button>
-                    </CardFooter>
-                </form>
             </Card>
         </div>
     );
