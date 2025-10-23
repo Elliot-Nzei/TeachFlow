@@ -45,8 +45,7 @@ import { PlanProvider } from '@/contexts/plan-context';
 const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/marketplace/admin', label: 'Marketplace', icon: ShoppingCart },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
 ];
 
 function UserProfileDisplay() {
