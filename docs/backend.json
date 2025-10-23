@@ -16,6 +16,11 @@
           "description": "The user's email address.",
           "format": "email"
         },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "teacher", "marketplace_admin"],
+          "description": "The role of the user."
+        },
         "userCode": {
           "type": "string",
           "description": "Unique system-generated code for the user."
@@ -67,11 +72,6 @@
             "enum": ["monthly", "annually"],
             "description": "The billing cycle for the subscription."
         },
-        "reportCardTemplate": {
-            "type": "string",
-            "enum": ["classic", "modern", "compact"],
-            "description": "The selected template for generating report cards."
-        },
         "aiUsage": {
             "type": "object",
             "description": "Tracks monthly AI feature usage.",
@@ -87,7 +87,8 @@
         "name",
         "email",
         "userCode",
-        "schoolName"
+        "schoolName",
+        "role"
       ]
     },
     "Parent": {
@@ -531,14 +532,18 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User"},
-      "description": "Stores user profile (teacher/admin) and application settings."
+      "description": "Stores user profile (teacher/admin) and application settings.",
+      "allow": {
+        "list": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "read": "request.auth.uid == userId",
+        "create": "request.auth.uid == userId"
+      }
     },
      "/parents/{parentId}": {
       "schema": { "$ref": "#/entities/Parent"},
       "description": "Stores parent user profiles. Parent can create their own account.",
       "allow": {
-          "create": "request.auth.uid == parentId",
-          "read": "request.auth.uid == parentId"
+          "create": "request.auth.uid == parentId"
       }
     },
     "/users/{userId}/classes/{classId}": {
@@ -583,3 +588,5 @@
     }
   }
 }
+
+    
