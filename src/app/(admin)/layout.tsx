@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -9,6 +10,7 @@ import {
   Sun,
   Shield,
   ShoppingCart,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -41,7 +43,7 @@ import { SettingsProvider, SettingsContext } from '@/contexts/settings-context';
 import { PlanProvider } from '@/contexts/plan-context';
 
 const adminMenuItems = [
-  { href: '/admin', label: 'Dashboard', icon: Shield },
+  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/marketplace/admin', label: 'Marketplace', icon: ShoppingCart },
 ];
