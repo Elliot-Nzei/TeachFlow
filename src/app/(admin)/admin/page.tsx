@@ -7,10 +7,11 @@ import { Users, ClipboardList, GraduationCap, DollarSign, Lock, Building } from 
 import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, getDocs, doc, collectionGroup } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
 import { Button } from '@/components/ui/button';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string; value: string | number; icon: React.ReactNode; isLoading?: boolean }) => (
   <Card>
@@ -28,6 +29,7 @@ export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
+    const isMobile = useIsMobile();
 
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
@@ -70,7 +72,7 @@ export default function AdminDashboardPage() {
         return (
              <div className="space-y-6">
                 <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
-                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-28" />)}
                 </div>
                 <Skeleton className="h-80 w-full" />
@@ -101,7 +103,7 @@ export default function AdminDashboardPage() {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
             
-            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard title="Total Users" value={users?.length || 0} icon={<Users className="text-muted-foreground" />} isLoading={isLoadingUsers} />
                 <StatCard title="Total Classes" value={classes?.length || 0} icon={<Building className="text-muted-foreground" />} isLoading={isLoadingClasses} />
                 <StatCard title="Total Students" value={students?.length || 0} icon={<GraduationCap className="text-muted-foreground" />} isLoading={isLoadingStudents} />
@@ -116,9 +118,19 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     {isLoading ? <Skeleton className="h-[250px] w-full" /> :
                         <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
-                            <BarChart accessibilityLayer data={chartData}>
-                                <CartesianGrid vertical={false} />
-                                <XAxis dataKey="plan" tickLine={false} tickMargin={10} axisLine={false} />
+                            <BarChart accessibilityLayer data={chartData} layout={isMobile ? "vertical" : "horizontal"} margin={isMobile ? { left: 10 } : undefined}>
+                                <CartesianGrid vertical={isMobile} horizontal={!isMobile} />
+                                {isMobile ? (
+                                    <>
+                                        <YAxis dataKey="plan" type="category" tickLine={false} tickMargin={10} axisLine={false} />
+                                        <XAxis dataKey="users" type="number" hide />
+                                    </>
+                                ) : (
+                                    <>
+                                        <XAxis dataKey="plan" tickLine={false} tickMargin={10} axisLine={false} />
+                                        <YAxis />
+                                    </>
+                                )}
                                 <ChartTooltip content={<ChartTooltipContent />} />
                                 <Bar dataKey="users" radius={8} />
                             </BarChart>
