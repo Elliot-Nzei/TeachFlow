@@ -24,6 +24,11 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": []
     }
   ],
   "fieldOverrides": []
