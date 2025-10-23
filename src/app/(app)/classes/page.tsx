@@ -27,36 +27,35 @@ import { SheetTrigger } from '@/components/ui/sheet';
 
 
 const ClassListItem = ({ cls, onClick }: { cls: Class, onClick: () => void }) => (
-    <div onClick={onClick} className="group">
-        <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 h-full flex flex-col">
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <CardTitle className="font-headline text-xl group-hover:text-primary transition-colors">{cls.name}</CardTitle>
-                    <Badge variant="secondary">{cls.category}</Badge>
-                </div>
-                <CardDescription>Grade {cls.grade}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-                <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                        <Users className="h-4 w-4" />
-                        <span>{cls.students?.length || 0} Students</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <BookCopy className="h-4 w-4" />
-                        <span>{cls.subjects?.length || 0} Subjects</span>
-                    </div>
-                </div>
-            </CardContent>
-            <CardFooter>
-                 <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full justify-center text-primary hover:text-primary">
-                        View Details <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </SheetTrigger>
-            </CardFooter>
-        </Card>
-    </div>
+    <SheetTrigger asChild>
+      <div onClick={onClick} className="group">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 flex flex-col justify-between h-full min-h-[140px]">
+              <CardHeader className="flex-grow">
+                  <div className="flex justify-between items-start">
+                      <CardTitle className="font-headline text-lg group-hover:text-primary transition-colors">{cls.name}</CardTitle>
+                      <Badge variant="secondary" className="text-xs">{cls.category}</Badge>
+                  </div>
+                  <CardDescription>Grade {cls.grade}</CardDescription>
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
+                      <div className="flex items-center gap-1.5">
+                          <Users className="h-4 w-4" />
+                          <span>{cls.students?.length || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                          <BookCopy className="h-4 w-4" />
+                          <span>{cls.subjects?.length || 0}</span>
+                      </div>
+                  </div>
+              </CardHeader>
+              <CardFooter className="p-2">
+                  <Button variant="ghost" size="sm" className="w-full justify-center text-primary hover:text-primary text-xs">
+                      View Details <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+              </CardFooter>
+          </Card>
+      </div>
+    </SheetTrigger>
 );
 
 type ClassCategory = 'Early Years' | 'Primary' | 'Junior Secondary' | 'Senior Secondary';
@@ -154,9 +153,9 @@ export default function ClassesPage() {
   return (
     <>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold font-headline">Classes</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <h1 className="text-3xl font-bold font-headline">Classes</h1>
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-lg">
                 <span>Class Limit:</span>
                 {isLoading ? <Skeleton className="h-5 w-10" /> : (
                     <span className="font-semibold text-foreground flex items-center gap-1">
@@ -165,95 +164,93 @@ export default function ClassesPage() {
                     </span>
                 )}
             </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div tabIndex={atClassLimit ? 0 : undefined}>
-                  <DialogTrigger asChild>
-                    <Button disabled={atClassLimit} className="w-full sm:w-auto">
-                      {atClassLimit && <Lock className="mr-2 h-4 w-4" />}
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add New Class
-                    </Button>
-                  </DialogTrigger>
-                </div>
-              </TooltipTrigger>
-              {atClassLimit && (
-                <TooltipContent>
-                  <p>You have reached the class limit for your current plan.</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add New Class</DialogTitle>
-                <DialogDescription>
-                  Enter the name for the new class and assign its academic details.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAddClass}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input id="name" value={newClassName} onChange={(e) => setNewClassName(toTitleCase(e.target.value))} placeholder="e.g., Primary 5A" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="category" className="text-right">Category</Label>
-                    <div className="col-span-3">
-                      <Select onValueChange={(value: ClassCategory) => {setSelectedCategory(value); setSelectedGrade(null);}} value={selectedCategory}>
-                        <SelectTrigger id="category">
-                          <SelectValue placeholder="Select category..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {classCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Tooltip>
+                <TooltipTrigger asChild>
+                    <div tabIndex={atClassLimit ? 0 : undefined}>
+                    <DialogTrigger asChild>
+                        <Button disabled={atClassLimit} className="w-full sm:w-auto">
+                        {atClassLimit && <Lock className="mr-2 h-4 w-4" />}
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add New Class
+                        </Button>
+                    </DialogTrigger>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="grade" className="text-right">Grade</Label>
-                    <div className="col-span-3">
-                      <Popover open={gradePopoverOpen} onOpenChange={setGradePopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedCategory}>
-                            {selectedGrade !== null ? (selectedCategory === 'Early Years' ? selectedGrade : `Grade ${selectedGrade}`) : "Select grade..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width)] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search grade..." />
-                            <CommandList>
-                              <CommandEmpty>No grade found.</CommandEmpty>
-                              <CommandGroup>
-                                {gradeOptions.map((grade) => (
-                                  <CommandItem
-                                    key={grade}
-                                    value={String(grade)}
-                                    onSelect={() => {
-                                      setSelectedGrade(String(grade));
-                                      setGradePopoverOpen(false);
-                                    }}
-                                  >
-                                    <Check className={cn("mr-2 h-4 w-4", selectedGrade === String(grade) ? "opacity-100" : "opacity-0")} />
-                                    {selectedCategory === 'Early Years' ? grade : `Grade ${grade}`}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                </TooltipTrigger>
+                {atClassLimit && (
+                    <TooltipContent>
+                    <p>You have reached the class limit for your current plan.</p>
+                    </TooltipContent>
+                )}
+                </Tooltip>
+                <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Add New Class</DialogTitle>
+                    <DialogDescription>
+                    Enter the name for the new class and assign its academic details.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddClass}>
+                    <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">Name</Label>
+                        <Input id="name" value={newClassName} onChange={(e) => setNewClassName(toTitleCase(e.target.value))} placeholder="e.g., Primary 5A" className="col-span-3" />
                     </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Save Class</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="category" className="text-right">Category</Label>
+                        <div className="col-span-3">
+                        <Select onValueChange={(value: ClassCategory) => {setSelectedCategory(value); setSelectedGrade(null);}} value={selectedCategory}>
+                            <SelectTrigger id="category">
+                            <SelectValue placeholder="Select category..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                            {classCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="grade" className="text-right">Grade</Label>
+                        <div className="col-span-3">
+                        <Popover open={gradePopoverOpen} onOpenChange={setGradePopoverOpen}>
+                            <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedCategory}>
+                                {selectedGrade !== null ? (selectedCategory === 'Early Years' ? selectedGrade : `Grade ${selectedGrade}`) : "Select grade..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width)] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search grade..." />
+                                <CommandList>
+                                <CommandEmpty>No grade found.</CommandEmpty>
+                                <CommandGroup>
+                                    {gradeOptions.map((grade) => (
+                                    <CommandItem
+                                        key={grade}
+                                        value={String(grade)}
+                                        onSelect={() => {
+                                        setSelectedGrade(String(grade));
+                                        setGradePopoverOpen(false);
+                                        }}
+                                    >
+                                        <Check className={cn("mr-2 h-4 w-4", selectedGrade === String(grade) ? "opacity-100" : "opacity-0")} />
+                                        {selectedCategory === 'Early Years' ? grade : `Grade ${grade}`}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </CommandList>
+                            </Command>
+                            </PopoverContent>
+                        </Popover>
+                        </div>
+                    </div>
+                    </div>
+                    <DialogFooter>
+                    <Button type="submit">Save Class</Button>
+                    </DialogFooter>
+                </form>
+                </DialogContent>
+            </Dialog>
         </div>
       </div>
 
