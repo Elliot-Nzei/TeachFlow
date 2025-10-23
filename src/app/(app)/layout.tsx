@@ -76,6 +76,7 @@ const allMenuItems = [
   { href: '/reports', label: 'Report Cards', icon: ClipboardList, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
   { href: '/lesson-generator', label: 'Lesson Generator', icon: Notebook, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
   { href: '/exam-question-generator', label: 'Exam Generator', icon: FileQuestion, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
+  { href: '/marketplace', label: 'Marketplace', icon: ShoppingCart, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
   { href: '/admin', label: 'Admin Dashboard', icon: Shield, plans: ['free_trial', 'basic', 'prime'], roles: ['admin'] },
   { href: '/transfer', label: 'Data Management', icon: Database, plans: ['prime'], roles: ['admin', 'teacher'] },
   { href: '/billing', label: 'Billing', icon: CreditCard, plans: ['free_trial', 'basic', 'prime'], roles: ['admin', 'teacher'] },
