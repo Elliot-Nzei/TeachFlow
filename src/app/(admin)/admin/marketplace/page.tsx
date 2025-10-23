@@ -88,8 +88,8 @@ export default function MarketplaceAdminPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Products</CardTitle>
-                    <CardDescription>A list of all products in the marketplace.</CardDescription>
+                    <CardTitle>Marketplace Products</CardTitle>
+                    <CardDescription>A list of all products currently in the marketplace.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {/* Mobile Card View */}
