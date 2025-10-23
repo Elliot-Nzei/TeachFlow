@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirebase, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
-import { collection, query, serverTimestamp, doc, addDoc } from 'firebase/firestore';
+import { collection, query, serverTimestamp, doc, addDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -54,13 +54,13 @@ const StatCard = ({ title, value, icon, description, isLoading }: { title: strin
 );
 
 const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, onSave: (p: Omit<Product, 'id' | 'createdAt'>, imageFile?: File | null) => void, onCancel: () => void }) => {
-    const [formData, setFormData] = useState<Omit<Product, 'id' | 'createdAt'>>({
+    const [formData, setFormData] = useState({
         name: product?.name || '',
         description: product?.description || '',
-        price: product?.price || 0,
+        price: product?.price?.toString() || '0',
         category: product?.category || 'Digital Resource',
         status: product?.status || 'active',
-        stock: product?.stock || 0,
+        stock: product?.stock?.toString() || '0',
         imageUrl: product?.imageUrl || '',
         locations: product?.locations || [],
     });
@@ -83,7 +83,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'stock' ? Number(value) : value }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const handleSelectChange = (name: 'category' | 'status', value: string) => {
@@ -92,7 +92,12 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData, imageFile);
+        const dataToSave = {
+            ...formData,
+            price: Number(formData.price) || 0,
+            stock: Number(formData.stock) || 0,
+        };
+        onSave(dataToSave, imageFile);
     }
 
     return (
@@ -125,11 +130,11 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="price">Price (₦)</Label>
-                        <Input id="price" name="price" type="number" value={formData.price} onChange={handleInputChange} required />
+                        <Input id="price" name="price" type="text" value={formData.price} onChange={handleInputChange} required />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="stock">Stock</Label>
-                        <Input id="stock" name="stock" type="number" value={formData.stock} onChange={handleInputChange} />
+                        <Input id="stock" name="stock" type="text" value={formData.stock} onChange={handleInputChange} />
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -216,37 +221,28 @@ export default function MarketplaceAdminPage() {
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt'>, imageFile?: File | null) => {
-        if (!user || !storage) return;
+        if (!user || !storage || !firestore) return;
 
         let finalImageUrl = editingProduct?.imageUrl || '';
+        const newProductId = editingProduct?.id || uuidv4();
 
         try {
+            if (imageFile) {
+                const imageRef = ref(storage, `marketplace_products/${newProductId}/image`);
+                await uploadBytes(imageRef, imageFile);
+                finalImageUrl = await getDownloadURL(imageRef);
+            }
+
+            const productRef = doc(firestore, 'marketplace_products', newProductId);
+            
             if (editingProduct) {
                 // Update existing product
-                const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
-
-                if (imageFile) {
-                    const imageRef = ref(storage, `marketplace_products/${editingProduct.id}/image`);
-                    await uploadBytes(imageRef, imageFile);
-                    finalImageUrl = await getDownloadURL(imageRef);
-                }
-
                 updateDocumentNonBlocking(productRef, { ...productData, imageUrl: finalImageUrl, updatedAt: serverTimestamp() });
                 toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
 
             } else {
                 // Add new product
-                const newProductId = uuidv4();
-                
-                if (imageFile) {
-                    const imageRef = ref(storage, `marketplace_products/${newProductId}/image`);
-                    await uploadBytes(imageRef, imageFile);
-                    finalImageUrl = await getDownloadURL(imageRef);
-                }
-                
-                const productRef = doc(firestore, 'marketplace_products', newProductId);
-                // Can't use non-blocking because we need the ID for the storage path
-                await addDoc(collection(firestore, 'marketplace_products'), { 
+                 await setDoc(productRef, { 
                     ...productData, 
                     imageUrl: finalImageUrl, 
                     sellerId: user.uid, 
