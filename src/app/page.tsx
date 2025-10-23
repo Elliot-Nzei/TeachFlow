@@ -105,7 +105,7 @@ export default function Home() {
             </DropdownMenu>
         </div>
       </header>
-      <main className="flex-1 flex flex-col items-center">
+      <main className="flex-1">
         <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28">
           <div className="container px-4 md:px-6 space-y-8 text-center">
             <div className="bg-primary/10 text-primary inline-block rounded-full px-4 py-1.5 text-sm font-semibold mb-4">
