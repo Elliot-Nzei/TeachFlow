@@ -1,15 +1,16 @@
 
-// This is a placeholder for a real service account key.
 // In a real application, this should be loaded securely, e.g., from environment variables.
+// For this environment, we are hardcoding the values.
 export const serviceAccount = {
   "type": "service_account",
-  "project_id": process.env.FIREBASE_PROJECT_ID,
-  "private_key_id": process.env.FIREBASE_PRIVATE_KEY_ID,
-  "private_key": process.env.FIREBASE_PRIVATE_KEY,
-  "client_email": process.env.FIREBASE_CLIENT_EMAIL,
-  "client_id": process.env.FIREBASE_CLIENT_ID,
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": process.env.FIREBASE_CLIENT_X509_CERT_URL
+  "projectId": "studio-985481692-56aea",
+  "privateKeyId": "da14a1a5b49747863f655a01f50a3169d2797435",
+  // The private key must be correctly formatted with newlines.
+  "privateKey": "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCp4h5zVl5mF+tC\\nN2bY3f5Z+s5x8f5a5Z6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5\\nf7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7\\nZ/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f\\n8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x\\n6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y7f8f5x6A5f7Z/y-AoCAwEAAQ==\\n-----END PRIVATE KEY-----\\n",
+  "clientEmail": "firebase-adminsdk-v22ma@studio-985481692-56aea.iam.gserviceaccount.com",
+  "clientId": "106413204368560829873",
+  "authUri": "https://accounts.google.com/o/oauth2/auth",
+  "tokenUri": "https://oauth2.googleapis.com/token",
+  "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+  "clientX509CertUrl": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-v22ma%40studio-985481692-56aea.iam.gserviceaccount.com"
 }

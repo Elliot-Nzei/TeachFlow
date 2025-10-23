@@ -12,8 +12,8 @@ function initializeFirebaseAdmin() {
     // Directly use the imported service account object
     const creds = serviceAccount as admin.ServiceAccount;
     
-    if (!creds.project_id || !creds.client_email || !creds.private_key) {
-        throw new Error('Service account is missing required fields (project_id, client_email, private_key).');
+    if (!creds.projectId || !creds.clientEmail || !creds.privateKey) {
+        throw new Error('Firebase Admin SDK service account credentials are not fully configured in service-account.ts.');
     }
 
     admin.initializeApp({
