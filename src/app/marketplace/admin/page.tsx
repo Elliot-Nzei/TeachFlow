@@ -1,22 +1,21 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { collection, getDocs, limit, query, setDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 
 // --- Admin Dashboard Component ---
 function AdminDashboard({ adminId }: { adminId: string }) {
-    // Here you would fetch and display marketplace listings, user data, etc.
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold font-headline">Marketplace Admin Dashboard</h1>
@@ -27,7 +26,6 @@ function AdminDashboard({ adminId }: { adminId: string }) {
                     <CardDescription>Create, edit, or delete items in the marketplace.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {/* Placeholder for listing management UI */}
                     <p>Listing management tools will appear here.</p>
                 </CardContent>
                 <CardFooter>
@@ -53,10 +51,8 @@ function AdminRegistration({ onRegister }: { onRegister: (adminId: string) => vo
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-
             const adminId = `MKT-ADMIN-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
-            // We use the user's UID for the document ID to link auth and Firestore
             await setDoc(doc(firestore, "users", user.uid), {
                 uid: user.uid,
                 name: name,
@@ -70,7 +66,6 @@ function AdminRegistration({ onRegister }: { onRegister: (adminId: string) => vo
             onRegister(user.uid);
 
         } catch (error) {
-            console.error("Admin registration error:", error);
             const errorMessage = error instanceof FirebaseError ? error.message : "An unknown error occurred.";
             toast({ variant: 'destructive', title: 'Registration Failed', description: errorMessage });
         } finally {
@@ -100,26 +95,28 @@ function AdminRegistration({ onRegister }: { onRegister: (adminId: string) => vo
 
 // --- Admin Login Component ---
 function AdminLogin({ onLogin }: { onLogin: (adminId: string) => void }) {
-    const [adminIdInput, setAdminIdInput] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
-    const { firestore } = useFirebase();
+    const { auth, firestore } = useFirebase();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         try {
-            // In a real scenario, this would involve a proper auth flow.
-            // For this implementation, we are just checking if a user with this ID and role exists.
-            const q = query(collection(firestore, 'users'), where('userCode', '==', adminIdInput), where('role', '==', 'marketplace_admin'), limit(1));
-            const querySnapshot = await getDocs(q);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
             
-            if (querySnapshot.empty) {
-                throw new Error("Invalid Marketplace Admin ID.");
-            }
-            const adminDoc = querySnapshot.docs[0];
-            onLogin(adminDoc.id);
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
 
+            if (!userDocSnap.exists() || userDocSnap.data().role !== 'marketplace_admin') {
+                await auth.signOut();
+                throw new Error("This account does not have marketplace administrator privileges.");
+            }
+            
+            onLogin(user.uid);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             toast({ variant: 'destructive', title: 'Login Failed', description: errorMessage });
@@ -132,12 +129,12 @@ function AdminLogin({ onLogin }: { onLogin: (adminId: string) => void }) {
         <Card className="w-full max-w-md">
             <CardHeader>
                 <CardTitle>Marketplace Admin Login</CardTitle>
-                <CardDescription>Enter your unique Marketplace Admin ID to manage listings.</CardDescription>
+                <CardDescription>Enter your marketplace administrator credentials.</CardDescription>
             </CardHeader>
             <form onSubmit={handleLogin}>
-                <CardContent className="space-y-2">
-                    <Label htmlFor="admin-id">Admin ID</Label>
-                    <Input id="admin-id" placeholder="MKT-ADMIN-..." value={adminIdInput} onChange={(e) => setAdminIdInput(e.target.value.toUpperCase())} required />
+                <CardContent className="space-y-4">
+                     <div className="space-y-2"><Label htmlFor="email">Email Address</Label><Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required /></div>
+                    <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required /></div>
                 </CardContent>
                 <CardFooter>
                     <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? 'Verifying...' : 'Login'}</Button>
@@ -147,47 +144,53 @@ function AdminLogin({ onLogin }: { onLogin: (adminId: string) => void }) {
     );
 }
 
-
 // --- Main Page Component ---
 export default function MarketplaceAdminPage() {
-    const { firestore } = useFirebase();
-    const [hasAdmin, setHasAdmin] = useState<boolean | null>(null);
-    const [loggedInAdminId, setLoggedInAdminId] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
-
-    useEffect(() => {
-        const checkAdmin = async () => {
-            setIsLoading(true);
-            const adminQuery = query(collection(firestore, 'users'), where('role', '==', 'marketplace_admin'), limit(1));
-            const adminSnapshot = await getDocs(adminQuery);
-            const adminExists = !adminSnapshot.empty;
-            setHasAdmin(adminExists);
-            setIsLoading(false);
-        };
-        checkAdmin();
-    }, [firestore, loggedInAdminId]); // Re-check if an admin logs in
-
-    const handleLoginSuccess = (adminId: string) => {
-        setLoggedInAdminId(adminId);
-        // Persist login state, e.g., in sessionStorage
-        sessionStorage.setItem('marketplaceAdminId', adminId);
-    };
+    const { firestore, auth } = useFirebase();
+    const { user: currentUser, isUserLoading } = useUser();
+    const { toast } = useToast();
     
-     const handleRegisterSuccess = (adminId: string) => {
-        setLoggedInAdminId(adminId);
-        setHasAdmin(true);
-        sessionStorage.setItem('marketplaceAdminId', adminId);
-    };
+    const [pageState, setPageState] = useState<'loading' | 'dashboard' | 'login' | 'register' | 'denied'>('loading');
+    const [adminId, setAdminId] = useState<string | null>(null);
 
     useEffect(() => {
-        const storedAdminId = sessionStorage.getItem('marketplaceAdminId');
-        if (storedAdminId) {
-            setLoggedInAdminId(storedAdminId);
-        }
-    }, []);
+        const checkAccess = async () => {
+            if (isUserLoading) return;
 
-    if (isLoading || hasAdmin === null) {
+            if (!currentUser) {
+                // If no one is logged in, we need to check if a marketplace admin exists at all.
+                const adminQuery = query(collection(firestore, 'users'), where('role', '==', 'marketplace_admin'), limit(1));
+                const adminSnapshot = await getDocs(adminQuery);
+                setPageState(adminSnapshot.empty ? 'register' : 'login');
+                return;
+            }
+            
+            // If a user is logged in, check their role.
+            const userDocRef = doc(firestore, 'users', currentUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                if (userData.role === 'admin' || userData.role === 'marketplace_admin') {
+                    setAdminId(currentUser.uid);
+                    setPageState('dashboard');
+                } else {
+                    setPageState('denied');
+                }
+            } else {
+                 setPageState('denied');
+            }
+        };
+
+        checkAccess();
+    }, [firestore, currentUser, isUserLoading]);
+
+    const handleLoginOrRegisterSuccess = (newAdminId: string) => {
+        setAdminId(newAdminId);
+        setPageState('dashboard');
+    };
+
+    if (pageState === 'loading') {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -195,13 +198,27 @@ export default function MarketplaceAdminPage() {
         );
     }
     
-    if (loggedInAdminId) {
-        return <AdminDashboard adminId={loggedInAdminId} />;
+    if (pageState === 'dashboard' && adminId) {
+        return <AdminDashboard adminId={adminId} />;
     }
 
+    if (pageState === 'denied') {
+        return (
+             <div className="flex items-center justify-center h-full">
+                <Card className="w-full max-w-md text-center">
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-center gap-2"><Lock className="h-5 w-5" /> Access Denied</CardTitle>
+                        <CardDescription>You do not have permission to view this page.</CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        );
+    }
+    
     return (
         <div className="flex items-center justify-center h-full">
-            {hasAdmin ? <AdminLogin onLogin={handleLoginSuccess} /> : <AdminRegistration onRegister={handleRegisterSuccess} />}
+            {pageState === 'login' && <AdminLogin onLogin={handleLoginOrRegisterSuccess} />}
+            {pageState === 'register' && <AdminRegistration onRegister={handleLoginOrRegisterSuccess} />}
         </div>
     );
 }
