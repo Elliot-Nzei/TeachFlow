@@ -71,7 +71,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50 border-b">
-        <Logo />
+        <Logo compact={false} />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
             <Link href="/parents" passHref>
                 <Button variant="ghost">Parents</Button>

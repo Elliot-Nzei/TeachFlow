@@ -164,7 +164,7 @@ export default function ParentDashboardPage() {
     return (
         <div className="flex min-h-screen w-full flex-col">
             <header className="px-4 lg:px-6 h-16 flex items-center bg-background border-b">
-                <Logo />
+                <Logo compact={false} />
                 <nav className="ml-auto flex gap-2 sm:gap-4">
                 <Button variant="outline" onClick={handleLogout}>
                     Logout

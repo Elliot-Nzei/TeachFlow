@@ -7,7 +7,7 @@ export default function TermsOfServicePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
        <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm sticky top-0 w-full z-50 border-b">
-        <Logo />
+        <Logo compact={false} />
         <nav className="ml-auto">
             <Link href="/register" passHref><Button>Get Started</Button></Link>
         </nav>

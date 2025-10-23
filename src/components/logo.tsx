@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import React from "react";
 
 interface LogoProps {
   className?: string;
@@ -10,6 +11,11 @@ interface LogoProps {
 }
 
 export function Logo({ className, compact = false }: LogoProps) {
+  // Generate a unique ID for each instance of the logo to avoid gradient conflicts
+  const uniqueId = React.useId();
+  const gradientTealId = `g-teal-${uniqueId}`;
+  const gradientHexId = `g-hex-${uniqueId}`;
+
   return (
     <Link
       href="/"
@@ -27,6 +33,19 @@ export function Logo({ className, compact = false }: LogoProps) {
             <title id="logo-title">TeachFlow Logo</title>
             <desc id="logo-desc">TeachFlow brand mark with adaptive color scheme for light and dark modes.</desc>
             
+             <defs>
+                <linearGradient id={gradientTealId} x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0" stopColor="var(--logo-gradient-start)" />
+                    <stop offset="0.45" stopColor="var(--logo-gradient-mid)" />
+                    <stop offset="1" stopColor="var(--logo-gradient-end)" />
+                </linearGradient>
+
+                <linearGradient id={gradientHexId} x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0" stopColor="var(--logo-hex-start)" />
+                    <stop offset="1" stopColor="var(--logo-hex-end)" />
+                </linearGradient>
+            </defs>
+
             <g transform="translate(512,260)">
                 <path d="
                 M -160 -160
@@ -38,12 +57,12 @@ export function Logo({ className, compact = false }: LogoProps) {
                 L 80 160
                 L -160 160
                 Z"
-                fill="url(#g-teal)" />
+                fill={`url(#${gradientTealId})`} />
 
                 <rect x="-120" y="-120" width="160" height="240" fill="var(--logo-bg-color)" />
 
                 <polygon points="0,-60 52,-30 52,30 0,60 -52,30 -52,-30"
-                        fill="url(#g-hex)" />
+                        fill={`url(#${gradientHexId})`} />
             </g>
 
             {!compact && (
