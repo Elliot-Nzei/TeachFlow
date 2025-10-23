@@ -4,12 +4,13 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Users, ClipboardList, GraduationCap, DollarSign, Lock, Building } from 'lucide-react';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where, collectionGroup } from 'firebase/firestore';
+import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, where, collectionGroup, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
 import { Button } from '@/components/ui/button';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string; value: string | number; icon: React.ReactNode; isLoading?: boolean }) => (
   <Card>
@@ -24,8 +25,12 @@ const StatCard = ({ title, value, icon, isLoading }: { title: string; value: str
 );
 
 export default function AdminDashboardPage() {
-    const { firestore, user, isUserLoading } = useFirebase();
+    const { firestore } = useFirebase();
+    const { user, isUserLoading } = useUser();
     const router = useRouter();
+
+    const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
 
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('role', '==', 'teacher')) : null, [firestore]);
     const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
@@ -36,8 +41,6 @@ export default function AdminDashboardPage() {
     const studentsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'students') : null, [firestore]);
     const { data: students, isLoading: isLoadingStudents } = useCollection(studentsQuery);
 
-    const userProfileQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users'), where('uid', '==', user.uid)) : null, [firestore, user]);
-    const { data: userProfile, isLoading: isLoadingProfile } = useCollection(userProfileQuery);
 
     const isLoading = isLoadingUsers || isLoadingClasses || isLoadingStudents || isUserLoading || isLoadingProfile;
     
@@ -63,7 +66,19 @@ export default function AdminDashboardPage() {
         prime: { label: 'Prime', color: 'hsl(var(--chart-4))' },
     } satisfies ChartConfig;
 
-    if (!isLoading && userProfile && userProfile[0]?.role !== 'admin') {
+    if (isLoading) {
+        return (
+             <div className="space-y-6">
+                <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                    {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-28" />)}
+                </div>
+                <Skeleton className="h-80 w-full" />
+            </div>
+        )
+    }
+
+    if (userProfile?.role !== 'admin') {
          return (
              <div className="flex items-center justify-center h-full">
                 <Card className="max-w-md text-center">

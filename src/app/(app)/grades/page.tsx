@@ -29,7 +29,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
 
-type GradeInput = { studentId: string; studentName: string; avatarUrl: string; ca1: number | string; ca2: number | string; exam: number | string; };
+type GradeInput = { studentId: string; studentName: string; avatarUrl: string; ca1: number | string; ca2: number | string; exam: number | string; total: number; grade: string; };
 
 const calculateNigerianGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
   if (score >= 75) return 'A';
@@ -39,6 +39,10 @@ const calculateNigerianGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F
   if (score >= 45) return 'E';
   return 'F';
 };
+
+const calculateTotal = (ca1: number | string, ca2: number | string, exam: number | string) => {
+    return (Number(ca1) || 0) + (Number(ca2) || 0) + (Number(exam) || 0);
+}
 
 export default function GradesPage() {
   const { firestore } = useFirebase();
@@ -105,6 +109,7 @@ export default function GradesPage() {
             const existingGrade = (allGradesForClass || []).find(
                 (g: Grade) => g.studentId === student.id && g.subject === subject && g.term === settings?.currentTerm && g.session === settings?.currentSession
             );
+            const total = calculateTotal(existingGrade?.ca1 || '', existingGrade?.ca2 || '', existingGrade?.exam || '');
             return {
                 studentId: student.id,
                 studentName: student.name,
@@ -112,6 +117,8 @@ export default function GradesPage() {
                 ca1: existingGrade?.ca1 || '',
                 ca2: existingGrade?.ca2 || '',
                 exam: existingGrade?.exam || '',
+                total: total,
+                grade: calculateNigerianGrade(total),
             };
         });
         setGradeInputs(studentGrades);
@@ -120,7 +127,14 @@ export default function GradesPage() {
 
   const handleScoreChange = (studentId: string, field: 'ca1' | 'ca2' | 'exam', value: string) => {
     setGradeInputs(prev => 
-        prev.map(gi => gi.studentId === studentId ? {...gi, [field]: value} : gi)
+        prev.map(gi => {
+            if (gi.studentId === studentId) {
+                const newValues = {...gi, [field]: value};
+                const total = calculateTotal(newValues.ca1, newValues.ca2, newValues.exam);
+                return {...newValues, total, grade: calculateNigerianGrade(total)};
+            }
+            return gi;
+        })
     );
   };
   
@@ -143,10 +157,6 @@ export default function GradesPage() {
         const exam = Number(input.exam);
         
         if (isNaN(ca1) && isNaN(ca2) && isNaN(exam)) return;
-
-        const total = (ca1 || 0) + (ca2 || 0) + (exam || 0);
-        
-        const grade = calculateNigerianGrade(total);
         
         const existingGrade = (allGradesForClass || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject && g.term === settings.currentTerm && g.session === settings.currentSession);
 
@@ -159,8 +169,8 @@ export default function GradesPage() {
             ca1: ca1 || 0,
             ca2: ca2 || 0,
             exam: exam || 0,
-            total,
-            grade,
+            total: input.total,
+            grade: input.grade,
             studentName: input.studentName,
             className: selectedClass.name,
         };
