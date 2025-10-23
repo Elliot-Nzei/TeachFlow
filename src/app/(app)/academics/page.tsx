@@ -159,7 +159,7 @@ export default function AcademicsPage() {
                                 )}
                             </div>
                             
-                            <Popover open={openPopovers[cls.id]} onOpenChange={(isOpen) => setOpenPopovers(prev => ({...prev, [cls.id]: isOpen}))}>
+                            <Popover open={!!openPopovers[cls.id]} onOpenChange={(isOpen) => setOpenPopovers(prev => ({...prev, [cls.id]: isOpen}))}>
                                 <PopoverTrigger asChild>
                                 <Button variant="outline" size="sm">
                                     <PlusCircle className="mr-2 h-4 w-4" />
