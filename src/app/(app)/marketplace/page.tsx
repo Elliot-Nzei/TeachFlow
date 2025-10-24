@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { usePlan } from '@/contexts/plan-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Lock, Search, Filter, X, ShoppingCart, Package, Star, MapPin, TrendingUp, Sparkles } from 'lucide-react';
+import { Loader2, Lock, Search, Filter, X, ShoppingCart, Package, Star, MapPin, TrendingUp, Sparkles, PackageOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -92,7 +92,7 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
                             </div>
                         )}
                         <div className="absolute top-2 left-2">
-                            <Badge variant="secondary" className="text-xs bg-white/90 backdrop-blur-sm">
+                            <Badge variant="secondary" className="text-xs bg-white/90 text-black backdrop-blur-sm">
                                 <span className="mr-1">{getCategoryIcon(product.category)}</span>
                                 {product.category}
                             </Badge>
@@ -469,7 +469,7 @@ export default function MarketplacePage() {
                         ) : (
                             <Card className="border-2 border-dashed">
                                 <CardContent className="flex flex-col items-center justify-center text-center py-16 sm:py-20">
-                                    <Package className="h-16 w-16 sm:h-20 sm:w-20 text-muted-foreground/40 mb-4" />
+                                    <PackageOpen className="h-16 w-16 sm:h-20 sm:w-20 text-muted-foreground/40 mb-4" />
                                     <h3 className="text-lg sm:text-xl font-semibold mb-2">No Products Found</h3>
                                     <p className="text-sm sm:text-base text-muted-foreground mb-6 max-w-md">
                                         We couldn't find any products matching your criteria. Try adjusting your filters or search term.
@@ -499,7 +499,7 @@ export default function MarketplacePage() {
                                     priority
                                 />
                                 <div className="absolute top-4 left-4">
-                                    <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
+                                    <Badge variant="secondary" className="bg-white/90 text-black backdrop-blur-sm">
                                         <span className="mr-1">{getCategoryIcon(selectedProduct.category)}</span>
                                         {selectedProduct.category}
                                     </Badge>
