@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +39,9 @@ export default function AdminDashboardPage() {
 
   const isLoading = isLoadingUsers || isLoadingProducts || isLoadingRecentUsers;
   const filteredRecentUsers = recentUsers?.filter(u => u.id !== user?.uid);
+  
+  // Exclude the admin from the total user count
+  const totalUserCount = users ? users.length - 1 : 0;
 
   return (
     <div className="space-y-8">
@@ -57,12 +61,12 @@ export default function AdminDashboardPage() {
               {isLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-3xl font-bold">{users?.length || 0}</div>
+                <div className="text-3xl font-bold">{totalUserCount >= 0 ? totalUserCount : 0}</div>
               )}
             </div>
           </CardHeader>
           <CardContent>
-            <CardDescription>The total number of registered users on the platform.</CardDescription>
+            <CardDescription>The total number of registered users on the platform (excluding admins).</CardDescription>
           </CardContent>
         </Card>
         <Card>
