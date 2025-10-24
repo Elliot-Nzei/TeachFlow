@@ -8,6 +8,8 @@ import {
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -29,33 +31,63 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
- * Handles nullable references.
- * 
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedDocRef or BAD THINGS WILL HAPPEN
- * use useMemoFirebase to memoize it per React guidence.  Also make sure that its dependencies are stable
- * references
+ * Handles nullable references and optional admin role enforcement.
  *
- *
- * @template T Optional type for document data. Defaults to any.
- * @param {DocumentReference<DocumentData> | null | undefined} docRef -
- * The Firestore DocumentReference. Waits if null/undefined.
- * @returns {UseDocResult<T>} Object with data, isLoading, error.
+ * @param {DocumentReference<DocumentData> | null | undefined} memoizedDocRef -
+ * The memoized Firestore DocumentReference.
+ * @param {object} [options] - Optional parameters.
+ * @param {boolean} [options.requiresAdmin] - If true, the hook waits for user auth and verifies admin role before executing the query.
  */
 export function useDoc<T = any>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+  options: { requiresAdmin?: boolean } = {}
 ): UseDocResult<T> {
-  const { isUserLoading } = useFirebase();
+  const { isUserLoading, user, firestore } = useFirebase();
+  const { requiresAdmin = false } = options;
+
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(!requiresAdmin);
+  const [isRoleChecked, setIsRoleChecked] = useState<boolean>(!requiresAdmin);
 
   useEffect(() => {
-    if (isUserLoading || !memoizedDocRef) {
+    if (!requiresAdmin || isUserLoading || !user) {
+      return;
+    }
+    
+    setIsRoleChecked(false);
+    const userDocRef = doc(firestore, 'users', user.uid);
+    getDoc(userDocRef).then(docSnap => {
+      if (docSnap.exists() && docSnap.data().role === 'admin') {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+      setIsRoleChecked(true);
+    }).catch(() => {
+        setIsAdmin(false);
+        setIsRoleChecked(true);
+    });
+
+  }, [requiresAdmin, user, isUserLoading, firestore]);
+
+  useEffect(() => {
+    const isReadyForQuery = !requiresAdmin || (isRoleChecked && isAdmin);
+    
+    if (isUserLoading || !memoizedDocRef || !isReadyForQuery) {
       setData(null);
-      setIsLoading(!isUserLoading);
+      setIsLoading(!isUserLoading && isRoleChecked);
       setError(null);
+      return;
+    }
+
+    if (requiresAdmin && !isAdmin) {
+      setData(null);
+      setIsLoading(false);
+      setError(new Error("You don't have permission to view this data."));
       return;
     }
 
@@ -77,7 +109,7 @@ export function useDoc<T = any>(
         setError(null);
         setIsLoading(false);
       },
-      async (err: FirestoreError) => {
+      (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
@@ -92,9 +124,9 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, isUserLoading]);
+  }, [memoizedDocRef, isUserLoading, isAdmin, isRoleChecked, requiresAdmin]);
 
-  return { data, isLoading, error };
+  const finalLoadingState = isLoading || (requiresAdmin && !isRoleChecked);
+
+  return { data, isLoading: finalLoadingState, error };
 }
-
-    

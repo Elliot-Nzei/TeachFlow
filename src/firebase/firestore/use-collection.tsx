@@ -9,6 +9,8 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -41,39 +43,67 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries.
- * 
+ * Handles nullable references/queries and optional admin role enforcement.
  *
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemoFirebase to memoize it per React guidence. Also make sure that its dependencies are stable
- * references
- *  
- * @template T Optional type for document data. Defaults to any.
- * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
- * The Firestore CollectionReference or Query. Waits if null/undefined.
- * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
+ * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} memoizedTargetRefOrQuery -
+ * The memoized Firestore CollectionReference or Query.
+ * @param {object} [options] - Optional parameters.
+ * @param {boolean} [options.requiresAdmin] - If true, the hook waits for user auth and verifies admin role before executing the query.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | InternalQuery | null | undefined,
+  memoizedTargetRefOrQuery: CollectionReference<DocumentData> | InternalQuery | null | undefined,
+  options: { requiresAdmin?: boolean } = {}
 ): UseCollectionResult<T> {
-  const { isUserLoading } = useFirebase();
+  const { isUserLoading, user, firestore } = useFirebase();
+  const { requiresAdmin = false } = options;
+
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(!requiresAdmin);
+  const [isRoleChecked, setIsRoleChecked] = useState<boolean>(!requiresAdmin);
 
   useEffect(() => {
-    // Do not run the query if the user is still loading, or if the query itself is not ready.
-    if (isUserLoading || !memoizedTargetRefOrQuery) {
+    if (!requiresAdmin || isUserLoading || !user) {
+      return;
+    }
+    
+    setIsRoleChecked(false);
+    const userDocRef = doc(firestore, 'users', user.uid);
+    getDoc(userDocRef).then(docSnap => {
+      if (docSnap.exists() && docSnap.data().role === 'admin') {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+      setIsRoleChecked(true);
+    }).catch(() => {
+        setIsAdmin(false);
+        setIsRoleChecked(true);
+    });
+
+  }, [requiresAdmin, user, isUserLoading, firestore]);
+
+  useEffect(() => {
+    const isReadyForQuery = !requiresAdmin || (isRoleChecked && isAdmin);
+    
+    if (isUserLoading || !memoizedTargetRefOrQuery || !isReadyForQuery) {
       setData(null);
-      setIsLoading(!isUserLoading); // If user is loading, we are loading. If query is null, we are not.
+      setIsLoading(!isUserLoading && isRoleChecked);
       setError(null);
-      return; // <-- CRITICAL FIX: Explicitly return to prevent listener setup.
+      return;
     }
 
-    // A simple dev-time check to ensure memoization is used.
+    if (requiresAdmin && !isAdmin) {
+      setData(null);
+      setIsLoading(false);
+      setError(new Error("You don't have permission to view this data."));
+      return;
+    }
+    
     if (!(memoizedTargetRefOrQuery as any).__memo) {
       console.warn("useCollection was called with a query that was not created with useMemoFirebase. This can lead to infinite loops and performance issues.", memoizedTargetRefOrQuery);
     }
@@ -89,7 +119,7 @@ export function useCollection<T = any>(
         setError(null);
         setIsLoading(false);
       },
-      async (err: FirestoreError) => {
+      (err: FirestoreError) => {
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
@@ -104,13 +134,14 @@ export function useCollection<T = any>(
         setData(null);
         setIsLoading(false);
         
-        // Throw the error to be caught by the global error boundary
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isUserLoading]);
+  }, [memoizedTargetRefOrQuery, isUserLoading, isAdmin, isRoleChecked, requiresAdmin]);
 
-  return { data, isLoading, error };
+  const finalLoadingState = isLoading || (requiresAdmin && !isRoleChecked);
+
+  return { data, isLoading: finalLoadingState, error };
 }

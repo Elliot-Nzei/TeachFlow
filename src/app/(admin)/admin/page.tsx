@@ -36,18 +36,24 @@ const StatCard = ({ title, value, icon, description, isLoading }: { title: strin
 
 export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const router = useRouter();
     const [greeting, setGreeting] = useState('');
 
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
-    const usersQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
-    const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery);
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+    const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery, { requiresAdmin: true });
 
-    const studentsQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collectionGroup(firestore, 'students')) : null, [firestore, userProfile]);
-    const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
+    const studentsQuery = useMemoFirebase(() => query(collectionGroup(firestore, 'students')), [firestore]);
+    const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery, { requiresAdmin: true });
+
+    useEffect(() => {
+        if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
+            router.push('/dashboard');
+        }
+    }, [userProfile, isProfileLoading, router]);
 
     const totalRevenue = useMemo(() => {
         if (!allUsers) return 0;
@@ -65,12 +71,6 @@ export default function AdminDashboardPage() {
     }, [allUsers]);
     
     useEffect(() => {
-        if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
-            router.push('/dashboard');
-        }
-    }, [userProfile, isProfileLoading, router]);
-
-    useEffect(() => {
         const now = new Date();
         const hour = now.getHours();
         if (hour < 12) {
@@ -82,9 +82,9 @@ export default function AdminDashboardPage() {
         }
     }, []);
 
-    const isLoading = isProfileLoading || (userProfile?.role === 'admin' && (isLoadingUsers || isLoadingStudents));
+    const isLoading = isUserLoading || isProfileLoading || isLoadingUsers || isLoadingStudents;
     
-    if (isProfileLoading) {
+    if (isLoading) {
       return (
         <div className="space-y-6 p-4 md:p-6">
           <Skeleton className="h-10 w-1/3" />

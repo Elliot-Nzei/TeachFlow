@@ -211,16 +211,16 @@ export default function MarketplaceAdminPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery, { requiresAdmin: true });
+
+    const productsQuery = useMemoFirebase(() => query(collection(firestore, 'marketplace_products')), [firestore]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery, { requiresAdmin: true });
 
     useEffect(() => {
         if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
             router.push('/dashboard');
         }
     }, [userProfile, isProfileLoading, router]);
-
-    const productsQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'marketplace_products')) : null, [firestore, userProfile]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
         if (!user || !firestore) return;
@@ -275,7 +275,7 @@ export default function MarketplaceAdminPage() {
         return `https://picsum.photos/seed/${product.id}/${dimensions}`;
     };
     
-    if (isProfileLoading) {
+    if (isProfileLoading || isLoadingProducts) {
         return (
              <div className="space-y-6">
                 <Skeleton className="h-10 w-1/3" />
