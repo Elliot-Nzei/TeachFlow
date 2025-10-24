@@ -143,7 +143,15 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setProduct(prev => ({ ...prev, [name]: value }));
+    // Allow empty string for user input flexibility
+    if (value === '') {
+        setProduct(prev => ({ ...prev, [name]: '' }));
+    } else {
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+            setProduct(prev => ({ ...prev, [name]: numValue }));
+        }
+    }
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -179,8 +187,8 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
     try {
       const dataToSave = {
         ...product,
-        price: Number(product.price),
-        stock: Number(product.stock),
+        price: Number(product.price || 0),
+        stock: Number(product.stock || 0),
       };
 
       const result = await upsertProduct(dataToSave as Product);
@@ -211,8 +219,8 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
 
   return (
     <form onSubmit={handleSubmit}>
-      <ScrollArea className="h-[60vh] p-1">
-        <div className="space-y-4 pr-6">
+      <ScrollArea className="h-[50vh] sm:h-[60vh] p-1">
+        <div className="space-y-4 pr-4 sm:pr-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Product Name */}
             <div className="space-y-2 sm:col-span-2">
@@ -746,8 +754,8 @@ export default function AdminMarketplacePage() {
             ) : filteredProducts.length > 0 ? (
               filteredProducts.map(product => (
                 <Card key={product.id} className="overflow-hidden flex flex-col">
-                  <CardHeader className="p-0">
-                    <div className="relative aspect-video bg-muted">
+                  <CardHeader className="p-2">
+                    <div className="relative aspect-video mb-2 bg-muted rounded-md overflow-hidden">
                       <Image 
                         src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
                         alt={product.name} 
@@ -755,14 +763,14 @@ export default function AdminMarketplacePage() {
                         className="object-cover" 
                       />
                     </div>
+                    <CardTitle className="text-sm line-clamp-2">{product.name}</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 space-y-2 text-xs sm:text-sm flex-grow">
-                     <CardTitle className="text-sm sm:text-base line-clamp-2 font-semibold">{product.name}</CardTitle>
-                    <div className="flex justify-between items-center">
+                  <CardContent className="space-y-1 text-xs p-2 pt-0 flex-grow">
+                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Price:</span>
                       <span className="font-semibold">₦{product.price.toLocaleString()}</span>
                     </div>
-                     <div className="flex justify-between items-center">
+                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Stock:</span>
                       <span>{product.stock === 0 ? "Unlimited" : product.stock}</span>
                     </div>
