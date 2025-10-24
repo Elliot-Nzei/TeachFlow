@@ -73,8 +73,14 @@ interface ProductFormProps {
   onCancel: () => void;
 }
 
+type ProductFormState = Partial<Omit<Product, 'price' | 'stock'> & {
+    price: number | string;
+    stock: number | string;
+}>;
+
+
 const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: ProductFormProps) => {
-  const [product, setProduct] = useState<Partial<Product>>(
+  const [product, setProduct] = useState<ProductFormState>(
     initialProduct || { ...initialProductState, sellerId: user.uid }
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,11 +108,11 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
       newErrors.description = 'Description must be at least 10 characters';
     }
 
-    if (product.price === undefined || product.price < 0) {
+    if (product.price === undefined || product.price === '' || Number(product.price) < 0) {
       newErrors.price = 'Price must be 0 or greater';
     }
 
-    if (product.stock === undefined || product.stock < 0) {
+    if (product.stock === undefined || product.stock === '' || Number(product.stock) < 0) {
       newErrors.stock = 'Stock must be 0 or greater';
     }
 
@@ -137,8 +143,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const numValue = value === '' ? 0 : parseFloat(value);
-    setProduct(prev => ({ ...prev, [name]: numValue }));
+    setProduct(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -172,7 +177,13 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
 
     setIsSubmitting(true);
     try {
-      const result = await upsertProduct(product as Product);
+      const dataToSave = {
+        ...product,
+        price: Number(product.price),
+        stock: Number(product.stock),
+      };
+
+      const result = await upsertProduct(dataToSave as Product);
       if (result.success) {
         toast({
           title: 'Success',
@@ -200,8 +211,8 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
 
   return (
     <form onSubmit={handleSubmit}>
-      <ScrollArea className="h-[50vh] sm:h-[60vh] p-1">
-        <div className="space-y-4 pr-4 sm:pr-6">
+      <ScrollArea className="h-[60vh] p-1">
+        <div className="space-y-4 pr-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Product Name */}
             <div className="space-y-2 sm:col-span-2">
@@ -251,7 +262,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
                 type="number"
                 min="0"
                 step="0.01"
-                value={product.price || 0}
+                value={product.price ?? ''}
                 onChange={handleNumberChange}
                 className={errors.price ? 'border-destructive' : ''}
               />
@@ -270,7 +281,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
                 name="stock"
                 type="number"
                 min="0"
-                value={product.stock || 0}
+                value={product.stock ?? ''}
                 onChange={handleNumberChange}
                 className={errors.stock ? 'border-destructive' : ''}
               />
@@ -646,7 +657,7 @@ export default function AdminMarketplacePage() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2 sm:pb-3">
+          <CardHeader className="p-3 pb-2 sm:pb-3">
             <CardDescription className="text-xs sm:text-sm">Total Products</CardDescription>
             {isLoading ? (
               <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
@@ -656,7 +667,7 @@ export default function AdminMarketplacePage() {
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="pb-2 sm:pb-3">
+          <CardHeader className="p-3 pb-2 sm:pb-3">
             <CardDescription className="text-xs sm:text-sm">Active</CardDescription>
             {isLoading ? (
               <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
@@ -666,7 +677,7 @@ export default function AdminMarketplacePage() {
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="pb-2 sm:pb-3">
+          <CardHeader className="p-3 pb-2 sm:pb-3">
             <CardDescription className="text-xs sm:text-sm">Archived</CardDescription>
             {isLoading ? (
               <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
@@ -676,7 +687,7 @@ export default function AdminMarketplacePage() {
           </CardHeader>
         </Card>
         <Card className="col-span-2 lg:col-span-1">
-          <CardHeader className="pb-2 sm:pb-3">
+          <CardHeader className="p-3 pb-2 sm:pb-3">
             <CardDescription className="text-xs sm:text-sm">Total Value</CardDescription>
             {isLoading ? (
               <Skeleton className="h-6 sm:h-8 w-16 sm:w-20" />
