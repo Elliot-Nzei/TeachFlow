@@ -3,7 +3,16 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
 import { Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteAllData } from '@/app/actions/admin-actions';
@@ -18,6 +27,18 @@ export default function SystemPage() {
 
   const CONFIRMATION_PHRASE = 'DELETE ALL DATA';
 
+  const handleOpenDialog = () => {
+    setConfirmationText('');
+    setIsAlertOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    if (!isDeleting) {
+      setIsAlertOpen(false);
+      setConfirmationText('');
+    }
+  };
+
   const handleResetApplication = async () => {
     if (confirmationText !== CONFIRMATION_PHRASE) {
       toast({
@@ -29,40 +50,60 @@ export default function SystemPage() {
     }
     
     setIsDeleting(true);
-    toast({
-      title: 'Deletion in Progress...',
-      description: 'This may take a few moments. Please do not navigate away.',
-      duration: 10000,
-    });
-
-    const result = await deleteAllData();
-
-    if (result.success) {
+    
+    try {
       toast({
-        title: 'Application Reset Successful',
-        description: `${result.deletedUsers || 0} user(s) and all associated data have been permanently deleted. You will be logged out.`,
+        title: 'Deletion in Progress...',
+        description: 'This may take a few moments. Please do not navigate away.',
         duration: 10000,
       });
-      // Redirect to login after a delay to allow the user to read the toast.
-      setTimeout(() => {
-        router.push('/login');
-      }, 5000);
-    } else {
+
+      const result = await deleteAllData();
+
+      if (result.success) {
+        toast({
+          title: 'Application Reset Successful',
+          description: `${result.deletedUsers || 0} user(s) and all associated data have been permanently deleted. You will be logged out.`,
+          duration: 10000,
+        });
+        
+        // Close dialog before redirect
+        setIsAlertOpen(false);
+        
+        // Redirect to login after a delay to allow the user to read the toast
+        setTimeout(() => {
+          router.push('/login');
+        }, 3000);
+      } else {
+        throw new Error(result.error || 'An unexpected error occurred.');
+      }
+    } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Deletion Failed',
-        description: result.error || 'An unexpected error occurred.',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
         duration: 10000,
       });
       setIsDeleting(false);
       setIsAlertOpen(false);
+      setConfirmationText('');
     }
   };
+
+  const handleConfirmClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleResetApplication();
+  };
+
+  const isConfirmationValid = confirmationText === CONFIRMATION_PHRASE;
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold font-headline flex items-center gap-2"><AlertTriangle className="h-8 w-8 text-destructive" />System Management</h1>
+        <h1 className="text-3xl font-bold font-headline flex items-center gap-2">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          System Management
+        </h1>
         <p className="text-muted-foreground">Critical system-wide actions. Use with extreme caution.</p>
       </div>
 
@@ -74,49 +115,99 @@ export default function SystemPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm font-medium mb-4">
-            This is the point of no return. This action is irreversible and will restore the application to a completely empty state, as if it were just deployed. The only thing remaining will be your own administrator account after you re-register.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm font-medium">
+              This is the point of no return. This action is irreversible and will restore the application to a completely empty state, as if it were just deployed. The only thing remaining will be your own administrator account after you re-register.
+            </p>
 
-          <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Initiate Full System Reset
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-6 w-6 text-destructive" />
-                  Final Confirmation: Are you absolutely sure?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  You are about to delete ALL data. To proceed, type the following phrase exactly as it appears:
-                  <strong className="block text-center font-mono my-2 p-2 bg-muted rounded-md text-foreground">{CONFIRMATION_PHRASE}</strong>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <Input
-                value={confirmationText}
-                onChange={(e) => setConfirmationText(e.target.value)}
-                placeholder="Type the phrase to confirm"
-                disabled={isDeleting}
-              />
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive hover:bg-destructive/90"
-                  onClick={handleResetApplication}
-                  disabled={isDeleting || confirmationText !== CONFIRMATION_PHRASE}
-                >
-                  {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                  {isDeleting ? 'Deleting Everything...' : 'I Understand, Delete All Data'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="space-y-2 text-sm">
+                  <p className="font-semibold text-destructive">Warning: This will delete:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>All user accounts (except yours)</li>
+                    <li>All schools and their data</li>
+                    <li>All classes and students</li>
+                    <li>All grades and assessments</li>
+                    <li>All marketplace products</li>
+                    <li>Everything else in the database</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              variant="destructive" 
+              className="w-full" 
+              onClick={handleOpenDialog}
+              disabled={isDeleting}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Initiate Full System Reset
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+              Final Confirmation: Are you absolutely sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to delete ALL data. This action cannot be undone and there is no backup recovery.
+              </p>
+              <p>
+                To proceed, type the following phrase exactly as it appears:
+              </p>
+              <strong className="block text-center font-mono my-2 p-2 bg-muted rounded-md text-foreground select-all">
+                {CONFIRMATION_PHRASE}
+              </strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              value={confirmationText}
+              onChange={(e) => setConfirmationText(e.target.value)}
+              placeholder="Type the phrase to confirm"
+              disabled={isDeleting}
+              className={confirmationText && !isConfirmationValid ? 'border-destructive' : ''}
+              autoFocus
+            />
+            {confirmationText && !isConfirmationValid && (
+              <p className="text-xs text-destructive mt-2">
+                The phrase doesn't match. Please type it exactly.
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} onClick={handleCloseDialog}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleConfirmClick}
+              disabled={isDeleting || !isConfirmationValid}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting Everything...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  I Understand, Delete All Data
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
