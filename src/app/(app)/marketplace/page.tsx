@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,7 +65,7 @@ const getCategoryIcon = (category: string) => {
 };
 
 const ProductCard = ({ product, index, onClick }: { product: Product; index: number; onClick: () => void }) => {
-    const isLowStock = product.stock > 0 && product.stock < 10;
+    const isSoldOut = product.stock === 0 && product.category !== 'Digital Resource' && product.category !== 'Service';
     
     return (
         <div onClick={onClick} className="group cursor-pointer h-full">
@@ -81,12 +80,10 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
                             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                             priority={index < 8}
                         />
-                        {isLowStock && (
-                            <div className="absolute top-2 right-2">
-                                <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
-                                    Low Stock
-                                </Badge>
-                            </div>
+                         {isSoldOut && (
+                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <Badge variant="destructive" className="text-sm px-3 py-1">SOLD OUT</Badge>
+                             </div>
                         )}
                         <div className="absolute top-2 left-2">
                             <Badge variant="secondary" className="text-xs bg-white/90 text-black backdrop-blur-sm">
@@ -122,9 +119,9 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
                             ₦{product.price.toLocaleString()}
                         </span>
                     </div>
-                    <Button size="sm" variant="default" className="gap-1 group-hover:gap-2 transition-all">
-                        View
-                        <ShoppingCart className="h-3 w-3" />
+                    <Button size="sm" variant="default" className="gap-1 group-hover:gap-2 transition-all" disabled={isSoldOut}>
+                        {isSoldOut ? 'Sold Out' : 'View'}
+                        {!isSoldOut && <ShoppingCart className="h-3 w-3" />}
                     </Button>
                 </CardFooter>
             </Card>
@@ -503,6 +500,11 @@ export default function MarketplacePage() {
                                         </Badge>
                                     </div>
                                 )}
+                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service' && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                       <Badge variant="destructive" className="text-sm px-3 py-1">SOLD OUT</Badge>
+                                    </div>
+                                )}
                             </div>
                             <SheetTitle className="text-xl sm:text-2xl font-headline pr-8">
                                 {selectedProduct.name}
@@ -564,9 +566,11 @@ export default function MarketplacePage() {
                                         Stock Status
                                     </h3>
                                     <p className="text-sm text-muted-foreground">
-                                        {selectedProduct.stock === 0 
-                                            ? 'Digital product or unlimited stock available' 
-                                            : `${selectedProduct.stock} unit${selectedProduct.stock > 1 ? 's' : ''} available`
+                                        {selectedProduct.category === 'Digital Resource' || selectedProduct.category === 'Service'
+                                            ? 'Digital product or service'
+                                            : selectedProduct.stock > 0 
+                                            ? `${selectedProduct.stock} unit${selectedProduct.stock > 1 ? 's' : ''} available`
+                                            : 'Sold Out'
                                         }
                                     </p>
                                 </div>
@@ -575,8 +579,8 @@ export default function MarketplacePage() {
 
                         {/* Purchase Button - Sticky at bottom */}
                         <div className="pt-6 border-t bg-background mt-auto">
-                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full">
-                                <ShoppingCart className="mr-2 h-4 w-4" /> Buy Now
+                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full" disabled={selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service'}>
+                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service' ? 'Sold Out' : <><ShoppingCart className="mr-2 h-4 w-4" /> Buy Now</>}
                             </Button>
                         </div>
                     </div>

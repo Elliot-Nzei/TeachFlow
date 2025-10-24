@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,8 +65,8 @@ const getCategoryIcon = (category: string) => {
 };
 
 const ProductCard = ({ product, index, onClick }: { product: Product; index: number; onClick: () => void }) => {
-    const isSoldOut = product.stock === 0 && product.category === 'Physical Good';
-    
+    const isSoldOut = product.stock === 0 && product.category !== 'Digital Resource' && product.category !== 'Service';
+
     return (
         <div onClick={onClick} className="group cursor-pointer h-full">
             <Card className="overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-2 hover:border-primary/20">
@@ -82,9 +81,9 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
                             priority={index < 8}
                         />
                          {isSoldOut && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                <Badge variant="destructive" className="text-sm px-4 py-1">SOLD OUT</Badge>
-                            </div>
+                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <Badge variant="destructive" className="text-sm px-3 py-1">SOLD OUT</Badge>
+                             </div>
                         )}
                         <div className="absolute top-2 left-2">
                             <Badge variant="secondary" className="text-xs bg-white/90 text-black backdrop-blur-sm">
@@ -333,12 +332,6 @@ export default function MarketplacePage() {
     };
     
     const handleBuyNow = (product: Product) => {
-        const isSoldOut = product.stock === 0 && product.category === 'Physical Good';
-        if (isSoldOut) {
-            toast({ variant: 'destructive', title: 'Sold Out', description: 'This item is no longer in stock.' });
-            return;
-        }
-
         const imageUrl = getSafeImageUrl(product);
         const query = new URLSearchParams({
             productId: product.id,
@@ -494,17 +487,24 @@ export default function MarketplacePage() {
                                     className="object-cover"
                                     priority
                                 />
-                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && (
-                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                        <Badge variant="destructive" className="text-lg px-4 py-2">SOLD OUT</Badge>
-                                    </div>
-                                )}
                                 <div className="absolute top-4 left-4">
                                     <Badge variant="secondary" className="bg-white/90 text-black backdrop-blur-sm">
                                         <span className="mr-1">{getCategoryIcon(selectedProduct.category)}</span>
                                         {selectedProduct.category}
                                     </Badge>
                                 </div>
+                                {selectedProduct.stock > 0 && selectedProduct.stock < 10 && (
+                                    <div className="absolute top-4 right-4">
+                                        <Badge variant="destructive">
+                                            Only {selectedProduct.stock} left!
+                                        </Badge>
+                                    </div>
+                                )}
+                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service' && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                       <Badge variant="destructive" className="text-sm px-3 py-1">SOLD OUT</Badge>
+                                    </div>
+                                )}
                             </div>
                             <SheetTitle className="text-xl sm:text-2xl font-headline pr-8">
                                 {selectedProduct.name}
@@ -566,11 +566,12 @@ export default function MarketplacePage() {
                                         Stock Status
                                     </h3>
                                     <p className="text-sm text-muted-foreground">
-                                        {selectedProduct.category !== 'Physical Good' || selectedProduct.stock > 0
-                                            ? 'In Stock'
+                                        {selectedProduct.category === 'Digital Resource' || selectedProduct.category === 'Service'
+                                            ? 'Digital product or service'
+                                            : selectedProduct.stock > 0 
+                                            ? `${selectedProduct.stock} unit${selectedProduct.stock > 1 ? 's' : ''} available`
                                             : 'Sold Out'
                                         }
-                                        {selectedProduct.category === 'Physical Good' && selectedProduct.stock > 0 && ` (${selectedProduct.stock} unit${selectedProduct.stock > 1 ? 's' : ''} available)`}
                                     </p>
                                 </div>
                             </div>
@@ -578,8 +579,8 @@ export default function MarketplacePage() {
 
                         {/* Purchase Button - Sticky at bottom */}
                         <div className="pt-6 border-t bg-background mt-auto">
-                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full" disabled={selectedProduct.category === 'Physical Good' && selectedProduct.stock === 0}>
-                                {selectedProduct.category === 'Physical Good' && selectedProduct.stock === 0 ? 'Sold Out' : <><ShoppingCart className="mr-2 h-4 w-4" /> Buy Now</>}
+                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full" disabled={selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service'}>
+                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service' ? 'Sold Out' : <><ShoppingCart className="mr-2 h-4 w-4" /> Buy Now</>}
                             </Button>
                         </div>
                     </div>
