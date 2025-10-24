@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, orderBy, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +66,10 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: { prod
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
     const [locationsPopoverOpen, setLocationsPopoverOpen] = useState(false);
+
+    useEffect(() => {
+        setProduct(initialProduct || { ...initialProductState, sellerId: user.uid });
+    }, [initialProduct, user.uid]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
