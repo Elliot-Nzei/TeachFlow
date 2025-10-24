@@ -20,7 +20,8 @@ import {
   TrendingUp,
   ShoppingCart,
   Facebook,
-  Instagram
+  Instagram,
+  Twitter
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -372,6 +373,10 @@ export default function Home() {
                 <Link href="https://www.instagram.com/teachflow.official?igsh=MTJwemh2MXNibHFscw==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
                   <Instagram className="h-6 w-6" />
                   <span className="sr-only">Instagram</span>
+                </Link>
+                <Link href="https://x.com/TeachFlow_App?t=t6EBa6xnU55byovi-6ic8w&s=09" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                  <Twitter className="h-6 w-6" />
+                  <span className="sr-only">Twitter</span>
                 </Link>
             </div>
           </div>
