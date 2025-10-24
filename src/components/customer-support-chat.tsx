@@ -136,17 +136,17 @@ export default function CustomerSupportChat({ isOpen, onOpenChange }: CustomerSu
               <DialogDescription className="sr-only">Chat with our AI assistant for help with TeachFlow.</DialogDescription>
             </DialogHeader>
             <Card className="h-full flex flex-col shadow-2xl rounded-lg">
-            <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
+            <CardHeader className="flex flex-row items-center justify-between p-4 border-b bg-primary text-primary-foreground">
                 <div className="flex items-center space-x-3">
-                <Avatar className="h-8 w-8 bg-primary text-primary-foreground flex items-center justify-center">
+                <Avatar className="h-8 w-8 bg-primary-foreground text-primary flex items-center justify-center">
                     <Bot className="h-5 w-5" />
                 </Avatar>
                 <div>
                     <CardTitle className="text-base font-semibold">TeachFlow Assistant</CardTitle>
                 </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-                <X className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground" onClick={() => onOpenChange(false)}>
+                <X className="h-5 w-5" />
                 <span className="sr-only">Close</span>
                 </Button>
             </CardHeader>
