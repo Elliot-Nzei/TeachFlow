@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle as VisuallyHiddenTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle as VisuallyHiddenTitle, DialogDescription } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -131,8 +131,9 @@ export default function CustomerSupportChat({ isOpen, onOpenChange }: CustomerSu
      return (
        <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="p-0 border-0 w-[95vw] h-[80vh] flex flex-col" hideCloseButton>
-            <DialogHeader className="sr-only">
+            <DialogHeader>
               <VisuallyHiddenTitle>TeachFlow AI Assistant</VisuallyHiddenTitle>
+              <DialogDescription className="sr-only">Chat with our AI assistant for help with TeachFlow.</DialogDescription>
             </DialogHeader>
             <Card className="h-full flex flex-col shadow-2xl rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
@@ -233,8 +234,9 @@ export default function CustomerSupportChat({ isOpen, onOpenChange }: CustomerSu
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 border-0 w-[400px] h-[600px] flex flex-col" hideCloseButton>
-        <DialogHeader className="sr-only">
+        <DialogHeader>
           <VisuallyHiddenTitle>TeachFlow AI Assistant</VisuallyHiddenTitle>
+          <DialogDescription className="sr-only">Chat with our AI assistant for help with TeachFlow.</DialogDescription>
         </DialogHeader>
         <Card className="h-full flex flex-col shadow-2xl rounded-lg">
           <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
