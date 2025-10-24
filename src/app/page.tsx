@@ -3,45 +3,78 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, CheckCircle, Send, FileQuestion, DollarSign, Menu, Star, Video, CalendarDays, Database } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  ArrowRight, 
+  BookOpen, 
+  Users, 
+  FileDown, 
+  Notebook, 
+  Menu, 
+  Star, 
+  CalendarDays, 
+  Database,
+  Check,
+  Zap,
+  Shield,
+  TrendingUp
+} from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useState } from 'react';
 
 const heroImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 const features = [
   {
-    icon: <Users className="h-6 w-6 text-primary" />,
+    icon: Users,
     title: 'Effortless Class Management',
     description: 'Organize classes, manage student profiles with auto-generated IDs, and assign subjects in a few clicks.',
   },
   {
-    icon: <BookOpen className="h-6 w-6 text-primary" />,
+    icon: BookOpen,
     title: 'Smart Gradebook',
     description: 'Input CA & exam scores with ease. Totals and grades are calculated automatically, saving you hours of work.',
   },
   {
-    icon: <CalendarDays className="h-6 w-6 text-primary" />,
+    icon: CalendarDays,
     title: 'Timetable Management',
     description: 'Create and manage weekly class schedules with an intuitive, visual drag-and-drop interface.',
   },
   {
-    icon: <FileDown className="h-6 w-6 text-primary" />,
+    icon: FileDown,
     title: 'AI Report Card Generator',
     description: 'Create professional, insightful report cards with AI-driven comments for teachers and principals.',
   },
   {
-    icon: <Notebook className="h-6 w-6 text-primary" />,
+    icon: Notebook,
     title: 'AI Lesson Note Generator',
     description: 'Generate multi-week, NERDC-compliant lesson notes for any subject, ready to download as a PDF.',
   },
   {
-    icon: <Database className="h-6 w-6 text-primary" />,
+    icon: Database,
     title: 'Secure Data Transfer',
     description: 'Securely share class data, including student rosters and grades, with other registered teachers.',
+  },
+];
+
+const benefits = [
+  {
+    icon: Zap,
+    title: 'Save 10+ Hours Weekly',
+    description: 'Automate repetitive tasks and focus on teaching',
+  },
+  {
+    icon: Shield,
+    title: 'Secure & Reliable',
+    description: 'Bank-level security for all your school data',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Improve Student Outcomes',
+    description: 'Data-driven insights to track progress',
   },
 ];
 
@@ -51,213 +84,443 @@ const testimonials = [
     role: 'Primary 4 Teacher, Lagos',
     avatar: 'https://picsum.photos/seed/teacher-1/100/100',
     comment: "TeachFlow has been a lifesaver. The AI report card generator cut my end-of-term work in half. I can't imagine going back to the old way.",
+    rating: 5,
   },
   {
     name: 'Mr. Chukwuma',
     role: 'JSS Coordinator, Abuja',
     avatar: 'https://picsum.photos/seed/teacher-2/100/100',
-    comment: 'The ability to manage all my classes, subjects, and student records in one place is fantastic. It’s so organized and easy to use.',
+    comment: "The ability to manage all my classes, subjects, and student records in one place is fantastic. It's so organized and easy to use.",
+    rating: 5,
   },
   {
     name: 'Mrs. Ibrahim',
     role: 'School Owner, Kano',
     avatar: 'https://picsum.photos/seed/teacher-3/100/100',
     comment: "The payment tracking feature alone is worth it. I can see who has paid and who is owing at a glance. It has greatly improved our school's finances.",
+    rating: 5,
   }
 ];
 
+const pricingPlans = [
+  {
+    name: 'Free Trial',
+    price: '₦0',
+    period: '30 days',
+    description: 'Perfect for trying out TeachFlow',
+    features: [
+      'Up to 2 classes',
+      'Basic gradebook',
+      'Student management',
+      '5 AI-generated reports',
+      'Email support',
+    ],
+    cta: 'Start Free Trial',
+    highlighted: false,
+  },
+  {
+    name: 'Basic',
+    price: '₦12,000',
+    period: 'per term',
+    description: 'For individual teachers',
+    features: [
+      'Unlimited classes',
+      'Full gradebook features',
+      'Attendance tracking',
+      'Unlimited AI reports',
+      'Lesson note generator',
+      'Priority email support',
+    ],
+    cta: 'Get Started',
+    highlighted: true,
+  },
+  {
+    name: 'Prime',
+    price: '₦30,000',
+    period: 'per term',
+    description: 'For schools & coordinators',
+    features: [
+      'Everything in Basic',
+      'Multi-teacher accounts',
+      'Advanced analytics',
+      'Custom branding',
+      'Data transfer',
+      'Phone & email support',
+      'Priority feature requests',
+    ],
+    cta: 'Go Prime',
+    highlighted: false,
+  },
+];
+
+const stats = [
+  { value: '500+', label: 'Active Teachers' },
+  { value: '10,000+', label: 'Students Managed' },
+  { value: '50,000+', label: 'Reports Generated' },
+  { value: '15+', label: 'Hours Saved Weekly' },
+];
 
 export default function Home() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50 border-b">
+      {/* Header */}
+      <header className="px-4 lg:px-6 h-16 flex items-center bg-background/95 backdrop-blur-md fixed top-0 w-full z-50 border-b">
         <Logo compact={false} />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
-            <Link href="/parents" passHref>
-                <Button variant="ghost">Parents</Button>
-            </Link>
-             <Link href="/about" passHref>
-                <Button variant="ghost">About Us</Button>
-            </Link>
-            <Link href="/login" passHref>
-                <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/register" passHref>
-                <Button variant="default">
-                Start for Free <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-            </Link>
+          <Link href="#features">
+            <Button variant="ghost">Features</Button>
+          </Link>
+          <Link href="#pricing">
+            <Button variant="ghost">Pricing</Button>
+          </Link>
+          <Link href="/parents">
+            <Button variant="ghost">Parents</Button>
+          </Link>
+          <Link href="/about">
+            <Button variant="ghost">About Us</Button>
+          </Link>
+          <Link href="/login">
+            <Button variant="ghost">Login</Button>
+          </Link>
+          <Link href="/register">
+            <Button variant="default">
+              Start for Free <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </nav>
         <div className="ml-auto md:hidden flex items-center gap-2">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <Menu className="h-6 w-6" />
-                        <span className="sr-only">Toggle menu</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <Link href="/parents" passHref><DropdownMenuItem>Parents</DropdownMenuItem></Link>
-                    <Link href="/about" passHref><DropdownMenuItem>About Us</DropdownMenuItem></Link>
-                    <Link href="/login" passHref><DropdownMenuItem>Login</DropdownMenuItem></Link>
-                    <Link href="/register" passHref><DropdownMenuItem>Start for Free</DropdownMenuItem></Link>
-                </DropdownMenuContent>
-            </DropdownMenu>
+          <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="#features" onClick={() => setMobileMenuOpen(false)}>Features</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="#pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/parents" onClick={() => setMobileMenuOpen(false)}>Parents</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/about" onClick={() => setMobileMenuOpen(false)}>About Us</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/register" onClick={() => setMobileMenuOpen(false)}>Start for Free</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
+
       <main className="flex-1">
-        <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28">
-          <div className="container px-4 md:px-6 space-y-8 text-center">
-            <div className="bg-primary/10 text-primary inline-block rounded-full px-4 py-1.5 text-sm font-semibold mb-4">
-                The #1 School Management Platform for Nigerian Educators
+        {/* Hero Section */}
+        <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
+          <div className="container px-4 md:px-6 space-y-8 text-center relative z-10">
+            <div className="bg-primary/10 text-primary inline-block rounded-full px-4 py-1.5 text-sm font-semibold mb-4 animate-in fade-in slide-in-from-bottom-3 duration-1000">
+              The #1 School Management Platform for Nigerian Educators
             </div>
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none font-headline">
-              Focus on Teaching, Not Paperwork.
+            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none font-headline animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150">
+              Focus on Teaching,<br />Not Paperwork.
             </h1>
-            <p className="max-w-[700px] mx-auto text-muted-foreground md:text-xl">
+            <p className="max-w-[700px] mx-auto text-muted-foreground md:text-xl animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-300">
               TeachFlow is the all-in-one tool designed for Nigerian teachers. Automate your administrative tasks, from grading and attendance to generating report cards, and get back to what you do best.
             </p>
-            <div className="flex flex-col gap-4 min-[400px]:flex-row justify-center">
-              <Link href="/register" passHref>
-                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Start Your Free Trial
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-500">
+              <Link href="/register">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all">
+                  Start Your Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="#video-demo">
+                <Button size="lg" variant="outline">
+                  Watch Demo
                 </Button>
               </Link>
             </div>
           </div>
-           {heroImage && (
-            <div className="absolute inset-0 -z-10 h-full w-full bg-background [mask-image:radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,0,0,0.3),rgba(255,255,255,0))]">
-                <Image
-                    src={heroImage.imageUrl}
-                    alt={heroImage.description}
-                    fill
-                    className="object-cover opacity-5 dark:opacity-10"
-                    data-ai-hint={heroImage.imageHint}
-                    priority
-                />
+          {heroImage && (
+            <div className="absolute inset-0 -z-10 h-full w-full bg-background">
+              <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background z-10" />
+              <Image
+                src={heroImage.imageUrl}
+                alt={heroImage.description}
+                fill
+                className="object-cover opacity-10 dark:opacity-20"
+                data-ai-hint={heroImage.imageHint}
+                priority
+              />
             </div>
-           )}
+          )}
         </section>
 
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+        {/* Stats Section */}
+        <section className="w-full py-12 bg-primary text-primary-foreground">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need in One Place</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  TeachFlow simplifies your administrative tasks so you can focus on what truly matters: teaching.
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-y-12 gap-x-8 sm:grid-cols-2 lg:grid-cols-3 pt-12">
-              {features.map((feature, index) => (
-                <div key={index} className="grid gap-2">
-                  <div className="flex items-center gap-3">
-                    {feature.icon}
-                    <h3 className="text-lg font-bold font-headline">{feature.title}</h3>
-                  </div>
-                  <p className="text-muted-foreground">{feature.description}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              {stats.map((stat, index) => (
+                <div key={index} className="space-y-2">
+                  <p className="text-3xl md:text-4xl font-bold font-headline">{stat.value}</p>
+                  <p className="text-sm md:text-base opacity-90">{stat.label}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
+        {/* Benefits Section */}
+        <section className="w-full py-12 md:py-20 bg-background">
+          <div className="container px-4 md:px-6">
+            <div className="grid md:grid-cols-3 gap-8">
+              {benefits.map((benefit, index) => (
+                <Card key={index} className="border-2 hover:border-primary/50 transition-colors">
+                  <CardContent className="p-6 text-center space-y-4">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <benefit.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold font-headline">{benefit.title}</h3>
+                    <p className="text-muted-foreground">{benefit.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">Key Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need in One Place</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
+                  TeachFlow simplifies your administrative tasks so you can focus on what truly matters: teaching.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 lg:grid-cols-3 pt-12">
+              {features.map((feature, index) => (
+                <Card key={index} className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <feature.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold font-headline">{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm">{feature.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Video Demo Section */}
         <section id="video-demo" className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">See It in Action</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">A Quick Tour of TeachFlow</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
                   Watch this short video to see how TeachFlow can revolutionize your school's workflow in just a few minutes.
                 </p>
               </div>
             </div>
             <div className="mx-auto max-w-4xl mt-12">
-              <div className="aspect-video w-full overflow-hidden rounded-xl border-4 border-primary/20 shadow-2xl">
-                 <iframe
-                    className="w-full h-full"
-                    src="https://drive.google.com/file/d/1Au75CjFL2MRKolLx9NkJKXEM9cSbBPI3/preview"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title="TeachFlow Demo Video"
-                ></iframe>
+              <div className="aspect-video w-full overflow-hidden rounded-xl border-4 border-primary/20 shadow-2xl hover:border-primary/40 transition-colors">
+                <iframe
+                  className="w-full h-full"
+                  src="https://drive.google.com/file/d/1Au75CjFL2MRKolLx9NkJKXEM9cSbBPI3/preview"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title="TeachFlow Demo Video"
+                />
               </div>
             </div>
           </div>
         </section>
-        
-        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+
+        {/* Pricing Section */}
+        <section id="pricing" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
           <div className="container px-4 md:px-6">
-             <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">What Teachers Are Saying</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                    Trusted by educators across Nigeria to simplify their work and improve efficiency.
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">Pricing</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Choose Your Plan</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
+                  Affordable pricing for Nigerian educators. Start free, upgrade when you're ready.
                 </p>
+              </div>
             </div>
-             <div className="mx-auto grid max-w-5xl items-center gap-6 pt-12 lg:grid-cols-3 lg:gap-8">
-                {testimonials.map((testimonial, index) => (
-                    <Card key={index}>
-                        <CardContent className="p-6">
-                            <div className="flex items-start gap-4">
-                                <Avatar className="h-12 w-12 border">
-                                    <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
-                                    <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <p className="text-sm font-semibold">{testimonial.name}</p>
-                                    <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-                                </div>
-                                <div className="flex text-yellow-400">
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                </div>
-                            </div>
-                             <p className="mt-4 text-muted-foreground">"{testimonial.comment}"</p>
-                        </CardContent>
-                    </Card>
-                ))}
-             </div>
+            <div className="mx-auto grid max-w-6xl items-start gap-8 lg:grid-cols-3 pt-12">
+              {pricingPlans.map((plan, index) => (
+                <Card 
+                  key={index} 
+                  className={`relative ${plan.highlighted ? 'border-primary border-2 shadow-xl scale-105' : 'border-2'}`}
+                >
+                  {plan.highlighted && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
+                      Most Popular
+                    </div>
+                  )}
+                  <CardContent className="p-6 space-y-6">
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold font-headline">{plan.name}</h3>
+                      <p className="text-muted-foreground text-sm">{plan.description}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-4xl font-bold font-headline">{plan.price}</p>
+                      <p className="text-sm text-muted-foreground">{plan.period}</p>
+                    </div>
+                    <ul className="space-y-3">
+                      {plan.features.map((feature, fIndex) => (
+                        <li key={fIndex} className="flex items-start gap-2">
+                          <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href="/register">
+                      <Button 
+                        className="w-full" 
+                        variant={plan.highlighted ? 'default' : 'outline'}
+                      >
+                        {plan.cta}
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+        
+        {/* Testimonials Section */}
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">Testimonials</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">What Teachers Are Saying</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
+                  Trusted by educators across Nigeria to simplify their work and improve efficiency.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-stretch gap-6 pt-12 lg:grid-cols-3">
+              {testimonials.map((testimonial, index) => (
+                <Card key={index} className="border-2 hover:border-primary/50 transition-colors">
+                  <CardContent className="p-6 space-y-4 h-full flex flex-col">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="h-12 w-12 border-2">
+                        <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
+                        <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{testimonial.name}</p>
+                        <p className="text-xs text-muted-foreground">{testimonial.role}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 text-yellow-400">
+                      {Array.from({ length: testimonial.rating }).map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-current" />
+                      ))}
+                    </div>
+                    <p className="text-muted-foreground text-sm flex-1">"{testimonial.comment}"</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-background">
-          <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
-            <div className="space-y-3">
-              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">Ready to Transform Your Workflow?</h2>
-              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+        {/* CTA Section */}
+        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-primary text-primary-foreground">
+          <div className="container grid items-center justify-center gap-6 px-4 text-center md:px-6">
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl lg:text-5xl font-headline">
+                Ready to Transform Your Workflow?
+              </h2>
+              <p className="mx-auto max-w-[600px] text-primary-foreground/90 md:text-xl/relaxed">
                 Join hundreds of teachers who are saving time and reducing stress. Get started with TeachFlow today—it's free to try.
               </p>
             </div>
-            <div className="mx-auto w-full max-w-sm space-y-2">
-                <Link href="/register" passHref>
-                    <Button size="lg" className="w-full">
-                    Sign Up Now <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+            <div className="mx-auto flex flex-col sm:flex-row gap-4">
+              <Link href="/register">
+                <Button size="lg" variant="secondary" className="shadow-lg hover:shadow-xl transition-all">
+                  Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/about">
+                <Button size="lg" variant="outline" className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+                  Learn More
+                </Button>
               </Link>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-xs hover:underline underline-offset-4" href="/terms">
-            Terms of Service
-          </Link>
-          <Link className="text-xs hover:underline underline-offset-4" href="/privacy">
-            Privacy
-          </Link>
-           <Link className="text-xs hover:underline underline-offset-4" href="/about">
-            About Us
-          </Link>
-        </nav>
+      {/* Footer */}
+      <footer className="flex flex-col gap-6 py-8 w-full px-4 md:px-6 border-t bg-secondary">
+        <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-4">
+            <Logo compact={false} />
+            <p className="text-sm text-muted-foreground">
+              Empowering Nigerian educators with modern school management tools.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-semibold">Product</h3>
+            <nav className="flex flex-col gap-2">
+              <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Features
+              </Link>
+              <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Pricing
+              </Link>
+              <Link href="#video-demo" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Demo
+              </Link>
+            </nav>
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-semibold">Company</h3>
+            <nav className="flex flex-col gap-2">
+              <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                About Us
+              </Link>
+              <Link href="/parents" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                For Parents
+              </Link>
+            </nav>
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-semibold">Legal</h3>
+            <nav className="flex flex-col gap-2">
+              <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Privacy Policy
+              </Link>
+            </nav>
+          </div>
+        </div>
+        <div className="container mx-auto pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">Made with ❤️ for Nigerian educators</p>
+        </div>
       </footer>
     </div>
   );
