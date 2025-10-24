@@ -12,7 +12,6 @@ function initializeFirebaseAdmin() {
     return;
   }
   try {
-    // Directly use the imported service account object
     const creds = {
       ...serviceAccount,
       privateKey: serviceAccount.privateKey?.replace(/\\n/g, '\n')
@@ -27,7 +26,6 @@ function initializeFirebaseAdmin() {
     });
   } catch (error: any) {
     console.error('Firebase Admin initialization error:', error.message);
-    // Throw an error that can be caught inside the API route handler
     throw new Error(`Firebase initialization failed: ${error.message}`);
   }
 }
@@ -43,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   const db = admin.firestore();
-  let reference, planId, billingCycle, userId;
+  let reference, planId, billingCycle, userId, isSubscription;
   
   try {
     const body = await req.json();
@@ -51,6 +49,7 @@ export async function POST(req: NextRequest) {
     planId = body.planId;
     billingCycle = body.billingCycle;
     userId = body.userId;
+    isSubscription = body.isSubscription; // Check if it's a subscription payment
   } catch (error: any) {
     return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });
   }
@@ -93,24 +92,29 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+  
+  // 2. If it's a subscription payment, update user document in Firestore
+  if (isSubscription) {
+      try {
+        const userRef = db.collection('users').doc(userId);
+        await userRef.update({
+          plan: planId,
+          subscriptionCycle: billingCycle,
+          planStartDate: admin.firestore.FieldValue.serverTimestamp(),
+          paymentReference: reference, // Storing the reference for auditing
+        });
 
-  // 2. Update user document in Firestore
-  try {
-    const userRef = db.collection('users').doc(userId);
-    await userRef.update({
-      plan: planId,
-      subscriptionCycle: billingCycle,
-      planStartDate: admin.firestore.FieldValue.serverTimestamp(),
-      paymentReference: reference, // Storing the reference for auditing
-    });
+        return NextResponse.json({ success: true, message: 'Plan updated successfully.' });
 
-    return NextResponse.json({ success: true, message: 'Plan updated successfully.' });
-
-  } catch (error: any) {
-    console.error('Firestore update error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to update user plan in database.', details: error.message }, 
-      { status: 500 }
-    );
+      } catch (error: any) {
+        console.error('Firestore update error:', error);
+        return NextResponse.json(
+          { success: false, message: 'Failed to update user plan in database.', details: error.message }, 
+          { status: 500 }
+        );
+      }
   }
+  
+  // If it's not a subscription (e.g., a product purchase), just return success
+  return NextResponse.json({ success: true, message: 'Payment verified.' });
 }

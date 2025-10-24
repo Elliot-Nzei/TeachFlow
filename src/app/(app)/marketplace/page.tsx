@@ -19,10 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { nigerianStates } from '@/lib/nigerian-states';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import dynamic from 'next/dynamic';
 import { Separator } from '@/components/ui/separator';
-
-const PaystackButton = dynamic(() => import('@/components/paystack/PaystackButton'), { ssr: false });
 
 type Product = {
     id: string;
@@ -278,7 +275,7 @@ export default function MarketplacePage() {
     const { plan, isTrial } = usePlan();
     const router = useRouter();
     const { toast } = useToast();
-    const { firestore, user } = useFirebase();
+    const { firestore } = useFirebase();
 
     const [isLoadingPlan, setIsLoadingPlan] = useState(true);
     const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
@@ -337,20 +334,15 @@ export default function MarketplacePage() {
         setFilters({ searchTerm: '', category: 'All', location: 'All' });
     };
     
-    const handlePurchaseSuccess = (reference: { reference: string }) => {
-        toast({
-            title: '🎉 Purchase Successful!',
-            description: `Your payment for "${selectedProduct?.name}" was completed. Ref: ${reference.reference}`
+    const handleBuyNow = (product: Product) => {
+        const imageUrl = getSafeImageUrl(product);
+        const query = new URLSearchParams({
+            productId: product.id,
+            name: product.name,
+            price: product.price.toString(),
+            imageUrl: encodeURIComponent(imageUrl),
         });
-        setSelectedProduct(null);
-    };
-    
-    const handlePurchaseClose = () => {
-        toast({ 
-            title: 'Purchase Cancelled', 
-            description: 'The payment process was not completed.',
-            variant: 'destructive'
-        });
+        router.push(`/checkout?${query.toString()}`);
     };
 
     if (isLoadingPlan) {
@@ -490,7 +482,7 @@ export default function MarketplacePage() {
                 {selectedProduct && (
                     <div className="flex flex-col h-full">
                         <SheetHeader className="space-y-0 pb-0">
-                            <div className="aspect-video relative -mx-6 -mt-6 mb-6 bg-muted">
+                            <div className="aspect-[16/9] relative -mx-6 -mt-6 mb-6 bg-muted">
                                 <Image 
                                     src={getSafeImageUrl(selectedProduct)} 
                                     alt={selectedProduct.name} 
@@ -583,13 +575,9 @@ export default function MarketplacePage() {
 
                         {/* Purchase Button - Sticky at bottom */}
                         <div className="pt-6 border-t bg-background mt-auto">
-                            <PaystackButton
-                                email={user?.email || ''}
-                                amount={selectedProduct.price}
-                                onSuccess={handlePurchaseSuccess}
-                                onClose={handlePurchaseClose}
-                                isPurchase={true}
-                            />
+                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full">
+                                <ShoppingCart className="mr-2 h-4 w-4" /> Buy Now
+                            </Button>
                         </div>
                     </div>
                 )}
@@ -597,4 +585,3 @@ export default function MarketplacePage() {
         </Sheet>
     );
 }
-

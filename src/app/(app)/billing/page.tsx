@@ -11,9 +11,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import dynamic from 'next/dynamic';
-
-const PaystackButton = dynamic(() => import('@/components/paystack/PaystackButton'), { ssr: false });
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 const plansData = [
   {
@@ -70,52 +69,19 @@ const plansData = [
 export default function BillingPage() {
   const { plan: currentPlanId, subscriptionCycle: currentCycle, isSubscriptionExpired, daysRemaining } = usePlan();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>(currentCycle || 'monthly');
-  const { user } = useFirebase();
-  const { toast } = useToast();
-
-  const handleSuccess = async (reference: { reference: string }, newPlanId: string) => {
-    if (!user) {
-        toast({ title: 'Authentication Error', description: 'You must be logged in to complete this action.', variant: 'destructive' });
-        return;
-    }
-    try {
-      const res = await fetch('/api/paystack/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: reference.reference, planId: newPlanId, billingCycle, userId: user.uid }),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        const errorDetails = result.details ? `Details: ${result.details}` : '';
-        const errorSuggestion = result.suggestion ? `Suggestion: ${result.suggestion}` : '';
-        throw new Error(`${result.message || 'Verification failed.'} ${errorDetails} ${errorSuggestion}`);
-      }
-      
-      toast({ title: 'Payment Successful!', description: 'Your plan has been upgraded. The page will now reload.' });
-      
-      // Reload the page to get the new plan details from the context
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ 
-          title: 'Verification Error',
-          description: `There was an issue verifying your payment: ${errorMessage}. Please contact support if the issue persists.`,
-          variant: 'destructive',
-          duration: 9000 // Allow more time to read the detailed error
-      });
-    }
-  };
-
-  const handleClose = () => {
-    toast({ title: 'Payment Cancelled', description: 'The payment process was not completed.' });
-  };
+  const router = useRouter();
   
+  const handlePayment = (planId: string, price: number) => {
+    const query = new URLSearchParams({
+        productId: planId,
+        name: `TeachFlow ${toTitleCase(planId)} Plan (${toTitleCase(billingCycle)})`,
+        price: price.toString(),
+        isSubscription: 'true',
+        billingCycle: billingCycle,
+    });
+    router.push(`/checkout?${query.toString()}`);
+  };
+
   const getButtonText = (planId: string, planName: string, isCurrentPlan: boolean) => {
     if (isCurrentPlan && !isSubscriptionExpired) {
         return 'Your Current Plan';
@@ -217,18 +183,14 @@ export default function BillingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter className="mt-auto">
-                           <PaystackButton
-                                email={user?.email || ''}
-                                amount={price}
-                                onSuccess={(ref) => handleSuccess(ref, plan.id)}
-                                onClose={handleClose}
-                                planName={plan.name}
-                                isCurrentPlan={isCurrentPlan}
-                                isSubscriptionExpired={isSubscriptionExpired || false}
-                                billingCycle={billingCycle}
-                                getButtonText={getButtonText}
-                                planId={plan.id}
-                            />
+                           <Button
+                                className="w-full"
+                                variant={isCurrentPlan && !isSubscriptionExpired ? 'outline' : 'default'}
+                                disabled={(isCurrentPlan && !isSubscriptionExpired) || plan.id === 'free_trial'}
+                                onClick={() => handlePayment(plan.id, price)}
+                            >
+                                {getButtonText(plan.id, plan.name, isCurrentPlan)}
+                            </Button>
                         </CardFooter>
                     </Card>
                 );
