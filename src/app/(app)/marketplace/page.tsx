@@ -118,8 +118,8 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
                         </div>
                     )}
                 </CardContent>
-                <CardFooter className="p-4 pt-0 flex justify-between items-center border-t bg-muted/30">
-                    <div className="flex flex-col">
+                <CardFooter className="p-4 pt-0 flex flex-col xs:flex-row items-stretch xs:items-center xs:justify-between gap-2 border-t bg-muted/30">
+                    <div className="flex flex-col text-left">
                         <span className="text-xs text-muted-foreground">Price</span>
                         <span className="text-lg sm:text-xl font-bold text-primary">
                             ₦{product.price.toLocaleString()}
@@ -457,13 +457,12 @@ export default function MarketplacePage() {
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                                     {filteredProducts.map((product, index) => (
-                                        <SheetTrigger asChild key={product.id}>
-                                            <ProductCard 
-                                                product={product} 
-                                                index={index} 
-                                                onClick={() => setSelectedProduct(product)} 
-                                            />
-                                        </SheetTrigger>
+                                        <ProductCard 
+                                            key={product.id} 
+                                            product={product} 
+                                            index={index} 
+                                            onClick={() => setSelectedProduct(product)} 
+                                        />
                                     ))}
                                 </div>
                             </>
@@ -598,3 +597,4 @@ export default function MarketplacePage() {
         </Sheet>
     );
 }
+
