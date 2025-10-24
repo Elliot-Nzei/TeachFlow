@@ -39,8 +39,6 @@ export default function AboutPage() {
        <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50 border-b">
         <Logo compact={false} />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
-            <Link href="/#features" passHref><Button variant="ghost">Features</Button></Link>
-            <Link href="/about" passHref><Button variant="ghost">About Us</Button></Link>
             <Link href="/login" passHref><Button variant="outline">Login</Button></Link>
             <Link href="/register" passHref><Button>Start for Free</Button></Link>
         </nav>
@@ -53,8 +51,6 @@ export default function AboutPage() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <Link href="/#features" passHref><DropdownMenuItem>Features</DropdownMenuItem></Link>
-                    <Link href="/about" passHref><DropdownMenuItem>About Us</DropdownMenuItem></Link>
                     <Link href="/login" passHref><DropdownMenuItem>Login</DropdownMenuItem></Link>
                     <Link href="/register" passHref><DropdownMenuItem>Start for Free</DropdownMenuItem></Link>
                 </DropdownMenuContent>
@@ -147,6 +143,9 @@ export default function AboutPage() {
                          <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
                            <Button variant="outline" size="sm"><Briefcase className="mr-2 h-4 w-4" />Upwork</Button>
                         </Link>
+                        <Link href="https://github.com/Elliot-Nzei" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline" size="sm"><GitBranch className="mr-2 h-4 w-4" />GitHub</Button>
+                        </Link>
                     </div>
                 </div>
               </div>
@@ -234,9 +233,6 @@ export default function AboutPage() {
           </Link>
           <Link className="text-xs hover:underline underline-offset-4" href="/privacy">
             Privacy
-          </Link>
-          <Link className="text-xs hover:underline underline-offset-4" href="/about">
-            About Us
           </Link>
            <Link href="https://www.facebook.com/share/1TY3JDTrKW/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
               <Facebook className="h-5 w-5" />
