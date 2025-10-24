@@ -117,9 +117,6 @@ export default function Home() {
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/95 backdrop-blur-md fixed top-0 w-full z-50 border-b">
         <Logo compact={false} />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
-          <Link href="/parents">
-            <Button variant="ghost">Parents Portal</Button>
-          </Link>
           <Link href="/login">
             <Button variant="ghost">Login</Button>
           </Link>
@@ -138,9 +135,6 @@ export default function Home() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/parents" onClick={() => setMobileMenuOpen(false)}>Parents</Link>
-              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
               </DropdownMenuItem>
