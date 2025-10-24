@@ -132,7 +132,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.href}>
                 <Link href={item.href}>
                   <SidebarMenuButton
-                    isActive={pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')}
+                    isActive={pathname === item.href}
                     tooltip={{ children: item.label }}
                   >
                     <item.icon />

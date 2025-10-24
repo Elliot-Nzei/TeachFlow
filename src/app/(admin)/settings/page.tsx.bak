@@ -1,0 +1,6 @@
+// This file has been intentionally disabled to resolve a routing conflict
+// with the primary user settings page at /src/app/(app)/settings/page.tsx.
+// The correct admin settings page is located at /src/app/(admin)/admin/settings/page.tsx.
+export default function DisabledAdminSettingsPage() {
+  return null;
+}
