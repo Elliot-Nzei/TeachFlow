@@ -219,7 +219,7 @@ export default function MarketplaceAdminPage() {
         }
     }, [userProfile, isProfileLoading, router]);
 
-    const productsQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'marketplace_products')) : null, [firestore, userProfile]);
+    const productsQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'marketplace_products')) : null, [firestore, userProfile]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {

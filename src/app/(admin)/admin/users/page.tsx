@@ -24,14 +24,14 @@ export default function AdminUsersPage() {
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
   // Defer query creation until we confirm the user is an admin.
-  const usersQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
+  const usersQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
   useEffect(() => {
-    if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
+    if (!isLoadingProfile && userProfile && userProfile.role !== 'admin') {
       router.push('/dashboard');
     }
-  }, [userProfile, isProfileLoading, router]);
+  }, [userProfile, isLoadingProfile, router]);
 
   const isLoading = isUserLoading || isLoadingProfile || (userProfile?.role === 'admin' && isLoadingUsers);
 

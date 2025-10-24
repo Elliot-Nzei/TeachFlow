@@ -6,7 +6,7 @@ import { useUser, useFirebase, useMemoFirebase, useCollection } from '@/firebase
 import { doc, collection, query, collectionGroup } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, ClipboardList, DollarSign, GraduationCap } from 'lucide-react';
+import { Users, DollarSign, GraduationCap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const plansData = {
@@ -44,10 +44,10 @@ export default function AdminDashboardPage() {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
     // Defer query creation until we confirm the user is an admin.
-    const usersQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
+    const usersQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
     const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery);
 
-    const studentsQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collectionGroup(firestore, 'students')) : null, [firestore, userProfile]);
+    const studentsQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collectionGroup(firestore, 'students')) : null, [firestore, userProfile]);
     const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
 
     const totalRevenue = useMemo(() => {
