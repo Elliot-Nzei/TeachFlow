@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, Edit, Trash2, Archive, Unarchive, Search, Filter, Download, PackageOpen } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Trash2, Archive, ArchiveRestore, Search, Filter, Download, PackageOpen } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -611,7 +611,7 @@ export default function AdminMarketplacePage() {
           {product.status === 'active' ? (
             <><Archive className="mr-2 h-4 w-4" />Archive</>
           ) : (
-            <><Unarchive className="mr-2 h-4 w-4" />Activate</>
+            <><ArchiveRestore className="mr-2 h-4 w-4" />Activate</>
           )}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
