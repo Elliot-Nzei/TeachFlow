@@ -34,6 +34,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/logo';
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -42,7 +53,9 @@ import { useFirebase } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsProvider } from '@/contexts/settings-context';
 import { PlanProvider } from '@/contexts/plan-context';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+
 
 const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,6 +66,7 @@ const adminMenuItems = [
 function UserProfileDisplay() {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
   
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
@@ -88,16 +102,32 @@ function UserProfileDisplay() {
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                     <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <span>Go to App</span>
+                    </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Switch to User Dashboard?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to leave the admin section and go to the regular user dashboard?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => router.push('/dashboard')}>
+                            Yes, Switch
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
                {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
             </DropdownMenuItem>
-            <Link href="/dashboard">
-                <DropdownMenuItem>
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Go to App</span>
-                </DropdownMenuItem>
-            </Link>
              <Link href="/settings">
                 <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
@@ -139,7 +169,10 @@ function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     if (isLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
-                <Skeleton className="h-32 w-32" />
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Verifying administrator access...</p>
+                </div>
             </div>
         );
     }
@@ -148,7 +181,15 @@ function AdminAuthGuard({ children }: { children: React.ReactNode }) {
         return <>{children}</>;
     }
 
-    return null; // Or a more specific "Access Denied" component
+    // This will be shown briefly before the redirect happens, or if the user is not an admin.
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground">Redirecting...</p>
+            </div>
+        </div>
+    );
 }
 
 
