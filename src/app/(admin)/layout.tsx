@@ -47,7 +47,6 @@ const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
-  { href: '/admin/settings', label: 'Admin Settings', icon: Shield },
 ];
 
 function UserProfileDisplay() {
@@ -92,12 +91,6 @@ function UserProfileDisplay() {
                {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
             </DropdownMenuItem>
-             <Link href="/admin/settings">
-                <DropdownMenuItem>
-                    <Shield className="mr-2 h-4 w-4" />
-                    <span>Admin Settings</span>
-                </DropdownMenuItem>
-            </Link>
             <Link href="/dashboard">
                 <DropdownMenuItem>
                     <LayoutDashboard className="mr-2 h-4 w-4" />
