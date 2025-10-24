@@ -45,7 +45,8 @@ export default function RegisterPage() {
                 
                 const role = anyUserExists ? 'teacher' : 'admin';
                 const plan = anyUserExists ? 'free_trial' : 'prime';
-                const subscriptionCycle = anyUserExists ? undefined : 'annually';
+                // This is the fix: default to 'monthly' instead of undefined for new users
+                const subscriptionCycle = anyUserExists ? 'monthly' : 'annually';
 
                 await setDoc(doc(firestore, "users", user.uid), {
                     uid: user.uid,
