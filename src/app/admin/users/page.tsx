@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase/provider';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, orderBy, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
