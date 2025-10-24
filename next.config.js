@@ -8,10 +8,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  allowedDevOrigins: [
-    "https://3000-firebase-studio-1759929584345.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev",
-    "https://6000-firebase-studio-1759929584345.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev",
-  ],
   async headers() {
     return [
       {
