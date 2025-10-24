@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   const db = admin.firestore();
-  let reference, planId, billingCycle, userId, isSubscription;
+  let reference, planId, billingCycle, userId, isSubscription, productId;
   
   try {
     const body = await req.json();
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
     billingCycle = body.billingCycle;
     userId = body.userId;
     isSubscription = body.isSubscription; // Check if it's a subscription payment
+    productId = body.productId; // productId for marketplace items
   } catch (error: any) {
     return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });
   }
@@ -103,8 +104,9 @@ export async function POST(req: NextRequest) {
     );
   }
   
-  // 2. If it's a subscription payment, update user document in Firestore
+  // 2. Handle data update based on payment type
   if (isSubscription) {
+      // It's a subscription payment, update user document in Firestore
       try {
         const userRef = db.collection('users').doc(userId);
         await userRef.update({
@@ -123,8 +125,35 @@ export async function POST(req: NextRequest) {
           { status: 500 }
         );
       }
+  } else {
+      // It's a product purchase, decrement stock
+      if (!productId) {
+          return NextResponse.json({ success: false, message: 'Product ID is missing for this purchase.' }, { status: 400 });
+      }
+
+      try {
+          const productRef = db.collection('marketplace_products').doc(productId);
+          await db.runTransaction(async (transaction) => {
+              const productDoc = await transaction.get(productRef);
+              if (!productDoc.exists) {
+                  throw new Error("Product not found");
+              }
+              const currentStock = productDoc.data()?.stock;
+              // Only decrement if stock is not unlimited (0) and is greater than 0
+              if (currentStock > 0) {
+                  transaction.update(productRef, {
+                      stock: admin.firestore.FieldValue.increment(-1)
+                  });
+              }
+          });
+          return NextResponse.json({ success: true, message: 'Payment verified and stock updated.' });
+      } catch (error: any) {
+          console.error('Stock decrement error:', error);
+          // Still return success to the client as payment was verified, but log the error
+          return NextResponse.json(
+            { success: true, message: 'Payment verified, but stock could not be updated.', details: error.message },
+            { status: 200 } // Status 200 because payment is valid, but with a warning in body
+          );
+      }
   }
-  
-  // If it's not a subscription (e.g., a product purchase), just return success
-  return NextResponse.json({ success: true, message: 'Payment verified.' });
 }
