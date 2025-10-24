@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Users, FileDown, Notebook, CheckCircle, Send, FileQuestion, DollarSign, Menu, Star, Video } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, FileDown, Notebook, CheckCircle, Send, FileQuestion, DollarSign, Menu, Star, Video, CalendarDays, Database } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,9 +24,9 @@ const features = [
     description: 'Input CA & exam scores with ease. Totals and grades are calculated automatically, saving you hours of work.',
   },
   {
-    icon: <DollarSign className="h-6 w-6 text-primary" />,
-    title: 'Fee & Payment Tracking',
-    description: 'Set class fees and record student payments to track revenue and outstanding balances each term.',
+    icon: <CalendarDays className="h-6 w-6 text-primary" />,
+    title: 'Timetable Management',
+    description: 'Create and manage weekly class schedules with an intuitive, visual drag-and-drop interface.',
   },
   {
     icon: <FileDown className="h-6 w-6 text-primary" />,
@@ -39,9 +39,9 @@ const features = [
     description: 'Generate multi-week, NERDC-compliant lesson notes for any subject, ready to download as a PDF.',
   },
   {
-    icon: <FileQuestion className="h-6 w-6 text-primary" />,
-    title: 'AI Exam Question Generator',
-    description: 'Instantly create objective, essay, or mixed-format exams based on your topics, in a printable A4 format.',
+    icon: <Database className="h-6 w-6 text-primary" />,
+    title: 'Secure Data Transfer',
+    description: 'Securely share class data, including student rosters and grades, with other registered teachers.',
   },
 ];
 
