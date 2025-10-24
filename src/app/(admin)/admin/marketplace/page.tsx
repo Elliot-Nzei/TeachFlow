@@ -227,12 +227,10 @@ export default function MarketplaceAdminPage() {
 
         try {
             if (editingProduct) {
-                // Update existing product
                 const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
                 updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
                 toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
             } else {
-                // Add new product
                 const productsCollection = collection(firestore, 'marketplace_products');
                 addDocumentNonBlocking(productsCollection, { 
                     ...productData, 
@@ -295,7 +293,7 @@ export default function MarketplaceAdminPage() {
     }
 
      if (!userProfile || userProfile.role !== 'admin') {
-        return null; // Don't render anything if not an admin or profile is missing
+        return null;
     }
 
     return (
@@ -349,7 +347,6 @@ export default function MarketplaceAdminPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {/* Mobile Card View */}
                     <div className="md:hidden space-y-4">
                         {isLoadingProducts ? (
                             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
@@ -385,7 +382,6 @@ export default function MarketplaceAdminPage() {
                         )}
                     </div>
 
-                    {/* Desktop Table View */}
                     <div className="hidden md:block border rounded-md">
                         <Table>
                             <TableHeader>

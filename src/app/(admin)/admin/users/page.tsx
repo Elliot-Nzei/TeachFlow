@@ -23,7 +23,6 @@ export default function AdminUsersPage() {
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
-  // Defer query creation until we confirm the user is an admin.
   const usersQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
@@ -66,7 +65,7 @@ export default function AdminUsersPage() {
   }
 
   if (!userProfile || userProfile.role !== 'admin') {
-      return null; // Don't render anything if not an admin or profile is missing
+      return null;
   }
 
   return (
@@ -100,7 +99,6 @@ export default function AdminUsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Mobile Card View */}
           <div className="md:hidden space-y-2">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
@@ -121,7 +119,6 @@ export default function AdminUsersPage() {
             )}
           </div>
 
-          {/* Desktop Table View */}
           <div className="hidden md:block">
             <Table>
               <TableHeader>

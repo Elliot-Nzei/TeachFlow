@@ -43,7 +43,6 @@ export default function AdminDashboardPage() {
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
-    // Defer query creation until we confirm the user is an admin.
     const usersQuery = useMemoFirebase(() => (firestore && userProfile && userProfile.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
     const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery);
 
@@ -54,7 +53,7 @@ export default function AdminDashboardPage() {
         if (!allUsers) return 0;
 
         return allUsers
-            .filter(u => u.role !== 'admin') // Exclude admin user from revenue calculation
+            .filter(u => u.role !== 'admin')
             .reduce((total, u) => {
                 const plan = u.plan as keyof typeof plansData;
                 const cycle = u.subscriptionCycle as 'monthly' | 'annually';
@@ -101,7 +100,7 @@ export default function AdminDashboardPage() {
     }
 
     if (!userProfile || userProfile.role !== 'admin') {
-        return null; // Don't render anything if not an admin or profile is missing
+        return null;
     }
 
     return (

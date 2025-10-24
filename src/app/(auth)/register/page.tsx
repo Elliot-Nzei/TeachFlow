@@ -35,7 +35,6 @@ export default function RegisterPage() {
         e.preventDefault();
         setIsLoading(true);
         try {
-            // Check if any user exists in Firebase Auth before creating the new one.
             const anyUserExists = await checkIfAnyUserExists();
 
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -44,10 +43,9 @@ export default function RegisterPage() {
                 
                 const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
                 
-                // If no users existed before this one, this new user is the admin.
                 const role = anyUserExists ? 'teacher' : 'admin';
                 const plan = anyUserExists ? 'free_trial' : 'prime';
-                const subscriptionCycle = anyUserExists ? null : 'annually';
+                const subscriptionCycle = anyUserExists ? undefined : 'annually';
 
                 await setDoc(doc(firestore, "users", user.uid), {
                     uid: user.uid,
@@ -65,7 +63,8 @@ export default function RegisterPage() {
                     planStartDate: serverTimestamp(),
                 });
                 
-                // Explicitly redirect based on the role assigned during registration
+                await user.getIdToken(true);
+                
                 if (role === 'admin') {
                     router.push('/admin');
                 } else {
