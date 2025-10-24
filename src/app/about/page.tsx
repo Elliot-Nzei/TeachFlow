@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart } from 'lucide-react';
+import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart, Linkedin, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const aboutImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
@@ -135,6 +135,14 @@ export default function AboutPage() {
                     <p className="text-muted-foreground leading-relaxed">
                         Developed by Elliot, a passionate researcher and programmer specializing in Python, HTML, CSS, JavaScript, and cloud technologies. With a strong foundation in both frontend and backend development, Elliot focuses on building innovative, scalable, and intelligent digital systems that solve real-world problems. His work blends precision, automation, and creativity—turning complex ideas into efficient, user-friendly applications.
                     </p>
+                    <div className="flex flex-wrap gap-4 pt-4">
+                        <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline"><Linkedin className="mr-2 h-4 w-4" />LinkedIn</Button>
+                        </Link>
+                         <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline"><Briefcase className="mr-2 h-4 w-4" />Upwork</Button>
+                        </Link>
+                    </div>
                 </div>
             </div>
           </div>
