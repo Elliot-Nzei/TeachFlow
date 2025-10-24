@@ -18,7 +18,8 @@ import {
   Zap,
   Shield,
   TrendingUp,
-  ShoppingCart
+  ShoppingCart,
+  Facebook
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -372,13 +373,17 @@ export default function Home() {
             </nav>
           </div>
         </div>
-        <div className="container mx-auto pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="container mx-auto pt-6 border-t flex flex-col items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-muted-foreground">Follow for updates:</p>
+            <Link href="https://www.facebook.com/share/1TY3JDTrKW/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+              <Facebook className="h-5 w-5" />
+              <span className="sr-only">Facebook</span>
+            </Link>
+          </div>
           <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
-          <p className="text-xs text-muted-foreground">Made with ❤️ for Nigerian educators</p>
         </div>
       </footer>
     </div>
   );
 }
-
-    
