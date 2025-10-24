@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
+import { firebaseConfig } from '@/firebase/config';
 import { serviceAccount } from '@/firebase/service-account';
 import dotenv from 'dotenv';
 
@@ -12,18 +13,27 @@ function initializeFirebaseAdmin() {
     return;
   }
   try {
-    const creds = {
-      ...serviceAccount,
-      privateKey: serviceAccount.privateKey?.replace(/\\n/g, '\n')
-    } as admin.ServiceAccount;
-    
-    if (!creds.projectId || !creds.clientEmail || !creds.privateKey) {
-        throw new Error('Firebase Admin SDK service account credentials are not fully configured in environment variables.');
+    // For production (e.g., Firebase App Hosting), service account details
+    // might be available in environment variables.
+    if (process.env.FIREBASE_PROJECT_ID) {
+      const creds = {
+        ...serviceAccount,
+        privateKey: serviceAccount.privateKey?.replace(/\\n/g, '\n')
+      } as admin.ServiceAccount;
+      
+      if (!creds.projectId || !creds.clientEmail || !creds.privateKey) {
+          throw new Error('Firebase Admin SDK service account credentials are not fully configured in environment variables.');
+      }
+      admin.initializeApp({
+        credential: admin.credential.cert(creds),
+      });
+    } else {
+        // For local development, fall back to the firebaseConfig object.
+        // This won't have admin privileges but allows the app to run.
+        // Note: Admin-only server actions might fail locally if not configured with a real service account.
+        admin.initializeApp(firebaseConfig);
+        console.warn("Firebase Admin initialized with client config for local development. Admin privileges are not available.");
     }
-
-    admin.initializeApp({
-      credential: admin.credential.cert(creds),
-    });
   } catch (error: any) {
     console.error('Firebase Admin initialization error:', error.message);
     throw new Error(`Firebase initialization failed: ${error.message}`);
