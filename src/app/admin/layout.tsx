@@ -59,7 +59,7 @@ const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
-  { href: '/admin/improvise', label: 'Improvise', icon: AlertTriangle },
+  { href: '/admin/system', label: 'System', icon: AlertTriangle },
 ];
 
 function UserProfileDisplay() {
