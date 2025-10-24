@@ -19,7 +19,8 @@ import {
   Shield,
   TrendingUp,
   ShoppingCart,
-  Facebook
+  Facebook,
+  Instagram
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -329,26 +330,12 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="flex flex-col gap-6 py-8 w-full px-4 md:px-6 border-t bg-secondary">
-        <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-4">
+        <div className="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="col-span-2 md:col-span-1 space-y-4">
             <Logo compact={false} />
             <p className="text-sm text-muted-foreground">
               Empowering Nigerian educators with modern school management tools.
             </p>
-          </div>
-          <div className="space-y-4">
-            <h3 className="font-semibold">Product</h3>
-            <nav className="flex flex-col gap-2">
-              <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Features
-              </Link>
-              <Link href="/billing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Pricing
-              </Link>
-              <Link href="#video-demo" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Demo
-              </Link>
-            </nav>
           </div>
           <div className="space-y-4">
             <h3 className="font-semibold">Company</h3>
@@ -356,8 +343,11 @@ export default function Home() {
               <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 About Us
               </Link>
-              <Link href="/parents" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                For Parents
+              <Link href="/#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Features
+              </Link>
+              <Link href="/#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Testimonials
               </Link>
             </nav>
           </div>
@@ -372,16 +362,22 @@ export default function Home() {
               </Link>
             </nav>
           </div>
-        </div>
-        <div className="container mx-auto pt-6 border-t flex flex-col items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-muted-foreground">Follow for updates:</p>
-            <Link href="https://www.facebook.com/share/1TY3JDTrKW/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-              <Facebook className="h-5 w-5" />
-              <span className="sr-only">Facebook</span>
-            </Link>
+           <div className="space-y-4">
+            <h3 className="font-semibold">Follow Us</h3>
+            <div className="flex items-center gap-4">
+               <Link href="https://www.facebook.com/share/1TY3JDTrKW/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                  <Facebook className="h-6 w-6" />
+                  <span className="sr-only">Facebook</span>
+               </Link>
+                <Link href="https://www.instagram.com/teachflow.official?igsh=MTJwemh2MXNibHFscw==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                  <Instagram className="h-6 w-6" />
+                  <span className="sr-only">Instagram</span>
+                </Link>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">&copy; 2024 TeachFlow. All rights reserved.</p>
+        </div>
+        <div className="container mx-auto pt-6 border-t text-center">
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} TeachFlow. All rights reserved.</p>
         </div>
       </footer>
     </div>
