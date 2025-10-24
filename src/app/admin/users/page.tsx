@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFirebase } from '@/firebase/provider';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { useState, useMemo } from 'react';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase/provider';
+import { collection, orderBy, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, User, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,8 +41,10 @@ type User = {
 export default function AdminUsersPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, [firestore]);
+  const { data: users, isLoading, error } = useCollection<User>(usersQuery, { requiresAdmin: true });
+
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
 
   const [dialogState, setDialogState] = useState<{
@@ -52,32 +54,6 @@ export default function AdminUsersPage() {
     newValue: string;
   }>({ open: false, type: null, user: null, newValue: '' });
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!firestore) return;
-      setIsLoading(true);
-      try {
-        const usersQuery = query(collection(firestore, 'users'), orderBy('name', 'asc'));
-        const querySnapshot = await getDocs(usersQuery);
-        const usersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as User[];
-        setUsers(usersData);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error Fetching Users',
-          description: 'Could not load user data from the database.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchUsers();
-  }, [firestore, toast]);
-  
   const handleActionClick = (type: 'role' | 'plan' | 'delete', user: User) => {
     setDialogState({
       open: true,
@@ -104,17 +80,6 @@ export default function AdminUsersPage() {
 
       if (result?.success) {
         toast({ title: 'Success', description: `User ${dialogState.user.name} has been updated.` });
-        // Refresh users list
-        const updatedUsers = users.map(u => 
-            u.id === dialogState.user!.id 
-            ? (dialogState.type !== 'delete' ? { ...u, [dialogState.type!]: dialogState.newValue } : null) 
-            : u
-        ).filter(Boolean) as User[];
-        if (dialogState.type === 'delete') {
-            setUsers(users.filter(u => u.id !== dialogState.user!.id));
-        } else {
-            setUsers(updatedUsers);
-        }
       } else {
         throw new Error(result?.error || 'An unknown error occurred.');
       }
@@ -148,7 +113,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarImage src={user.profilePicture} alt={user.name} />
-            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            <AvatarFallback>{user.name?.split(' ').map(n => n[0]).join('') || 'U'}</AvatarFallback>
           </Avatar>
           <div className="grid gap-0.5">
             <span className="font-medium">{user.name}</span>
@@ -200,7 +165,7 @@ export default function AdminUsersPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>All Users ({users.length})</CardTitle>
+          <CardTitle>All Users ({users?.length || 0})</CardTitle>
           <CardDescription>A list of all registered users on the TeachFlow platform.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -214,14 +179,14 @@ export default function AdminUsersPage() {
             <>
                 {/* Mobile View */}
                 <div className="md:hidden space-y-4">
-                    {users.map(user => (
+                    {users?.map(user => (
                         <Card key={user.id}>
                             <CardHeader>
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-3">
                                         <Avatar>
                                             <AvatarImage src={user.profilePicture} alt={user.name} />
-                                            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            <AvatarFallback>{user.name?.split(' ').map(n => n[0]).join('') || 'U'}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <p className="font-semibold">{user.name}</p>
@@ -269,7 +234,7 @@ export default function AdminUsersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {users.map(user => renderUserRow(user))}
+                            {users?.map(user => renderUserRow(user))}
                         </TableBody>
                     </Table>
                 </div>
