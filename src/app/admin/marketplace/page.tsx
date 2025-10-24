@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -258,9 +259,8 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
               <Input
                 id="price"
                 name="price"
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={product.price ?? ''}
                 onChange={handleNumberChange}
                 className={errors.price ? 'border-destructive' : ''}
@@ -278,8 +278,8 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
               <Input
                 id="stock"
                 name="stock"
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={product.stock ?? ''}
                 onChange={handleNumberChange}
                 className={errors.stock ? 'border-destructive' : ''}
@@ -700,45 +700,42 @@ export default function AdminMarketplacePage() {
       {/* Filters and Search */}
       <Card>
         <CardHeader className="p-4 sm:p-6">
-          <div className="flex flex-col gap-3 sm:gap-4">
-            {/* Search Bar */}
-            <div className="w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="w-full sm:flex-1">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        placeholder="Search products..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
             </div>
-            
-            {/* Filters */}
-            <div className="flex flex-col xs:flex-row gap-2">
-              <Select value={categoryFilter} onValueChange={(val) => setCategoryFilter(val as any)}>
-                <SelectTrigger className="w-full xs:flex-1 sm:w-[180px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Digital Resource">Digital Resource</SelectItem>
-                  <SelectItem value="Physical Good">Physical Good</SelectItem>
-                  <SelectItem value="Service">Service</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
-                <SelectTrigger className="w-full xs:flex-1 sm:w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex w-full sm:w-auto gap-2">
+                <Select value={categoryFilter} onValueChange={(val) => setCategoryFilter(val as any)}>
+                    <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="Digital Resource">Digital Resource</SelectItem>
+                        <SelectItem value="Physical Good">Physical Good</SelectItem>
+                        <SelectItem value="Service">Service</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
+                    <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
-          </div>
+        </div>
         </CardHeader>
 
         <CardContent className="p-0 sm:p-6 sm:pt-0">
