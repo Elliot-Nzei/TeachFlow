@@ -215,39 +215,36 @@ export default function MarketplaceAdminPage() {
 
     const isAdmin = userProfile?.role === 'admin';
 
-    const productsQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'marketplace_products')) : null, [firestore, isAdmin]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery, { requiresAdmin: true });
+    const productsQuery = useMemoFirebase(() => query(collection(firestore, 'marketplace_products')), [firestore]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     useEffect(() => {
-        if (!isProfileLoading && !isAdmin) {
+        if (!isProfileLoading && userProfile?.role !== 'admin') {
             router.push('/dashboard');
         }
-    }, [isAdmin, isProfileLoading, router]);
+    }, [userProfile, isProfileLoading, router]);
 
     const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
         if (!user || !firestore) return;
+        
+        if (!isAdmin) {
+             toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to modify products." });
+             return;
+        }
 
         try {
             if (editingProduct) {
-                if (isAdmin) {
-                    const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
-                    updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
-                    toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
-                } else {
-                     toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to edit products." });
-                }
+                const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
+                updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
+                toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
             } else {
-                if (isAdmin) {
-                    const productsCollection = collection(firestore, 'marketplace_products');
-                    addDocumentNonBlocking(productsCollection, { 
-                        ...productData, 
-                        sellerId: user.uid, 
-                        createdAt: serverTimestamp() 
-                    });
-                    toast({ title: 'Product Added', description: `"${productData.name}" has been added to the marketplace.` });
-                } else {
-                    toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to add products." });
-                }
+                const productsCollection = collection(firestore, 'marketplace_products');
+                addDocumentNonBlocking(productsCollection, { 
+                    ...productData, 
+                    sellerId: user.uid, 
+                    createdAt: serverTimestamp() 
+                });
+                toast({ title: 'Product Added', description: `"${productData.name}" has been added to the marketplace.` });
             }
         } catch (error) {
             console.error("Error saving product: ", error);
@@ -289,7 +286,7 @@ export default function MarketplaceAdminPage() {
         return `https://picsum.photos/seed/${product.id}/${dimensions}`;
     };
     
-    if (isProfileLoading || (isAdmin && isLoadingProducts)) {
+    if (isProfileLoading || isLoadingProducts) {
         return (
              <div className="space-y-6">
                 <Skeleton className="h-10 w-1/3" />
