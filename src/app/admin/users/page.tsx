@@ -132,11 +132,14 @@ export default function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter(user => 
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
+        user.id !== currentUser?.uid && (
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
+        )
     );
-  }, [users, searchQuery]);
+  }, [users, searchQuery, currentUser]);
+
 
   const getPlanColor = (plan: string) => {
     if (plan === 'prime') return 'bg-purple-200 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300';
