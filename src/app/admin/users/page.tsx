@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Search } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,10 +21,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toTitleCase } from '@/lib/utils';
 import { format } from 'date-fns';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { changeUserPlan, changeUserRole, deleteUser } from './actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
 type User = {
   id: string;
@@ -40,12 +50,17 @@ type User = {
 
 export default function AdminUsersPage() {
   const { firestore } = useFirebase();
+  const { user: currentUser } = useUser();
   const { toast } = useToast();
   
-  const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, [firestore]);
+  const usersQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, 
+    [firestore]
+  );
   const { data: users, isLoading, error } = useCollection<User>(usersQuery, { requiresAdmin: true });
 
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [dialogState, setDialogState] = useState<{
     open: boolean;
@@ -55,12 +70,26 @@ export default function AdminUsersPage() {
   }>({ open: false, type: null, user: null, newValue: '' });
 
   const handleActionClick = (type: 'role' | 'plan' | 'delete', user: User) => {
+    if (currentUser?.uid === user.id && (type === 'delete' || type === 'role')) {
+        toast({
+            variant: 'destructive',
+            title: 'Action Not Allowed',
+            description: 'You cannot modify your own account role or delete yourself.',
+        });
+        return;
+    }
     setDialogState({
       open: true,
       type,
       user,
-      newValue: type === 'role' ? user.role : user.plan,
+      newValue: type === 'role' ? user.role : type === 'plan' ? user.plan : '',
     });
+  };
+
+  const closeDialog = () => {
+    if (!isSubmitting) {
+      setDialogState({ open: false, type: null, user: null, newValue: '' });
+    }
   };
   
   const handleDialogSubmit = async () => {
@@ -79,22 +108,35 @@ export default function AdminUsersPage() {
       }
 
       if (result?.success) {
-        toast({ title: 'Success', description: `User ${dialogState.user.name} has been updated.` });
+        const actionType = dialogState.type === 'delete' ? 'deleted' : 'updated';
+        toast({ 
+          title: 'Success', 
+          description: `User ${dialogState.user.name} has been ${actionType}.` 
+        });
+        closeDialog();
       } else {
         throw new Error(result?.error || 'An unknown error occurred.');
       }
 
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Operation Failed',
-            description: error instanceof Error ? error.message : 'Could not complete the action.',
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Operation Failed',
+        description: error instanceof Error ? error.message : 'Could not complete the action.',
+      });
     } finally {
-        setIsSubmitting(null);
-        setDialogState({ open: false, type: null, user: null, newValue: '' });
+      setIsSubmitting(null);
     }
   };
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter(user => 
+        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [users, searchQuery]);
 
   const getPlanColor = (plan: string) => {
     if (plan === 'prime') return 'bg-purple-200 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300';
@@ -103,9 +145,56 @@ export default function AdminUsersPage() {
   };
   
   const getRoleColor = (role: string) => {
-     if (role === 'admin') return 'bg-green-200 text-green-800 dark:bg-green-900/50 dark:text-green-300';
-     return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-  }
+    if (role === 'admin') return 'bg-green-200 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+    return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+  };
+
+  const UserActionsDropdown = ({ user }: { user: User }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button aria-haspopup="true" size="icon" variant="ghost">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem 
+            onSelect={(e) => {
+              e.preventDefault();
+              setIsOpen(false);
+              handleActionClick('role', user);
+            }}
+          >
+            Change Role
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onSelect={(e) => {
+              e.preventDefault();
+              setIsOpen(false);
+              handleActionClick('plan', user);
+            }}
+          >
+            Change Plan
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onSelect={(e) => {
+              e.preventDefault();
+              setIsOpen(false);
+              handleActionClick('delete', user);
+            }}
+            className="text-destructive"
+          >
+            Delete User
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   const renderUserRow = (user: User) => (
     <TableRow key={user.id}>
@@ -127,8 +216,8 @@ export default function AdminUsersPage() {
           {toTitleCase(user.plan.replace('_', ' '))}
         </Badge>
       </TableCell>
-       <TableCell className="hidden lg:table-cell">
-         <Badge variant="outline" className={getRoleColor(user.role)}>
+      <TableCell className="hidden lg:table-cell">
+        <Badge variant="outline" className={getRoleColor(user.role)}>
           {toTitleCase(user.role)}
         </Badge>
       </TableCell>
@@ -136,26 +225,57 @@ export default function AdminUsersPage() {
         {user.createdAt ? format(user.createdAt.toDate(), 'PPP') : 'N/A'}
       </TableCell>
       <TableCell>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button aria-haspopup="true" size="icon" variant="ghost">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onSelect={() => handleActionClick('role', user)}>Change Role</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleActionClick('plan', user)}>Change Plan</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => handleActionClick('delete', user)} className="text-destructive">
-              Delete User
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserActionsDropdown user={user} />
       </TableCell>
     </TableRow>
   );
+
+  const renderMobileUserCard = (user: User) => (
+    <Card key={user.id}>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            <Avatar>
+              <AvatarImage src={user.profilePicture} alt={user.name} />
+              <AvatarFallback>{user.name?.split(' ').map(n => n[0]).join('') || 'U'}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold">{user.name}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <UserActionsDropdown user={user} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="text-sm"><b>School:</b> {user.schoolName}</div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={getPlanColor(user.plan)}>
+            {toTitleCase(user.plan.replace('_', ' '))}
+          </Badge>
+          <Badge variant="outline" className={getRoleColor(user.role)}>
+            {toTitleCase(user.role)}
+          </Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold font-headline">User Management</h1>
+          <p className="text-muted-foreground">View and manage all users in the system.</p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-destructive">Error loading users. Please try again.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -165,140 +285,133 @@ export default function AdminUsersPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>All Users ({users?.length || 0})</CardTitle>
-          <CardDescription>A list of all registered users on the TeachFlow platform.</CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <CardTitle>All Users ({filteredUsers?.length || 0})</CardTitle>
+                    <CardDescription>A list of all registered users on the TeachFlow platform.</CardDescription>
+                </div>
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by name, email..."
+                        className="pl-10"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
-           {isLoading ? (
-             <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
-           ) : (
+          ) : filteredUsers && filteredUsers.length > 0 ? (
             <>
-                {/* Mobile View */}
-                <div className="md:hidden space-y-4">
-                    {users?.map(user => (
-                        <Card key={user.id}>
-                            <CardHeader>
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar>
-                                            <AvatarImage src={user.profilePicture} alt={user.name} />
-                                            <AvatarFallback>{user.name?.split(' ').map(n => n[0]).join('') || 'U'}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-semibold">{user.name}</p>
-                                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                                        </div>
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button aria-haspopup="true" size="icon" variant="ghost" className="h-8 w-8">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                            <span className="sr-only">Toggle menu</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onSelect={() => handleActionClick('role', user)}>Change Role</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleActionClick('plan', user)}>Change Plan</DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onSelect={() => handleActionClick('delete', user)} className="text-destructive">Delete</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </CardHeader>
-                             <CardContent className="space-y-2">
-                                <div className="text-sm"><b>School:</b> {user.schoolName}</div>
-                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className={getPlanColor(user.plan)}>{toTitleCase(user.plan.replace('_', ' '))}</Badge>
-                                    <Badge variant="outline" className={getRoleColor(user.role)}>{toTitleCase(user.role)}</Badge>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+              {/* Mobile View */}
+              <div className="md:hidden space-y-4">
+                {filteredUsers.map(user => renderMobileUserCard(user))}
+              </div>
 
-                {/* Desktop View */}
-                <div className="hidden md:block">
-                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead className="hidden md:table-cell">School</TableHead>
-                                <TableHead className="hidden lg:table-cell">Plan</TableHead>
-                                <TableHead className="hidden lg:table-cell">Role</TableHead>
-                                <TableHead className="hidden lg:table-cell">Date Joined</TableHead>
-                                <TableHead><span className="sr-only">Actions</span></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {users?.map(user => renderUserRow(user))}
-                        </TableBody>
-                    </Table>
-                </div>
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead className="hidden md:table-cell">School</TableHead>
+                      <TableHead className="hidden lg:table-cell">Plan</TableHead>
+                      <TableHead className="hidden lg:table-cell">Role</TableHead>
+                      <TableHead className="hidden lg:table-cell">Date Joined</TableHead>
+                      <TableHead><span className="sr-only">Actions</span></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map(user => renderUserRow(user))}
+                  </TableBody>
+                </Table>
+              </div>
             </>
-           )}
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No users found.</p>
+          )}
         </CardContent>
       </Card>
       
-       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={(open) => !open && setDialogState({open: false, type: null, user: null, newValue: ''})}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure you want to delete this user?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    This action is permanent and cannot be undone. This will delete <b>{dialogState.user?.name}</b>'s account and all their associated school data from TeachFlow.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDialogSubmit} disabled={!!isSubmitting}>
-                        {isSubmitting ? 'Deleting...' : 'Delete User'}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog 
+        open={dialogState.open && dialogState.type === 'delete'} 
+        onOpenChange={(open) => !open && closeDialog()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action is permanent and cannot be undone. This will delete <b>{dialogState.user?.name}</b>'s account and all their associated school data from TeachFlow.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDialogSubmit} 
+              disabled={!!isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete User'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        {dialogState.open && (dialogState.type === 'role' || dialogState.type === 'plan') && (
-            <AlertDialog open={dialogState.open} onOpenChange={(open) => !open && setDialogState({open: false, type: null, user: null, newValue: ''})}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Change {dialogState.type}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Select the new {dialogState.type} for <b>{dialogState.user?.name}</b>.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                     <div className="py-4">
-                        <Select value={dialogState.newValue} onValueChange={(value) => setDialogState(prev => ({...prev, newValue: value}))}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {dialogState.type === 'role' ? (
-                                    <>
-                                        <SelectItem value="teacher">Teacher</SelectItem>
-                                        <SelectItem value="admin">Admin</SelectItem>
-                                    </>
-                                ) : (
-                                     <>
-                                        <SelectItem value="free_trial">Free Trial</SelectItem>
-                                        <SelectItem value="basic">Basic</SelectItem>
-                                        <SelectItem value="prime">Prime</SelectItem>
-                                    </>
-                                )}
-                            </SelectContent>
-                        </Select>
-                     </div>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDialogSubmit} disabled={!!isSubmitting}>
-                            {isSubmitting ? 'Saving...' : 'Save Changes'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        )}
+      {/* Role/Plan Change Dialog */}
+      <AlertDialog 
+        open={dialogState.open && (dialogState.type === 'role' || dialogState.type === 'plan')} 
+        onOpenChange={(open) => !open && closeDialog()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Change {dialogState.type === 'role' ? 'Role' : 'Plan'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Select the new {dialogState.type} for <b>{dialogState.user?.name}</b>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Select 
+              value={dialogState.newValue} 
+              onValueChange={(value) => setDialogState(prev => ({...prev, newValue: value}))}
+              disabled={!!isSubmitting}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {dialogState.type === 'role' ? (
+                  <>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="free_trial">Free Trial</SelectItem>
+                    <SelectItem value="basic">Basic</SelectItem>
+                    <SelectItem value="prime">Prime</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDialogSubmit} disabled={!!isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
