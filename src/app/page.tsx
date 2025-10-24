@@ -168,7 +168,7 @@ export default function Home() {
                   Start Your Free Trial <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="#video-demo">
+              <Link href="/about#video-demo">
                 <Button size="lg" variant="outline">
                   Watch Demo
                 </Button>
@@ -236,35 +236,9 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Video Demo Section */}
-        <section id="video-demo" className="w-full py-12 md:py-24 lg:py-32 bg-background">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">See It in Action</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">A Quick Tour of TeachFlow</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
-                  Watch this short video to see how TeachFlow can revolutionize your school's workflow in just a few minutes.
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto max-w-4xl mt-12">
-              <div className="aspect-video w-full overflow-hidden rounded-xl border-4 border-primary/20 shadow-2xl hover:border-primary/40 transition-colors">
-                <iframe
-                  className="w-full h-full"
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="TeachFlow Demo Video"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
         
         {/* Testimonials Section */}
-        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -375,10 +349,16 @@ export default function Home() {
                   <span className="sr-only">Instagram</span>
                 </Link>
                 <Link href="https://x.com/TeachFlow_App?t=t6EBa6xnU55byovi-6ic8w&s=09" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                  <svg className="h-6 w-6" viewBox="0 0 1200 1227" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L112.383 39.0909H308.864L600.438 505.637L647.882 573.555L1096.45 1188.2H900.011L569.165 687.854V687.828Z" fill="currentColor"/>
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                   <span className="sr-only">X (formerly Twitter)</span>
+                </Link>
+                <Link href="https://chat.whatsapp.com/HNWjpUg3GMF7FYj9rUBySL?mode=wwt" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fillRule="evenodd" d="M18.425 5.575a9.349 9.349 0 0 0-13.225 0 9.349 9.349 0 0 0 0 13.225l-1.006 3.655 3.738-.98A9.349 9.349 0 0 0 12 22.25a9.349 9.349 0 0 0 9.349-9.349 9.349 9.349 0 0 0-2.924-6.626ZM12 4a8.25 8.25 0 0 1 8.25 8.25c0 2.249-1.023 4.43-2.613 5.922l.06.096-1.943 5.827 5.962-1.564.116.072a8.25 8.25 0 0 1-13.82-5.417A8.25 8.25 0 0 1 12 4Zm3.193 9.253a.826.826 0 0 0-.583-.29c-.19 0-.41.095-.583.19l-.307.159a1.93 1.93 0 0 1-1.025.267c-.209 0-.418-.048-.628-.159l-1.063-.51a6.65 6.65 0 0 1-2.34-1.926 5.253 5.253 0 0 1-1.3-2.673c-.095-.21-.132-.438-.132-.665 0-.247.048-.476.143-.694.132-.303.31-.56.549-.759.229-.19.497-.285.788-.285.115 0 .229.024.334.072.143.06.267.143.372.238l.19.16c.153.131.258.274.306.417.06.143.084.285.084.428 0 .11-.012.21-.036.31l-.19 1.092c-.06.285-.19.522-.392.701-.114.114-.267.209-.45.285-.024.012-.048.024-.072.036-.07.036-.153.06-.237.096-.132.06-.257.083-.37.083a.853.853 0 0 0-.55-.202l-.083-.012c-.084-.012-.168-.036-.253-.06a4.34 4.34 0 0 1-1.554-1.092 3.86 3.86 0 0 1-1.003-1.637c-.072-.158-.108-.31-.108-.45 0-.21.072-.403.203-.584.143-.18.334-.31.573-.392.209-.072.418-.107.62-.107h.108a2.15 2.15 0 0 1 1.637.735l.23.273c.227.266.505.474.83.626.324.152.665.228.996.228h.024c.26 0 .52-.06.759-.18.238-.12.446-.285.62-.498.17-.21.284-.45.346-.712.06-.266.084-.54.084-.82v-.036a1.23 1.23 0 0 0-.191-.688c-.168-.228-.394-.407-.67-.531-.275-.12-.58-.18-.91-.18-.36 0-.718.072-1.064.215-.346.143-.64.346-.879.608l-.203.24c-.024.023-.06.035-.095.035-.048 0-.084-.012-.12-.048a.29.29 0 0 1-.095-.202c0-.083.023-.158.071-.227l.418-.463c.228-.256.497-.475.79-.652.304-.18.62-.298.94-.356.323-.06.643-.084.956-.084h.024c.545 0 1.053.119 1.52.356.465.237.842.562 1.127.973.285.41.428.878.428 1.4s-.143 1.01-.428 1.48a3.18 3.18 0 0 1-1.163 1.08Z" clipRule="evenodd" />
+                  </svg>
+                  <span className="sr-only">WhatsApp</span>
                 </Link>
             </div>
           </div>
