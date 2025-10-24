@@ -7,7 +7,6 @@ import { collection, orderBy, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Edit, Trash2, Archive, ArchiveRestore, Search, Filter, Download, PackageOpen } from 'lucide-react';
 import {
   DropdownMenu,
@@ -292,7 +291,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
                 onChange={handleNumberChange}
                 className={errors.stock ? 'border-destructive' : ''}
               />
-              <p className="text-xs text-muted-foreground">Set to 0 for unlimited stock</p>
+              <p className="text-xs text-muted-foreground">Use 0 for unlimited stock (e.g., digital goods)</p>
               {errors.stock && (
                 <p className="text-sm text-destructive">{errors.stock}</p>
               )}
@@ -488,12 +487,14 @@ export default function AdminMarketplacePage() {
   // Calculate statistics
   const stats = useMemo(() => {
     if (!products) return { total: 0, active: 0, archived: 0, totalValue: 0 };
+    
+    const physicalGoods = products.filter(p => p.category === 'Physical Good');
 
     return {
       total: products.length,
       active: products.filter(p => p.status === 'active').length,
       archived: products.filter(p => p.status === 'archived').length,
-      totalValue: products.reduce((sum, p) => sum + (p.price * (p.stock || 1)), 0)
+      totalValue: physicalGoods.reduce((sum, p) => sum + (p.price * (p.stock || 0)), 0),
     };
   }, [products]);
 
@@ -695,7 +696,7 @@ export default function AdminMarketplacePage() {
         </Card>
         <Card className="col-span-2 lg:col-span-1">
           <CardHeader className="p-3 pb-2 sm:pb-3">
-            <CardDescription className="text-xs sm:text-sm">Total Value</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Total Inventory Value</CardDescription>
             {isLoading ? (
               <Skeleton className="h-6 sm:h-8 w-16 sm:w-20" />
             ) : (
@@ -772,7 +773,7 @@ export default function AdminMarketplacePage() {
                     </div>
                      <div className="flex justify-between">
                       <span className="text-muted-foreground">Stock:</span>
-                      <span>{product.stock === 0 ? "Unlimited" : product.stock}</span>
+                      <span>{product.category !== 'Physical Good' ? 'Unlimited' : product.stock}</span>
                     </div>
                      <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Status:</span>
@@ -848,7 +849,7 @@ export default function AdminMarketplacePage() {
                       </TableCell>
                       <TableCell className="font-medium">₦{product.price.toLocaleString()}</TableCell>
                       <TableCell>
-                        {product.stock === 0 ? (
+                        {product.category !== 'Physical Good' ? (
                           <span className="text-muted-foreground">Unlimited</span>
                         ) : (
                           <span className={product.stock < 10 ? 'text-orange-600 font-medium' : ''}>
