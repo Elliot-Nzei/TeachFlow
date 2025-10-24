@@ -148,7 +148,58 @@ export default function AboutPage() {
           </div>
         </section>
 
-         <section id="roadmap" className="w-full py-12 md:py-24 bg-secondary">
+        <section id="collaborators" className="w-full py-12 md:py-24 bg-secondary">
+          <div className="container px-4 md:px-6">
+            <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold font-headline">Meet the Team</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto">The talented individuals collaborating to bring TeachFlow to life.</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
+              {/* Felix's Profile */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <Image 
+                  src="https://drive.google.com/uc?export=view&id=1mxpMWPAuGarUW_lro8EB7JWF1Bk3kz2b"
+                  alt="Felix"
+                  width={150}
+                  height={150}
+                  className="rounded-full aspect-square object-cover shadow-md flex-shrink-0"
+                />
+                <div className="text-center sm:text-left">
+                  <h3 className="text-xl font-bold">Felix Wilson Gbedemah</h3>
+                  <p className="text-primary font-semibold text-sm mb-2">🤖 Co-Developer</p>
+                  <p className="text-muted-foreground text-sm mb-3">
+                    Felix is a skilled Web Developer, Data Scientist, and AI Engineer, currently focused on leveraging intelligent systems to enhance web experiences and business automation. With a deep understanding of data-driven technologies and modern development frameworks, Felix brings analytical precision and technical innovation to every project, helping transform ideas into smart, scalable solutions.
+                  </p>
+                  <Link href="https://www.linkedin.com/in/felix-wilson-gbedemah-8038051a0/" target="_blank" rel="noopener noreferrer" passHref>
+                    <Button variant="link" size="sm" className="pl-0"><Linkedin className="mr-2 h-4 w-4" />View LinkedIn</Button>
+                  </Link>
+                </div>
+              </div>
+              {/* Adedotun's Profile */}
+               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <Image 
+                  src="https://drive.google.com/uc?export=view&id=1MjkXadNlyaeImt5eKV7M2zB2khnJh3HH"
+                  alt="Adedotun"
+                  width={150}
+                  height={150}
+                  className="rounded-full aspect-square object-cover shadow-md flex-shrink-0"
+                />
+                <div className="text-center sm:text-left">
+                  <h3 className="text-xl font-bold">Adedotun Taiwo</h3>
+                   <p className="text-primary font-semibold text-sm mb-2">🔐 Cybersecurity & AI Specialist</p>
+                  <p className="text-muted-foreground text-sm mb-3">
+                    Adedotun is an emerging Cybersecurity Analyst with a strong foundation in Electronic and Electrical Engineering and ongoing studies in Information Technology. He is passionate about the intersection of AI and cybersecurity, focusing on building smarter, more resilient systems that anticipate and defend against modern digital threats.
+                  </p>
+                   <Link href="https://www.linkedin.com/in/taiwodotun/" target="_blank" rel="noopener noreferrer" passHref>
+                    <Button variant="link" size="sm" className="pl-0"><Linkedin className="mr-2 h-4 w-4" />View LinkedIn</Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+         <section id="roadmap" className="w-full py-12 md:py-24 bg-background">
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold font-headline">Our Roadmap</h2>
