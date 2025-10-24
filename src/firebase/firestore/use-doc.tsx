@@ -55,6 +55,9 @@ export function useDoc<T = any>(
 
   useEffect(() => {
     if (!requiresAdmin || isUserLoading || !user) {
+      if (!requiresAdmin) {
+        setIsRoleChecked(true);
+      }
       return;
     }
     
@@ -75,19 +78,24 @@ export function useDoc<T = any>(
   }, [requiresAdmin, user, isUserLoading, firestore]);
 
   useEffect(() => {
-    const isReadyForQuery = !requiresAdmin || (isRoleChecked && isAdmin);
-    
-    if (isUserLoading || !memoizedDocRef || !isReadyForQuery) {
-      setData(null);
-      setIsLoading(!isUserLoading && isRoleChecked);
-      setError(null);
+    // Wait until role check is complete if admin is required
+    if (requiresAdmin && !isRoleChecked) {
+      setIsLoading(true);
       return;
     }
-
+    
+    // If admin is required but user is not an admin, stop here.
     if (requiresAdmin && !isAdmin) {
       setData(null);
       setIsLoading(false);
       setError(new Error("You don't have permission to view this data."));
+      return;
+    }
+
+    if (!memoizedDocRef) {
+      setData(null);
+      setIsLoading(false);
+      setError(null);
       return;
     }
 
@@ -126,7 +134,7 @@ export function useDoc<T = any>(
     return () => unsubscribe();
   }, [memoizedDocRef, isUserLoading, isAdmin, isRoleChecked, requiresAdmin]);
 
-  const finalLoadingState = isLoading || (requiresAdmin && !isRoleChecked);
+  const finalLoadingState = isLoading || (requiresAdmin && !isRoleChecked) || isUserLoading;
 
   return { data, isLoading: finalLoadingState, error };
 }

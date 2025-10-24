@@ -9,6 +9,8 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -40,7 +42,7 @@ export function useCollection<T = any>(
   memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined,
   options: { requiresAdmin?: boolean } = {}
 ): UseCollectionResult<T> {
-  const { isUserLoading, user } = useFirebase();
+  const { isUserLoading, user, firestore } = useFirebase();
   const { requiresAdmin = false } = options;
 
   type ResultItemType = WithId<T>;
@@ -56,29 +58,28 @@ export function useCollection<T = any>(
     if (!requiresAdmin || isUserLoading || !user) {
       if (!requiresAdmin) {
         setIsRoleChecked(true); // No admin check needed
-        setIsAdmin(false);
       }
       return;
     }
     
     setIsRoleChecked(false);
-    user.getIdTokenResult()
-        .then(idTokenResult => {
-            const claims = idTokenResult.claims;
-            if (claims && claims.admin === true) {
-                setIsAdmin(true);
-            } else {
-                setIsAdmin(false);
-            }
-            setIsRoleChecked(true);
-        })
-        .catch(err => {
-            console.error("Failed to get token claims", err);
-            setIsAdmin(false);
-            setIsRoleChecked(true);
-        });
+    const userDocRef = doc(firestore, 'users', user.uid);
+    getDoc(userDocRef)
+      .then(docSnap => {
+        if (docSnap.exists() && docSnap.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+        setIsRoleChecked(true);
+      })
+      .catch(err => {
+        console.error("Failed to get user role", err);
+        setIsAdmin(false);
+        setIsRoleChecked(true);
+      });
 
-  }, [requiresAdmin, user, isUserLoading]);
+  }, [requiresAdmin, user, isUserLoading, firestore]);
 
   useEffect(() => {
     // Wait until role check is complete if admin is required
