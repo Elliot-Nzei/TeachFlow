@@ -229,17 +229,25 @@ export default function MarketplaceAdminPage() {
 
         try {
             if (editingProduct) {
-                const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
-                updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
-                toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
+                if (isAdmin) {
+                    const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
+                    updateDocumentNonBlocking(productRef, { ...productData, updatedAt: serverTimestamp() });
+                    toast({ title: 'Product Updated', description: `"${productData.name}" has been updated.` });
+                } else {
+                     toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to edit products." });
+                }
             } else {
-                const productsCollection = collection(firestore, 'marketplace_products');
-                addDocumentNonBlocking(productsCollection, { 
-                    ...productData, 
-                    sellerId: user.uid, 
-                    createdAt: serverTimestamp() 
-                });
-                toast({ title: 'Product Added', description: `"${productData.name}" has been added to the marketplace.` });
+                if (isAdmin) {
+                    const productsCollection = collection(firestore, 'marketplace_products');
+                    addDocumentNonBlocking(productsCollection, { 
+                        ...productData, 
+                        sellerId: user.uid, 
+                        createdAt: serverTimestamp() 
+                    });
+                    toast({ title: 'Product Added', description: `"${productData.name}" has been added to the marketplace.` });
+                } else {
+                    toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to add products." });
+                }
             }
         } catch (error) {
             console.error("Error saving product: ", error);
@@ -254,9 +262,13 @@ export default function MarketplaceAdminPage() {
         if (!window.confirm(`Are you sure you want to delete "${productName}"? This cannot be undone.`)) return;
         
         if (!firestore) return;
-        const productRef = doc(firestore, 'marketplace_products', productId);
-        deleteDocumentNonBlocking(productRef);
-        toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
+        if (isAdmin) {
+            const productRef = doc(firestore, 'marketplace_products', productId);
+            deleteDocumentNonBlocking(productRef);
+            toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
+        } else {
+            toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to delete products." });
+        }
     }
 
     const filteredProducts = useMemo(() => {
