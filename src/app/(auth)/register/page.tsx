@@ -16,7 +16,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ToastAction } from "@/components/ui/toast";
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { checkIfAdminExists } from '@/app/actions/user-actions';
+import { checkIfAnyUserExists } from '@/app/actions/user-actions';
 
 const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
@@ -35,16 +35,19 @@ export default function RegisterPage() {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const adminExists = await checkIfAdminExists();
+            // Check if any user exists in Firebase Auth before creating the new one.
+            const anyUserExists = await checkIfAnyUserExists();
 
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             if (userCredential && userCredential.user) {
                 const user = userCredential.user;
                 
                 const userCode = `NSMS-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-                const role = adminExists ? 'teacher' : 'admin';
-                const plan = adminExists ? 'free_trial' : 'prime';
-                const subscriptionCycle = adminExists ? null : 'annually';
+                
+                // If no users existed before this one, this new user is the admin.
+                const role = anyUserExists ? 'teacher' : 'admin';
+                const plan = anyUserExists ? 'free_trial' : 'prime';
+                const subscriptionCycle = anyUserExists ? null : 'annually';
 
                 await setDoc(doc(firestore, "users", user.uid), {
                     uid: user.uid,
