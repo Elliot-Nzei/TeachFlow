@@ -190,13 +190,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold">Admin Section Removed</h1>
-              <p className="text-muted-foreground">This section has been removed as per your request.</p>
-               <Button asChild className="mt-4">
-                 <Link href="/dashboard">Go to User Dashboard</Link>
-              </Button>
-            </div>
+            {children}
           </main>
         </div>
       </div>
