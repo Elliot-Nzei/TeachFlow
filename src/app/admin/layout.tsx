@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -12,6 +11,7 @@ import {
   LayoutDashboard,
   Settings,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -59,6 +59,7 @@ const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
+  { href: '/admin/improvise', label: 'Improvise', icon: AlertTriangle },
 ];
 
 function UserProfileDisplay() {
