@@ -118,43 +118,39 @@ export default function AboutPage() {
             </div>
         </section>
 
-        <section id="developer" className="w-full py-12 md:py-24 bg-background">
-          <div className="container px-4 md:px-6">
-            <div className="mx-auto max-w-4xl grid md:grid-cols-3 gap-8 md:gap-12 items-center">
-                <div className="md:col-span-1">
-                    <Image
-                        src="https://drive.google.com/uc?export=view&id=1kI6Um7t0VE-lMPJI4kNXGTItTvMio3_0"
-                        alt="Developer: Elliot"
-                        width={400}
-                        height={400}
-                        className="rounded-full aspect-square object-cover shadow-lg mx-auto"
-                    />
-                </div>
-                <div className="md:col-span-2 space-y-4">
-                    <h2 className="text-3xl font-bold font-headline">👨‍💻 About the Developer</h2>
-                    <p className="text-muted-foreground leading-relaxed">
-                        Developed by Elliot, a passionate researcher and programmer specializing in Python, HTML, CSS, JavaScript, and cloud technologies. With a strong foundation in both frontend and backend development, Elliot focuses on building innovative, scalable, and intelligent digital systems that solve real-world problems. His work blends precision, automation, and creativity—turning complex ideas into efficient, user-friendly applications.
-                    </p>
-                    <div className="flex flex-wrap gap-4 pt-4">
-                        <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
-                           <Button variant="outline"><Linkedin className="mr-2 h-4 w-4" />LinkedIn</Button>
-                        </Link>
-                         <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
-                           <Button variant="outline"><Briefcase className="mr-2 h-4 w-4" />Upwork</Button>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="collaborators" className="w-full py-12 md:py-24 bg-secondary">
+        <section id="team" className="w-full py-12 md:py-24 bg-secondary">
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold font-headline">Meet the Team</h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">The talented individuals collaborating to bring TeachFlow to life.</p>
             </div>
-            <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-1 gap-12 max-w-4xl mx-auto">
+              {/* Elliot's Profile */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <Image 
+                  src="https://drive.google.com/uc?export=view&id=1kI6Um7t0VE-lMPJI4kNXGTItTvMio3_0"
+                  alt="Elliot"
+                  width={150}
+                  height={150}
+                  className="rounded-full aspect-square object-cover shadow-md flex-shrink-0"
+                />
+                <div className="text-center sm:text-left">
+                  <h3 className="text-xl font-bold">Elliot Nzei</h3>
+                  <p className="text-primary font-semibold text-sm mb-2">Lead Developer & Founder</p>
+                  <p className="text-muted-foreground text-sm mb-3">
+                    Elliot is a passionate researcher and programmer specializing in Python, HTML, CSS, JavaScript, and cloud technologies. With a strong foundation in both frontend and backend development, he focuses on building innovative, scalable, and intelligent digital systems that solve real-world problems. His work blends precision, automation, and creativity—turning complex ideas into efficient, user-friendly applications.
+                  </p>
+                  <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
+                        <Link href="https://www.linkedin.com/in/elliot-nzei-ba771025b" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline" size="sm"><Linkedin className="mr-2 h-4 w-4" />LinkedIn</Button>
+                        </Link>
+                         <Link href="https://www.upwork.com/freelancers/~01a85e1257daa885d3" target="_blank" rel="noopener noreferrer" passHref>
+                           <Button variant="outline" size="sm"><Briefcase className="mr-2 h-4 w-4" />Upwork</Button>
+                        </Link>
+                    </div>
+                </div>
+              </div>
+              <hr className="border-border" />
               {/* Felix's Profile */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <Image 
@@ -166,7 +162,7 @@ export default function AboutPage() {
                 />
                 <div className="text-center sm:text-left">
                   <h3 className="text-xl font-bold">Felix Wilson Gbedemah</h3>
-                  <p className="text-primary font-semibold text-sm mb-2">🤖 Co-Developer</p>
+                  <p className="text-primary font-semibold text-sm mb-2">🤖 Co-Developer & AI Engineer</p>
                   <p className="text-muted-foreground text-sm mb-3">
                     Felix is a skilled Web Developer, Data Scientist, and AI Engineer, currently focused on leveraging intelligent systems to enhance web experiences and business automation. With a deep understanding of data-driven technologies and modern development frameworks, Felix brings analytical precision and technical innovation to every project, helping transform ideas into smart, scalable solutions.
                   </p>
@@ -175,6 +171,7 @@ export default function AboutPage() {
                   </Link>
                 </div>
               </div>
+              <hr className="border-border" />
               {/* Adedotun's Profile */}
                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <Image 
