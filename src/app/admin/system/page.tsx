@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteAllData } from '@/app/actions/admin-actions';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
 
 export default function SystemPage() {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -24,6 +26,7 @@ export default function SystemPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { user: adminUser } = useUser();
 
   const CONFIRMATION_PHRASE = 'DELETE ALL DATA';
 
@@ -48,6 +51,14 @@ export default function SystemPage() {
       });
       return;
     }
+    if (!adminUser) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'Could not identify the administrator. Please log in again.',
+      });
+      return;
+    }
     
     setIsDeleting(true);
     
@@ -58,7 +69,7 @@ export default function SystemPage() {
         duration: 10000,
       });
 
-      const result = await deleteAllData();
+      const result = await deleteAllData(adminUser.uid);
 
       if (result.success) {
         toast({
@@ -67,10 +78,8 @@ export default function SystemPage() {
           duration: 10000,
         });
         
-        // Close dialog before redirect
         setIsAlertOpen(false);
         
-        // Redirect to login after a delay to allow the user to read the toast
         setTimeout(() => {
           router.push('/login');
         }, 3000);
@@ -117,7 +126,7 @@ export default function SystemPage() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm font-medium">
-              This is the point of no return. This action is irreversible and will restore the application to a completely empty state, as if it were just deployed. The only thing remaining will be your own administrator account after you re-register.
+              This is the point of no return. This action is irreversible and will restore the application to a completely empty state. Your administrator account will be preserved but all its data will be cleared.
             </p>
 
             <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
@@ -126,11 +135,9 @@ export default function SystemPage() {
                 <div className="space-y-2 text-sm">
                   <p className="font-semibold text-destructive">Warning: This will delete:</p>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>All user accounts (except yours)</li>
-                    <li>All schools and their data</li>
-                    <li>All classes and students</li>
-                    <li>All grades and assessments</li>
-                    <li>All marketplace products</li>
+                    <li>All user accounts (except your own)</li>
+                    <li>All school data, classes, students, and grades</li>
+                    <li>All marketplace products and parent accounts</li>
                     <li>Everything else in the database</li>
                   </ul>
                 </div>
@@ -150,7 +157,7 @@ export default function SystemPage() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <AlertDialog open={isAlertOpen} onOpenChange={handleCloseDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -159,7 +166,7 @@ export default function SystemPage() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                You are about to delete ALL data. This action cannot be undone and there is no backup recovery.
+                You are about to delete ALL data except for your own admin account. This action cannot be undone.
               </p>
               <p>
                 To proceed, type the following phrase exactly as it appears:

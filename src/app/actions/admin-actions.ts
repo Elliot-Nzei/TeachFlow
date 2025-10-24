@@ -19,16 +19,16 @@ function initializeAdmin() {
   };
 }
 
-async function deleteCollection(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number) {
+async function deleteCollection(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number, exceptions: string[] = []) {
   const collectionRef = db.collection(collectionPath);
   const query = collectionRef.orderBy('__name__').limit(batchSize);
 
   return new Promise((resolve, reject) => {
-    deleteQueryBatch(db, query, resolve, reject);
+    deleteQueryBatch(db, query, resolve, reject, exceptions);
   });
 }
 
-async function deleteQueryBatch(db: FirebaseFirestore.Firestore, query: FirebaseFirestore.Query, resolve: (value: unknown) => void, reject: (reason?: any) => void) {
+async function deleteQueryBatch(db: FirebaseFirestore.Firestore, query: FirebaseFirestore.Query, resolve: (value: unknown) => void, reject: (reason?: any) => void, exceptions: string[] = []) {
   const snapshot = await query.get();
 
   if (snapshot.size === 0) {
@@ -37,41 +37,51 @@ async function deleteQueryBatch(db: FirebaseFirestore.Firestore, query: Firebase
 
   const batch = db.batch();
   snapshot.docs.forEach((doc) => {
-    batch.delete(doc.ref);
+    if (!exceptions.includes(doc.id)) {
+        batch.delete(doc.ref);
+    }
   });
   await batch.commit();
 
   process.nextTick(() => {
-    deleteQueryBatch(db, query, resolve, reject);
+    deleteQueryBatch(db, query, resolve, reject, exceptions);
   });
 }
 
-export async function deleteAllData(): Promise<{ success: boolean; error?: string; deletedUsers?: number }> {
+export async function deleteAllData(adminUid: string): Promise<{ success: boolean; error?: string; deletedUsers?: number }> {
+  if (!adminUid) {
+    return { success: false, error: "Administrator UID is required." };
+  }
+
   try {
     const { db, auth } = initializeAdmin();
 
-    // 1. List all users that need to be deleted from Auth later.
+    // 1. List all users and filter out the admin to get a list of users to delete from Auth.
     const listUsersResult = await auth.listUsers(1000);
-    const uidsToDelete = listUsersResult.users.map(userRecord => userRecord.uid);
+    const uidsToDelete = listUsersResult.users
+        .filter(userRecord => userRecord.uid !== adminUid)
+        .map(userRecord => userRecord.uid);
     const deletedUserCount = uidsToDelete.length;
 
-    // 2. Delete all Firestore data first.
-    const collections = ['users', 'parents', 'marketplace_products'];
-    for (const collectionName of collections) {
-      const collectionRef = db.collection(collectionName);
-      const docs = await collectionRef.listDocuments();
+    // 2. Delete all non-admin user documents from Firestore's 'users' collection first.
+    const usersCollectionRef = db.collection('users');
+    const deleteUserDocsPromises = uidsToDelete.map(uid => usersCollectionRef.doc(uid).delete());
+    await Promise.all(deleteUserDocsPromises);
 
-      for (const docRef of docs) {
-         const subcollections = await docRef.listCollections();
-         for (const subcollection of subcollections) {
-             await deleteCollection(db, subcollection.path, 100);
-         }
-         // Delete the main document after its subcollections.
-         await docRef.delete();
-      }
+    // 3. Delete other top-level collections entirely.
+    const topLevelCollections = ['parents', 'marketplace_products'];
+    for (const collectionName of topLevelCollections) {
+      await deleteCollection(db, collectionName, 100);
     }
     
-    // 3. Now, delete all users from Firebase Authentication.
+    // 4. Delete subcollections for the admin user.
+    const adminUserRef = db.collection('users').doc(adminUid);
+    const subcollections = await adminUserRef.listCollections();
+    for (const subcollection of subcollections) {
+        await deleteCollection(db, subcollection.path, 100);
+    }
+
+    // 5. Finally, delete the non-admin users from Firebase Authentication.
     if (deletedUserCount > 0) {
         await auth.deleteUsers(uidsToDelete);
     }
