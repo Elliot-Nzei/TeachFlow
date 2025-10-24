@@ -118,6 +118,28 @@ export default function AboutPage() {
             </div>
         </section>
 
+        <section id="developer" className="w-full py-12 md:py-24 bg-background">
+          <div className="container px-4 md:px-6">
+            <div className="mx-auto max-w-4xl grid md:grid-cols-3 gap-8 md:gap-12 items-center">
+                <div className="md:col-span-1">
+                    <Image
+                        src="https://drive.google.com/uc?export=view&id=1kI6Um7t0VE-lMPJI4kNXGTItTvMio3_0"
+                        alt="Developer: Elliot"
+                        width={400}
+                        height={400}
+                        className="rounded-full aspect-square object-cover shadow-lg mx-auto"
+                    />
+                </div>
+                <div className="md:col-span-2 space-y-4">
+                    <h2 className="text-3xl font-bold font-headline">👨‍💻 About the Developer</h2>
+                    <p className="text-muted-foreground leading-relaxed">
+                        Developed by Elliot, a passionate researcher and programmer specializing in Python, HTML, CSS, JavaScript, and cloud technologies. With a strong foundation in both frontend and backend development, Elliot focuses on building innovative, scalable, and intelligent digital systems that solve real-world problems. His work blends precision, automation, and creativity—turning complex ideas into efficient, user-friendly applications.
+                    </p>
+                </div>
+            </div>
+          </div>
+        </section>
+
          <section id="roadmap" className="w-full py-12 md:py-24 bg-secondary">
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
