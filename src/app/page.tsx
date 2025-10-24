@@ -117,14 +117,8 @@ export default function Home() {
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/95 backdrop-blur-md fixed top-0 w-full z-50 border-b">
         <Logo compact={false} />
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
-          <Link href="#features">
-            <Button variant="ghost">Features</Button>
-          </Link>
           <Link href="/parents">
             <Button variant="ghost">Parents Portal</Button>
-          </Link>
-          <Link href="/about">
-            <Button variant="ghost">About Us</Button>
           </Link>
           <Link href="/login">
             <Button variant="ghost">Login</Button>
@@ -145,13 +139,7 @@ export default function Home() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href="#features" onClick={() => setMobileMenuOpen(false)}>Features</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
                 <Link href="/parents" onClick={() => setMobileMenuOpen(false)}>Parents</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/about" onClick={() => setMobileMenuOpen(false)}>About Us</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
@@ -398,3 +386,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
