@@ -21,18 +21,22 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery, { requiresAdmin: true });
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
-  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+  const isAdmin = userProfile?.role === 'admin';
+
+  const usersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'users')) : null, [firestore, isAdmin]);
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery, { requiresAdmin: true });
 
   useEffect(() => {
-    if (!isLoadingProfile && (!userProfile || userProfile.role !== 'admin')) {
-      router.push('/dashboard');
+    if (!isUserLoading && !isLoadingProfile) {
+        if (!userProfile || userProfile.role !== 'admin') {
+            router.push('/dashboard');
+        }
     }
-  }, [userProfile, isLoadingProfile, router]);
+  }, [userProfile, isUserLoading, isLoadingProfile, router]);
 
-  const isLoading = isUserLoading || isLoadingProfile || isLoadingUsers;
+  const isLoading = isUserLoading || isLoadingProfile || (isAdmin && isLoadingUsers);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -64,7 +68,7 @@ export default function AdminUsersPage() {
       )
   }
 
-  if (!userProfile || userProfile.role !== 'admin') {
+  if (!isAdmin) {
       return null;
   }
 

@@ -36,13 +36,15 @@ export default function AdminSettingsPage() {
   const { toast } = useToast();
 
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery, { requiresAdmin: true });
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
+
+  const isAdmin = userProfile?.role === 'admin';
 
   useEffect(() => {
-    if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
+    if (!isProfileLoading && !isAdmin) {
         router.push('/dashboard');
     }
-  }, [userProfile, isProfileLoading, router]);
+  }, [isAdmin, isProfileLoading, router]);
 
   const handleClearAllData = async () => {
     setIsClearing(true);
@@ -85,7 +87,7 @@ export default function AdminSettingsPage() {
     );
   }
 
-  if (!userProfile || userProfile.role !== 'admin') {
+  if (!isAdmin) {
       return null;
   }
 

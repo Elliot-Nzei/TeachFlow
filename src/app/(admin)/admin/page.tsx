@@ -43,17 +43,21 @@ export default function AdminDashboardPage() {
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
-    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+    const isAdmin = userProfile?.role === 'admin';
+
+    const usersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'users')) : null, [firestore, isAdmin]);
     const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery, { requiresAdmin: true });
 
-    const studentsQuery = useMemoFirebase(() => query(collectionGroup(firestore, 'students')), [firestore]);
+    const studentsQuery = useMemoFirebase(() => isAdmin ? query(collectionGroup(firestore, 'students')) : null, [firestore, isAdmin]);
     const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery, { requiresAdmin: true });
 
     useEffect(() => {
-        if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
-            router.push('/dashboard');
+        if (!isUserLoading && !isProfileLoading) {
+            if (!userProfile || userProfile.role !== 'admin') {
+                router.push('/dashboard');
+            }
         }
-    }, [userProfile, isProfileLoading, router]);
+    }, [userProfile, isUserLoading, isProfileLoading, router]);
 
     const totalRevenue = useMemo(() => {
         if (!allUsers) return 0;
@@ -82,7 +86,7 @@ export default function AdminDashboardPage() {
         }
     }, []);
 
-    const isLoading = isUserLoading || isProfileLoading || isLoadingUsers || isLoadingStudents;
+    const isLoading = isUserLoading || isProfileLoading || (isAdmin && (isLoadingUsers || isLoadingStudents));
     
     if (isLoading) {
       return (
@@ -99,8 +103,8 @@ export default function AdminDashboardPage() {
       )
     }
 
-    if (!userProfile || userProfile.role !== 'admin') {
-        return null;
+    if (!isAdmin) {
+        return null; // or a dedicated access denied component
     }
 
     return (
