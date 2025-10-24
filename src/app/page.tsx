@@ -102,13 +102,6 @@ const testimonials = [
   }
 ];
 
-const stats = [
-  { value: '500+', label: 'Active Teachers' },
-  { value: '10,000+', label: 'Students Managed' },
-  { value: '50,000+', label: 'Reports Generated' },
-  { value: '15+', label: 'Hours Saved Weekly' },
-];
-
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -122,7 +115,7 @@ export default function Home() {
             <Button variant="ghost">Features</Button>
           </Link>
           <Link href="/parents">
-            <Button variant="ghost">Parents</Button>
+            <Button variant="ghost">Parents Portal</Button>
           </Link>
           <Link href="/about">
             <Button variant="ghost">About Us</Button>
@@ -206,20 +199,6 @@ export default function Home() {
           )}
         </section>
 
-        {/* Stats Section */}
-        <section className="w-full py-12 bg-primary text-primary-foreground">
-          <div className="container px-4 md:px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {stats.map((stat, index) => (
-                <div key={index} className="space-y-2">
-                  <p className="text-3xl md:text-4xl font-bold font-headline">{stat.value}</p>
-                  <p className="text-sm md:text-base opacity-90">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Benefits Section */}
         <section className="w-full py-12 md:py-20 bg-background">
           <div className="container px-4 md:px-6">
@@ -283,7 +262,7 @@ export default function Home() {
               <div className="aspect-video w-full overflow-hidden rounded-xl border-4 border-primary/20 shadow-2xl hover:border-primary/40 transition-colors">
                 <iframe
                   className="w-full h-full"
-                  src="https://drive.google.com/file/d/1Au75CjFL2MRKolLx9NkJKXEM9cSbBPI3/preview"
+                  src="https://www.youtube.com/embed/dQw4w9WgXcQ"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   title="TeachFlow Demo Video"
