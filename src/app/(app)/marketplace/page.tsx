@@ -84,7 +84,7 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
                         )}
                     </CardContent>
                     <CardFooter className="p-3 pt-0 flex justify-between items-center bg-muted/50">
-                        <p className="text-sm font-bold text-primary">₦{product.price.toLocaleString()}</p>
+                        <div className="text-sm font-bold text-primary">₦{product.price.toLocaleString()}</div>
                     </CardFooter>
                 </Card>
             </div>
