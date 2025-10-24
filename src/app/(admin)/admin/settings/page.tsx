@@ -1,4 +1,4 @@
-// This page has been intentionally left blank as per user request to remove the admin settings page.
+// This page has been intentionally left blank to remove the admin settings functionality.
 export default function RemovedAdminSettingsPage() {
   return null;
 }

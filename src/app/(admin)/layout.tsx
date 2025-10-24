@@ -10,6 +10,7 @@ import {
   Shield,
   ShoppingCart,
   LayoutDashboard,
+  Settings,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -95,6 +96,12 @@ function UserProfileDisplay() {
                 <DropdownMenuItem>
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Go to App</span>
+                </DropdownMenuItem>
+            </Link>
+             <Link href="/settings">
+                <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
                 </DropdownMenuItem>
             </Link>
             <DropdownMenuSeparator />
