@@ -9,8 +9,6 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
-  doc,
-  getDoc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -54,7 +52,7 @@ export function useCollection<T = any>(
   memoizedTargetRefOrQuery: CollectionReference<DocumentData> | InternalQuery | null | undefined,
   options: { requiresAdmin?: boolean } = {}
 ): UseCollectionResult<T> {
-  const { isUserLoading, user, firestore } = useFirebase();
+  const { isUserLoading, user } = useFirebase();
   const { requiresAdmin = false } = options;
 
   type ResultItemType = WithId<T>;
@@ -68,39 +66,51 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     if (!requiresAdmin || isUserLoading || !user) {
+      if (!requiresAdmin) {
+        setIsRoleChecked(true); // No admin check needed
+        setIsAdmin(false);
+      }
       return;
     }
     
     setIsRoleChecked(false);
-    const userDocRef = doc(firestore, 'users', user.uid);
-    getDoc(userDocRef).then(docSnap => {
-      if (docSnap.exists() && docSnap.data().role === 'admin') {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
-      setIsRoleChecked(true);
-    }).catch(() => {
-        setIsAdmin(false);
-        setIsRoleChecked(true);
-    });
+    user.getIdTokenResult()
+        .then(idTokenResult => {
+            const claims = idTokenResult.claims;
+            if (claims && claims.admin === true) {
+                setIsAdmin(true);
+            } else {
+                setIsAdmin(false);
+            }
+            setIsRoleChecked(true);
+        })
+        .catch(err => {
+            console.error("Failed to get token claims", err);
+            setIsAdmin(false);
+            setIsRoleChecked(true);
+        });
 
-  }, [requiresAdmin, user, isUserLoading, firestore]);
+  }, [requiresAdmin, user, isUserLoading]);
 
   useEffect(() => {
-    const isReadyForQuery = !requiresAdmin || (isRoleChecked && isAdmin);
-    
-    if (isUserLoading || !memoizedTargetRefOrQuery || !isReadyForQuery) {
-      setData(null);
-      setIsLoading(!isUserLoading && isRoleChecked);
-      setError(null);
+    // Wait until role check is complete if admin is required
+    if (requiresAdmin && !isRoleChecked) {
+      setIsLoading(true);
       return;
     }
-
+    
+    // If admin is required but user is not an admin, stop here.
     if (requiresAdmin && !isAdmin) {
       setData(null);
       setIsLoading(false);
       setError(new Error("You don't have permission to view this data."));
+      return;
+    }
+
+    if (!memoizedTargetRefOrQuery) {
+      setData(null);
+      setIsLoading(false);
+      setError(null);
       return;
     }
     
@@ -141,7 +151,7 @@ export function useCollection<T = any>(
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery, isUserLoading, isAdmin, isRoleChecked, requiresAdmin]);
 
-  const finalLoadingState = isLoading || (requiresAdmin && !isRoleChecked);
+  const finalLoadingState = isLoading || (requiresAdmin && !isRoleChecked) || isUserLoading;
 
   return { data, isLoading: finalLoadingState, error };
 }
