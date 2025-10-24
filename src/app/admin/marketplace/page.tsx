@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useEffect, useMemo } from 'react';
-import { useFirebase } from '@/firebase/provider';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { useState, useMemo } from 'react';
+import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase/provider';
+import { collection, orderBy, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, Edit, Trash2, Archive, Unarchive, Package } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Trash2, Archive, Unarchive } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +15,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toTitleCase } from '@/lib/utils';
+import { toTitleCase, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { upsertProduct, deleteProduct } from './actions';
@@ -33,7 +33,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { nigerianStates } from '@/lib/nigerian-states';
-import { cn } from '@/lib/utils';
 
 type Product = {
   id: string;
@@ -188,32 +187,17 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: { prod
 export default function AdminMarketplacePage() {
     const { firestore, user } = useFirebase();
     const { toast } = useToast();
-    const [products, setProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    
+    const productsQuery = useMemoFirebase(
+        () => firestore ? query(collection(firestore, 'marketplace_products'), orderBy('createdAt', 'desc')) : null,
+        [firestore]
+    );
+    const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
-    
-    useEffect(() => {
-        const fetchProducts = async () => {
-            if (!firestore) return;
-            setIsLoading(true);
-            try {
-                const productsQuery = query(collection(firestore, 'marketplace_products'), orderBy('createdAt', 'desc'));
-                const querySnapshot = await getDocs(productsQuery);
-                const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
-                setProducts(productsData);
-            } catch (error) {
-                console.error("Error fetching products:", error);
-                toast({ variant: 'destructive', title: 'Error Fetching Products' });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchProducts();
-    }, [firestore, toast]);
     
     const handleAddNew = () => {
         setEditingProduct(null);
@@ -230,7 +214,6 @@ export default function AdminMarketplacePage() {
         const result = await deleteProduct(deleteDialog.product.id);
         if (result.success) {
             toast({ title: 'Product Deleted' });
-            setProducts(products.filter(p => p.id !== deleteDialog.product!.id));
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
@@ -242,7 +225,6 @@ export default function AdminMarketplacePage() {
         const result = await upsertProduct({ ...product, status: newStatus });
         if (result.success) {
             toast({ title: 'Status Updated', description: `Product is now ${newStatus}.` });
-            setProducts(products.map(p => p.id === product.id ? { ...p, status: newStatus } : p));
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
@@ -255,11 +237,11 @@ export default function AdminMarketplacePage() {
                     <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>
                     <p className="text-muted-foreground">Manage all products available in the marketplace.</p>
                 </div>
-                <Button onClick={handleAddNew}><PlusCircle />Add Product</Button>
+                <Button onClick={handleAddNew}><PlusCircle className="mr-2 h-4 w-4" />Add Product</Button>
             </div>
             <Card>
                 <CardHeader>
-                    <CardTitle>All Products ({products.length})</CardTitle>
+                    <CardTitle>All Products ({products?.length ?? 0})</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -275,7 +257,7 @@ export default function AdminMarketplacePage() {
                         <TableBody>
                             {isLoading ? Array.from({length: 3}).map((_, i) => (
                                 <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-14 w-full" /></TableCell></TableRow>
-                            )) : products.map(product => (
+                            )) : products?.map(product => (
                                 <TableRow key={product.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
@@ -307,6 +289,9 @@ export default function AdminMarketplacePage() {
                             ))}
                         </TableBody>
                     </Table>
+                     {(!isLoading && (!products || products.length === 0)) && (
+                        <div className="text-center text-muted-foreground p-8">No products found.</div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -316,7 +301,7 @@ export default function AdminMarketplacePage() {
                         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                         <DialogDescription>Fill in the details for the marketplace product.</DialogDescription>
                     </DialogHeader>
-                    {user && <ProductForm user={user} product={editingProduct} onSave={() => { setIsFormOpen(false); setProducts([]); setIsLoading(true); useEffect(() => { const refetch = async () => {const q = query(collection(firestore, 'marketplace_products'), orderBy('createdAt', 'desc')); const snap = await getDocs(q); setProducts(snap.docs.map(d=>({id: d.id, ...d.data()})) as Product[]); setIsLoading(false);}; refetch(); }, []); }} onCancel={() => setIsFormOpen(false)} />}
+                    {user && <ProductForm user={user} product={editingProduct} onSave={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />}
                 </DialogContent>
             </Dialog>
 
