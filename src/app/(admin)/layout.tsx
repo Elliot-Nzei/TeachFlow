@@ -44,11 +44,8 @@ import { SettingsProvider } from '@/contexts/settings-context';
 import { PlanProvider } from '@/contexts/plan-context';
 import { useEffect } from 'react';
 
-const adminMenuItems = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
-];
+// All admin menu items have been removed as the admin section is deleted.
+const adminMenuItems: any[] = [];
 
 function UserProfileDisplay() {
   const { firestore } = useFirebase();
@@ -156,11 +153,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { state: sidebarState } = useSidebar();
 
-  const adjustedMenuItems = [
-      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/admin/users', label: 'Users', icon: Users },
-      { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
-  ];
+  const adjustedMenuItems: any[] = [];
 
   return (
     <AdminAuthGuard>
@@ -171,19 +164,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {adjustedMenuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <Link href={item.href}>
-                    <SidebarMenuButton
-                      isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/admin')}
-                      tooltip={{ children: item.label }}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-              ))}
+              {/* No menu items as the admin section is removed */}
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>
@@ -209,7 +190,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-            {children}
+            <div className="text-center">
+              <h1 className="text-2xl font-bold">Admin Section Removed</h1>
+              <p className="text-muted-foreground">This section has been removed as per your request.</p>
+               <Button asChild className="mt-4">
+                 <Link href="/dashboard">Go to User Dashboard</Link>
+              </Button>
+            </div>
           </main>
         </div>
       </div>
