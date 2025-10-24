@@ -18,16 +18,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Class, Grade, Student } from '@/lib/types';
-import { PlusCircle, View, PanelLeft, Filter } from 'lucide-react';
+import { PlusCircle, View, PanelLeft, Filter, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ClassSidebar from '@/components/class-sidebar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useCollection, useFirebase, useUser, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
+import { useCollection, useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where, writeBatch, doc, getDocs } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SettingsContext } from '@/contexts/settings-context';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type GradeInput = { studentId: string; studentName: string; avatarUrl: string; ca1: number | string; ca2: number | string; exam: number | string; total: number; grade: string; };
 
@@ -47,7 +48,7 @@ const calculateTotal = (ca1: number | string, ca2: number | string, exam: number
 export default function GradesPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
-  const { settings } = useContext(SettingsContext);
+  const { settings, isLoading: isLoadingSettings } = useContext(SettingsContext);
   const { toast } = useToast();
 
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -56,28 +57,62 @@ export default function GradesPage() {
   const [showGrades, setShowGrades] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [gradeInputs, setGradeInputs] = useState<GradeInput[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [filterTerm, setFilterTerm] = useState('');
-  const [filterSession, setFilterSession] = useState('');
+  const [filterTerm, setFilterTerm] = useState(settings?.currentTerm || '');
+  const [filterSession, setFilterSession] = useState(settings?.currentSession || '');
 
   const studentsQuery = useMemoFirebase(() => (user && selectedClass) ? query(collection(firestore, 'users', user.uid, 'students'), where('classId', '==', selectedClass.id)) : null, [firestore, user, selectedClass]);
-  const { data: studentsInSelectedClass } = useCollection<Student>(studentsQuery);
+  const { data: studentsInSelectedClass, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
   
-  const studentIdsInClass = useMemo(() => studentsInSelectedClass?.map(s => s.id) || [], [studentsInSelectedClass]);
-
+  // This query now fetches ALL grades for the class, used for session filtering.
   const allGradesForClassQuery = useMemoFirebase(() => {
-    if (!user || !selectedClass || studentIdsInClass.length === 0) return null;
-    return query(collection(firestore, 'users', user.uid, 'grades'), where('studentId', 'in', studentIdsInClass));
-  }, [firestore, user, selectedClass, studentIdsInClass]);
-
+    if (!user || !selectedClass) return null;
+    return query(collection(firestore, 'users', user.uid, 'grades'), where('classId', '==', selectedClass.id));
+  }, [firestore, user, selectedClass]);
   const { data: allGradesForClass, isLoading: isLoadingAllGrades } = useCollection<Grade>(allGradesForClassQuery);
   
+  // This query fetches ONLY grades for the CURRENT term/session for editing.
+  const currentTermGradesQuery = useMemoFirebase(() => {
+    if (!user || !selectedClass || !settings?.currentTerm || !settings?.currentSession) return null;
+    return query(
+        collection(firestore, 'users', user.uid, 'grades'), 
+        where('classId', '==', selectedClass.id),
+        where('term', '==', settings.currentTerm),
+        where('session', '==', settings.currentSession)
+    );
+  }, [firestore, user, selectedClass, settings]);
+  const { data: currentTermGrades, isLoading: isLoadingCurrentTermGrades } = useCollection<Grade>(currentTermGradesQuery);
+
+
   useEffect(() => {
     if (settings) {
-      setFilterTerm(settings.currentTerm);
-      setFilterSession(settings.currentSession);
+      if (!filterTerm) setFilterTerm(settings.currentTerm);
+      if (!filterSession) setFilterSession(settings.currentSession);
     }
-  }, [settings]);
+  }, [settings, filterTerm, filterSession]);
+
+  useEffect(() => {
+    if (selectedClass && studentsInSelectedClass && selectedSubject && currentTermGrades) {
+        const studentGrades = studentsInSelectedClass.map(student => {
+            const existingGrade = currentTermGrades.find(
+                (g: Grade) => g.studentId === student.id && g.subject === selectedSubject
+            );
+            const total = calculateTotal(existingGrade?.ca1 || '', existingGrade?.ca2 || '', existingGrade?.exam || '');
+            return {
+                studentId: student.id,
+                studentName: student.name,
+                avatarUrl: student.avatarUrl,
+                ca1: existingGrade?.ca1 || '',
+                ca2: existingGrade?.ca2 || '',
+                exam: existingGrade?.exam || '',
+                total: total,
+                grade: calculateNigerianGrade(total),
+            };
+        });
+        setGradeInputs(studentGrades);
+    }
+  }, [selectedSubject, studentsInSelectedClass, currentTermGrades, selectedClass]);
 
 
   const uniqueSessions = useMemo(() => {
@@ -104,25 +139,6 @@ export default function GradesPage() {
 
   const handleSubjectSelect = (subject: string) => {
     setSelectedSubject(subject);
-    if (selectedClass && studentsInSelectedClass) {
-        const studentGrades = studentsInSelectedClass.map(student => {
-            const existingGrade = (allGradesForClass || []).find(
-                (g: Grade) => g.studentId === student.id && g.subject === subject && g.term === settings?.currentTerm && g.session === settings?.currentSession
-            );
-            const total = calculateTotal(existingGrade?.ca1 || '', existingGrade?.ca2 || '', existingGrade?.exam || '');
-            return {
-                studentId: student.id,
-                studentName: student.name,
-                avatarUrl: student.avatarUrl,
-                ca1: existingGrade?.ca1 || '',
-                ca2: existingGrade?.ca2 || '',
-                exam: existingGrade?.exam || '',
-                total: total,
-                grade: calculateNigerianGrade(total),
-            };
-        });
-        setGradeInputs(studentGrades);
-    }
   };
 
   const handleScoreChange = (studentId: string, field: 'ca1' | 'ca2' | 'exam', value: string) => {
@@ -149,16 +165,26 @@ export default function GradesPage() {
         return;
     }
     
+    setIsSaving(true);
     const batch = writeBatch(firestore);
+    
+    const existingGradesQuery = query(collection(firestore, 'users', user.uid, 'grades'), 
+        where('classId', '==', selectedClass.id),
+        where('subject', '==', selectedSubject),
+        where('term', '==', settings.currentTerm),
+        where('session', '==', settings.currentSession)
+    );
+    const existingGradesSnapshot = await getDocs(existingGradesQuery);
+    const existingGradesMap = new Map(existingGradesSnapshot.docs.map(d => [d.data().studentId, d.id]));
 
     gradeInputs.forEach((input) => {
         const ca1 = Number(input.ca1);
         const ca2 = Number(input.ca2);
         const exam = Number(input.exam);
         
-        if (isNaN(ca1) && isNaN(ca2) && isNaN(exam)) return;
+        if (input.ca1 === '' && input.ca2 === '' && input.exam === '') return;
         
-        const existingGrade = (allGradesForClass || []).find(g => g.studentId === input.studentId && g.subject === selectedSubject && g.term === settings.currentTerm && g.session === settings.currentSession);
+        const existingGradeId = existingGradesMap.get(input.studentId);
 
         const gradeData = {
             studentId: input.studentId,
@@ -175,20 +201,25 @@ export default function GradesPage() {
             className: selectedClass.name,
         };
 
-        if (existingGrade) {
-            const gradeRef = doc(firestore, 'users', user.uid, 'grades', existingGrade.id);
-            batch.update(gradeRef, gradeData);
-        } else {
-            const gradeRef = doc(collection(firestore, 'users', user.uid, 'grades'));
-            batch.set(gradeRef, gradeData);
-        }
+        const docRef = existingGradeId
+            ? doc(firestore, 'users', user.uid, 'grades', existingGradeId)
+            : doc(collection(firestore, 'users', user.uid, 'grades'));
+        
+        batch.set(docRef, gradeData, { merge: true });
     });
 
-    await batch.commit();
-    
-    setIsDialogOpen(false);
-    setSelectedSubject('');
-    setGradeInputs([]);
+    try {
+        await batch.commit();
+        setIsDialogOpen(false);
+        setSelectedSubject('');
+        setGradeInputs([]);
+        toast({ title: 'Success!', description: `Grades for ${selectedSubject} have been saved.` });
+    } catch (error) {
+        console.error("Error saving grades:", error);
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save grades.' });
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   const gradesBySubject = grades.reduce((acc, grade) => {
@@ -198,6 +229,8 @@ export default function GradesPage() {
     acc[grade.subject].push(grade);
     return acc;
   }, {} as Record<string, Grade[]>);
+
+  const isLoading = isLoadingStudents || isLoadingAllGrades || isLoadingSettings || isLoadingCurrentTermGrades;
 
   return (
     <div className="flex flex-1 gap-8">
@@ -231,8 +264,8 @@ export default function GradesPage() {
                   <CardDescription>Manage grades for this class.</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                <Button variant="outline" onClick={() => setShowGrades(!showGrades)} className="flex-1 md:flex-initial">
-                    <View className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={() => setShowGrades(!showGrades)} className="flex-1 md:flex-initial" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <View className="mr-2 h-4 w-4" />}
                     {showGrades ? 'Hide Grades' : 'View Grades'}
                 </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -251,7 +284,7 @@ export default function GradesPage() {
                               <div className="space-y-2">
                                   <Label htmlFor="subject">Subject</Label>
                                   <Select onValueChange={handleSubjectSelect} value={selectedSubject}>
-                                      <SelectTrigger id="subject">
+                                      <SelectTrigger id="subject" disabled={isSaving}>
                                           <SelectValue placeholder="Select a subject" />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -264,41 +297,58 @@ export default function GradesPage() {
                               
                               {selectedSubject && (
                                   <ScrollArea className="h-72 mt-4 border rounded-md p-2">
-                                    <div className="space-y-4">
-                                      {gradeInputs.map((input) => (
-                                        <Card key={input.studentId} className="p-4">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <Avatar className="h-9 w-9">
-                                                    <AvatarImage src={input.avatarUrl} alt={input.studentName} />
-                                                    <AvatarFallback>{input.studentName.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <p className="font-semibold">{input.studentName}</p>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-3">
-                                                <div className="space-y-1">
-                                                    <Label htmlFor={`ca1-${input.studentId}`} className="text-xs">CA1 (20)</Label>
-                                                    <Input type="number" min="0" max="20" id={`ca1-${input.studentId}`} value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} />
+                                    {(isLoadingStudents || isLoadingCurrentTermGrades) ? (
+                                        <div className="space-y-4">
+                                            {Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                        {gradeInputs.map((input) => (
+                                            <Card key={input.studentId} className="p-4">
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <Avatar className="h-9 w-9">
+                                                        <AvatarImage src={input.avatarUrl} alt={input.studentName} />
+                                                        <AvatarFallback>{input.studentName.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <p className="font-semibold">{input.studentName}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <Label htmlFor={`ca2-${input.studentId}`} className="text-xs">CA2 (20)</Label>
-                                                    <Input type="number" min="0" max="20" id={`ca2-${input.studentId}`} value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} />
+                                                <div className="grid grid-cols-5 gap-3">
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`ca1-${input.studentId}`} className="text-xs">CA1 (20)</Label>
+                                                        <Input type="number" min="0" max="20" id={`ca1-${input.studentId}`} value={input.ca1} onChange={(e) => handleScoreChange(input.studentId, 'ca1', e.target.value)} disabled={isSaving}/>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`ca2-${input.studentId}`} className="text-xs">CA2 (20)</Label>
+                                                        <Input type="number" min="0" max="20" id={`ca2-${input.studentId}`} value={input.ca2} onChange={(e) => handleScoreChange(input.studentId, 'ca2', e.target.value)} disabled={isSaving}/>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`exam-${input.studentId}`} className="text-xs">Exam (60)</Label>
+                                                        <Input type="number" min="0" max="60" id={`exam-${input.studentId}`} value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} disabled={isSaving}/>
+                                                    </div>
+                                                    <div className="space-y-1 text-center">
+                                                        <Label className="text-xs">Total</Label>
+                                                        <p className="font-bold text-lg">{input.total}</p>
+                                                    </div>
+                                                    <div className="space-y-1 text-center">
+                                                        <Label className="text-xs">Grade</Label>
+                                                        <p className="font-bold text-lg">{input.grade}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <Label htmlFor={`exam-${input.studentId}`} className="text-xs">Exam (60)</Label>
-                                                    <Input type="number" min="0" max="60" id={`exam-${input.studentId}`} value={input.exam} onChange={(e) => handleScoreChange(input.studentId, 'exam', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        </Card>
-                                      ))}
-                                    </div>
+                                            </Card>
+                                        ))}
+                                        </div>
+                                    )}
                                   </ScrollArea>
                               )}
                           </div>
                           <DialogFooter>
                               <DialogClose asChild>
-                                  <Button type="button" variant="ghost">Cancel</Button>
+                                  <Button type="button" variant="ghost" disabled={isSaving}>Cancel</Button>
                               </DialogClose>
-                              <Button type="submit" disabled={!selectedSubject}>Save Grades</Button>
+                              <Button type="submit" disabled={!selectedSubject || isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                {isSaving ? 'Saving...' : 'Save Grades'}
+                              </Button>
                           </DialogFooter>
                       </form>
                   </DialogContent>
@@ -330,6 +380,7 @@ export default function GradesPage() {
                 </div>
               )}
               {showGrades ? (
+                isLoadingAllGrades ? <Skeleton className="h-48 w-full" /> : 
                 Object.keys(gradesBySubject).length > 0 ? (
                   <Accordion type="multiple" className="w-full">
                     {Object.entries(gradesBySubject).map(([subject, subjectGrades]) => (
@@ -409,7 +460,3 @@ export default function GradesPage() {
     </div>
   );
 }
-
-    
-
-    
