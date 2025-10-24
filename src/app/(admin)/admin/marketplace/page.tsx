@@ -210,28 +210,12 @@ export default function MarketplaceAdminPage() {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
-
-    const isAdmin = userProfile?.role === 'admin';
-
     const productsQuery = useMemoFirebase(() => query(collection(firestore, 'marketplace_products')), [firestore]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-    useEffect(() => {
-        if (!isProfileLoading && userProfile?.role !== 'admin') {
-            router.push('/dashboard');
-        }
-    }, [userProfile, isProfileLoading, router]);
 
     const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
         if (!user || !firestore) return;
         
-        if (!isAdmin) {
-             toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to modify products." });
-             return;
-        }
-
         try {
             if (editingProduct) {
                 const productRef = doc(firestore, 'marketplace_products', editingProduct.id);
@@ -259,13 +243,10 @@ export default function MarketplaceAdminPage() {
         if (!window.confirm(`Are you sure you want to delete "${productName}"? This cannot be undone.`)) return;
         
         if (!firestore) return;
-        if (isAdmin) {
-            const productRef = doc(firestore, 'marketplace_products', productId);
-            deleteDocumentNonBlocking(productRef);
-            toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
-        } else {
-            toast({ variant: 'destructive', title: 'Permission Denied', description: "You are not authorized to delete products." });
-        }
+
+        const productRef = doc(firestore, 'marketplace_products', productId);
+        deleteDocumentNonBlocking(productRef);
+        toast({ title: 'Product Deleted', description: `"${productName}" has been removed.` });
     }
 
     const filteredProducts = useMemo(() => {
@@ -286,7 +267,7 @@ export default function MarketplaceAdminPage() {
         return `https://picsum.photos/seed/${product.id}/${dimensions}`;
     };
     
-    if (isProfileLoading || isLoadingProducts) {
+    if (isLoadingProducts) {
         return (
              <div className="space-y-6">
                 <Skeleton className="h-10 w-1/3" />
@@ -301,10 +282,6 @@ export default function MarketplaceAdminPage() {
                 </Card>
              </div>
         )
-    }
-
-     if (!isAdmin) {
-        return null;
     }
 
     return (

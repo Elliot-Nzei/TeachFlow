@@ -16,27 +16,10 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 
 export default function AdminUsersPage() {
   const { firestore } = useFirebase();
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
-  
-  const isAdmin = userProfile?.role === 'admin';
-
-  const usersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'users')) : null, [firestore, isAdmin]);
+  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: users, isLoading: isLoadingUsers, error: usersError } = useCollection(usersQuery, { requiresAdmin: true });
-
-  useEffect(() => {
-    if (!isUserLoading && !isLoadingProfile) {
-        if (!userProfile || userProfile.role !== 'admin') {
-            router.push('/dashboard');
-        }
-    }
-  }, [userProfile, isUserLoading, isLoadingProfile, router]);
-
-  const isLoading = isUserLoading || isLoadingProfile || (isAdmin && isLoadingUsers);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -48,7 +31,7 @@ export default function AdminUsersPage() {
     );
   }, [users, searchTerm]);
   
-  if (isLoading) {
+  if (isLoadingUsers) {
       return (
          <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -68,10 +51,6 @@ export default function AdminUsersPage() {
       )
   }
 
-  if (!isAdmin) {
-      return null;
-  }
-
   return (
     <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -79,7 +58,7 @@ export default function AdminUsersPage() {
             <Card>
                 <CardContent className="p-3 flex items-center gap-4">
                     <div className="text-sm font-medium text-muted-foreground">Total Users</div>
-                     {isLoading ? <Skeleton className="h-6 w-12" /> : (
+                     {isLoadingUsers ? <Skeleton className="h-6 w-12" /> : (
                         <div className="font-bold text-lg">{users?.length || 0}</div>
                     )}
                 </CardContent>
@@ -104,7 +83,7 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           <div className="md:hidden space-y-2">
-            {isLoading ? (
+            {isLoadingUsers ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
             ) : (
               filteredUsers.map(user => (
@@ -135,7 +114,7 @@ export default function AdminUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                {isLoadingUsers ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>

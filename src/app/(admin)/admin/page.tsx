@@ -43,21 +43,11 @@ export default function AdminDashboardPage() {
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
-    const isAdmin = userProfile?.role === 'admin';
-
-    const usersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'users')) : null, [firestore, isAdmin]);
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
     const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery, { requiresAdmin: true });
 
-    const studentsQuery = useMemoFirebase(() => isAdmin ? query(collectionGroup(firestore, 'students')) : null, [firestore, isAdmin]);
+    const studentsQuery = useMemoFirebase(() => query(collectionGroup(firestore, 'students')), [firestore]);
     const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery, { requiresAdmin: true });
-
-    useEffect(() => {
-        if (!isUserLoading && !isProfileLoading) {
-            if (!userProfile || userProfile.role !== 'admin') {
-                router.push('/dashboard');
-            }
-        }
-    }, [userProfile, isUserLoading, isProfileLoading, router]);
 
     const totalRevenue = useMemo(() => {
         if (!allUsers) return 0;
@@ -86,26 +76,7 @@ export default function AdminDashboardPage() {
         }
     }, []);
 
-    const isLoading = isUserLoading || isProfileLoading || (isAdmin && (isLoadingUsers || isLoadingStudents));
-    
-    if (isLoading) {
-      return (
-        <div className="space-y-6 p-4 md:p-6">
-          <Skeleton className="h-10 w-1/3" />
-          <Skeleton className="h-6 w-1/2" />
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-28 w-full" />
-          </div>
-           <Skeleton className="h-40 w-full" />
-        </div>
-      )
-    }
-
-    if (!isAdmin) {
-        return null; // or a dedicated access denied component
-    }
+    const isLoading = isUserLoading || isProfileLoading || isLoadingUsers || isLoadingStudents;
 
     return (
         <div className="space-y-6 p-4 md:p-6">
