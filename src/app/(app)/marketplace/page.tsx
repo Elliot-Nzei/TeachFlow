@@ -482,7 +482,7 @@ export default function MarketplacePage() {
                 {selectedProduct && (
                     <div className="flex flex-col h-full">
                         <SheetHeader className="space-y-0 pb-0">
-                            <div className="aspect-[16/9] relative -mx-6 -mt-6 mb-6 bg-muted">
+                            <div className="aspect-[4/3] relative -mx-6 -mt-6 mb-6 bg-muted">
                                 <Image 
                                     src={getSafeImageUrl(selectedProduct)} 
                                     alt={selectedProduct.name} 

@@ -3,66 +3,69 @@
 
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirebase, useUser } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, ShoppingCart } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import PaystackButton from '@/components/paystack/PaystackButton';
-import { updateStockAfterPayment } from '@/app/(app)/marketplace/order-actions';
-
-type Product = {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    imageUrl?: string;
-};
 
 function CheckoutPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { firestore, user } = useFirebase();
+    const { user } = useUser();
     const { toast } = useToast();
 
     const productId = searchParams.get('productId');
     const productName = searchParams.get('name');
     const productPrice = searchParams.get('price');
     const productImageUrl = searchParams.get('imageUrl');
+    const isSubscription = searchParams.get('isSubscription') === 'true';
+    const billingCycle = searchParams.get('billingCycle');
 
-    const handlePurchaseSuccess = async (reference: { reference: string }) => {
-        if (!productId) return;
+    const handleSuccess = async (reference: { reference: string }) => {
+        toast({
+            title: '🎉 Payment Successful!',
+            description: `Your payment was completed. Ref: ${reference.reference}`
+        });
 
-        try {
-            // Decrement stock
-            await updateStockAfterPayment(productId, 1); // Assuming quantity is 1
-
-            toast({
-                title: '🎉 Purchase Successful!',
-                description: `Your payment for "${productName}" was completed. Ref: ${reference.reference}`
+        // The verification and user update will be handled server-side by the webhook
+        if (isSubscription) {
+             const verifyResponse = await fetch('/api/paystack/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    reference: reference.reference,
+                    planId: productId,
+                    billingCycle,
+                    userId: user?.uid,
+                    isSubscription: true
+                }),
             });
 
-            // Redirect to marketplace after a short delay
-            setTimeout(() => {
-                router.push('/marketplace');
-            }, 2000);
+            const verifyResult = await verifyResponse.json();
 
-        } catch (error) {
-            console.error("Error updating stock after payment:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Payment Processed, Stock Update Failed',
-                description: 'Your payment was successful, but we couldn\'t update the stock. Please contact support.',
-            });
+            if (verifyResult.success) {
+                // Redirect to billing page after a successful subscription payment
+                setTimeout(() => router.push('/billing'), 2000);
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Verification Failed',
+                    description: verifyResult.message || 'There was an issue updating your subscription.',
+                });
+            }
+
+        } else {
+            // For product purchases, just redirect
+            setTimeout(() => router.push('/marketplace'), 2000);
         }
     };
     
-    const handlePurchaseClose = () => {
+    const handleClose = () => {
         toast({ 
-            title: 'Purchase Cancelled', 
+            title: 'Payment Cancelled', 
             description: 'The payment process was not completed.',
             variant: 'default'
         });
@@ -71,10 +74,10 @@ function CheckoutPageContent() {
     if (!productId || !productName || !productPrice) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center">
-                <CardTitle>Invalid Product</CardTitle>
-                <CardDescription>The product details are missing. Please go back to the marketplace and try again.</CardDescription>
-                <Button onClick={() => router.push('/marketplace')} className="mt-4">
-                    Back to Marketplace
+                <CardTitle>Invalid Product or Plan</CardTitle>
+                <CardDescription>The details are missing. Please go back and try again.</CardDescription>
+                <Button onClick={() => router.back()} className="mt-4">
+                    Go Back
                 </Button>
             </div>
         );
@@ -93,16 +96,16 @@ function CheckoutPageContent() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-center gap-4 p-4 border rounded-lg">
-                    <div className="relative h-16 w-16 flex-shrink-0 bg-muted rounded-md overflow-hidden">
-                       {productImageUrl && (
+                    {productImageUrl && (
+                        <div className="relative h-16 w-16 flex-shrink-0 bg-muted rounded-md overflow-hidden">
                            <Image 
                                 src={decodeURIComponent(productImageUrl)}
                                 alt={productName}
                                 fill
                                 className="object-cover"
                            />
-                       )}
-                    </div>
+                        </div>
+                    )}
                     <div className="flex-1">
                         <p className="font-semibold">{productName}</p>
                         <p className="text-lg font-bold text-primary">₦{price.toLocaleString()}</p>
@@ -114,9 +117,9 @@ function CheckoutPageContent() {
                 <PaystackButton
                     email={user?.email || ''}
                     amount={price}
-                    onSuccess={handlePurchaseSuccess}
-                    onClose={handlePurchaseClose}
-                    isPurchase={true}
+                    onSuccess={handleSuccess}
+                    onClose={handleClose}
+                    isPurchase={!isSubscription}
                 />
                  <Button variant="ghost" onClick={() => router.back()} className="w-full">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
