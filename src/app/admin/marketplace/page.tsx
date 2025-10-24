@@ -105,7 +105,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: { prod
 
     return (
         <form onSubmit={handleSubmit}>
-            <ScrollArea className="max-h-[70vh] p-1">
+            <ScrollArea className="h-[60vh] p-1">
                 <div className="space-y-4 pr-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2 sm:col-span-2">
