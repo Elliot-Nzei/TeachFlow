@@ -9,7 +9,7 @@ import { Logo } from "@/components/logo"
 import { useAuth, useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, limit } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { FirebaseError } from "firebase/app";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -62,6 +62,7 @@ export default function RegisterPage() {
                     planStartDate: serverTimestamp(),
                 });
                 
+                // Explicitly redirect based on the role assigned during registration
                 if (role === 'admin') {
                     router.push('/admin');
                 } else {
