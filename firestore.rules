@@ -1,347 +1,51 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the user is signed in.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Authentication required for all operations.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces user ownership.
-     */
+    // Helper Functions
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID and if the resource exists.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces user ownership and resource existence for destructive operations.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && exists(resource);
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
     }
 
-
-    /**
-     * @description Grants create access if the user ID in the request matches the authenticated user ID.
-     * @path N/A
-     */
-    function isSelfCreate(userId) {
-        return isSignedIn() && request.auth.uid == userId && request.resource.data.id == userId;
-    }
-
-    /**
-     * @description Checks if the user has the 'marketplace_admin' role.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces admin privileges for marketplace product management.
-     */
-    function isMarketplaceAdmin() {
-      return isSignedIn() && request.auth.token.role == 'marketplace_admin';
-    }
-
-    /**
-     * @description Allows only marketplace admins to manage products.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Checks if the user is a marketplace admin.
-     */
-    function canManageMarketplaceProduct(sellerId) {
-        return isMarketplaceAdmin() || (isSignedIn() && request.auth.uid == sellerId);
-    }
-
-    /**
-     * @description Enforces immutable relationship between the student and its parent.
-     * @path N/A
-     */
-    function isParentRelationshipMaintained(parentId) {
-        return resource.data.parentId == parentId;
-    }
-    /**
-     * @description Protects user profiles. Only the user can read/write their own profile.
-     * @path /users/{userId}
-     * @allow (get) Authenticated user can read their own profile.
-     * @allow (create) Authenticated user can create their own profile if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update their own profile if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a profile.
-     * @deny (create) User tries to create a profile with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a profile with a userId that doesn't match their auth.uid.
-     * @deny (list) Listing all users is not allowed.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for profile data.
-     */
+    // Rules for the top-level 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isSelfCreate(userId);
-      allow update: if isOwner(userId);
-      allow delete: if false;
+      // Admins can read any user document. Users can read/write their own.
+      allow get: if isOwner(userId) || isAdmin();
+      allow create, update, delete: if isOwner(userId);
+    }
+    match /users {
+        // Only admins can list all users.
+        allow list: if isAdmin();
+    }
+    
+    // Rules for all user subcollections
+    match /users/{userId}/{allPaths=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
     }
 
-    /**
-     * @description Protects parent profiles. Allows self-creation and ownership-based access.
-     * @path /parents/{parentId}
-     * @allow (get) Authenticated user can read their own profile.
-     * @allow (create) Authenticated user can create their own profile if the parentId matches their auth.uid.
-     * @allow (update) Authenticated user can update their own profile if the parentId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a profile.
-     * @deny (create) User tries to create a profile with a parentId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a profile with a parentId that doesn't match their auth.uid.
-     * @deny (list) Listing all parent profiles is not allowed.
-     * @deny (delete) Parent profiles cannot be deleted.
-     * @principle Enforces strict user ownership for parent profile data.
-     */
-    match /parents/{parentId} {
-      allow get: if isOwner(parentId);
-      allow list: if false;
-      allow create: if isSelfCreate(parentId);
-      allow update: if isOwner(parentId);
-      allow delete: if false;
+    // Rules for collection groups needed for admin queries
+    match /{path=**}/students/{studentId} {
+      // Allow an admin to perform a 'list' query across all users' students subcollections.
+      allow list: if isAdmin();
     }
 
-    /**
-     * @description Controls access to marketplace products. Publicly readable, but only writable by admins or the seller.
-     * @path /marketplace_products/{productId}
-     * @allow (get) Anyone can read marketplace products.
-     * @allow (list) Anyone can list marketplace products.
-     * @allow (create) Only marketplace admins can create products.
-     * @allow (update) Only marketplace admins or the seller can update products.
-     * @deny (create) Non-admin users cannot create products.
-     * @deny (update) Non-admin users cannot update products.
-     * @principle Allows public read access while restricting write access to authorized users.
-     */
+    // Rules for top-level marketplace products
     match /marketplace_products/{productId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isMarketplaceAdmin();
-      allow update: if canManageMarketplaceProduct(resource.data.sellerId);
-      allow delete: if canManageMarketplaceProduct(resource.data.sellerId);
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
     }
-
-    /**
-     * @description Protects classes. Only the owner can manage classes.
-     * @path /users/{userId}/classes/{classId}
-     * @allow (get) Authenticated user can read their own classes.
-     * @allow (create) Authenticated user can create a class if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a class if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a class.
-     * @deny (create) User tries to create a class with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a class with a userId that doesn't match their auth.uid.
-     * @deny (list) Only the owner can list the classes.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for class data.
-     */
-    match /users/{userId}/classes/{classId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
+     match /marketplace_products {
+      allow list: if isAdmin() || request.auth != null; // Allow all authenticated users to browse
     }
-
-    /**
-     * @description Protects students. Only the owner can manage students.
-     * @path /users/{userId}/students/{studentId}
-     * @allow (get) Authenticated user can read their own students.
-     * @allow (create) Authenticated user can create a student if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a student if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a student.
-     * @deny (create) User tries to create a student with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a student with a userId that doesn't match their auth.uid.
-     * @deny (list) Only the owner can list the students.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for student data.
-     */
-    match /users/{userId}/students/{studentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects subjects. Only the owner can manage subjects.
-     * @path /users/{userId}/subjects/{subjectId}
-     * @allow (get) Authenticated user can read their own subjects.
-     * @allow (create) Authenticated user can create a subject if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a subject if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a subject.
-     * @deny (create) User tries to create a subject with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a subject with a userId that doesn't match their auth.uid.
-     * @deny (list) Only the owner can list the subjects.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for subject data.
-     */
-    match /users/{userId}/subjects/{subjectId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects grades. Only the owner can manage grades.
-     * @path /users/{userId}/grades/{gradeId}
-     * @allow (get) Authenticated user can read their own grades.
-     * @allow (create) Authenticated user can create a grade if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a grade if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a grade.
-     * @deny (create) User tries to create a grade with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a grade if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the grades.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for grade data.
-     */
-    match /users/{userId}/grades/{gradeId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects attendance records. Only the owner can manage attendance.
-     * @path /users/{userId}/attendance/{attendanceId}
-     * @allow (get) Authenticated user can read their own attendance records.
-     * @allow (create) Authenticated user can create an attendance record if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update an attendance record if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read an attendance record.
-     * @deny (create) User tries to create an attendance record with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update an attendance record if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the attendance records.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for attendance data.
-     */
-    match /users/{userId}/attendance/{attendanceId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects trait records. Only the owner can manage traits.
-     * @path /users/{userId}/traits/{traitId}
-     * @allow (get) Authenticated user can read their own trait records.
-     * @allow (create) Authenticated user can create a trait record if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a trait record if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a trait record.
-     * @deny (create) User tries to create a trait record with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a trait record if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the trait records.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for trait data.
-     */
-    match /users/{userId}/traits/{traitId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects incoming transfer requests. Only the recipient can manage these requests.
-     * @path /users/{userId}/incomingTransfers/{transferId}
-     * @allow (get) Authenticated user can read their own incoming transfer requests.
-     * @allow (create) Authenticated user can create an incoming transfer request if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update an incoming transfer request if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read an incoming transfer request.
-     * @deny (create) User tries to create an incoming transfer request with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update an incoming transfer request if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the incoming transfer requests.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for incoming transfer request data.
-     */
-    match /users/{userId}/incomingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Protects outgoing transfer logs. Only the initiator can view these logs.
-     * @path /users/{userId}/outgoingTransfers/{transferId}
-     * @allow (get) Authenticated user can read their own outgoing transfer logs.
-     * @allow (create) Authenticated user can create an outgoing transfer log if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update an outgoing transfer log if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read an outgoing transfer log.
-     * @deny (create) User tries to create an outgoing transfer log with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update an outgoing transfer log if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the outgoing transfer logs.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for outgoing transfer log data.
-     */
-    match /users/{userId}/outgoingTransfers/{transferId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-   /**
-     * @description Protects payment records. Only the owner can manage payment records.
-     * @path /users/{userId}/payments/{paymentId}
-     * @allow (get) Authenticated user can read their own payment records.
-     * @allow (create) Authenticated user can create a payment record if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a payment record if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read a payment record.
-     * @deny (create) User tries to create a payment record with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a payment record if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the payment records.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for payment data.
-     */
-    match /users/{userId}/payments/{paymentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-   /**
-     * @description Protects timetable data. Only the owner can manage timetable data.
-     * @path /users/{userId}/timetables/{timetableId}
-     * @allow (get) Authenticated user can read their own timetable data.
-     * @allow (create) Authenticated user can create a timetable if the userId matches their auth.uid.
-     * @allow (update) Authenticated user can update a timetable if the userId matches their auth.uid.
-     * @deny (get) Non-authenticated user tries to read timetable data.
-     * @deny (create) User tries to create a timetable with a userId that doesn't match their auth.uid.
-     * @deny (update) User tries to update a timetable if the userId matches their auth.uid.
-     * @deny (list) Only the owner can list the timetable data.
-     * @deny (delete) User profiles cannot be deleted.
-     * @principle Enforces strict user ownership for timetable data.
-     */
-     match /users/{userId}/timetables/{timetableId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    
+    // Rules for parent accounts
+    match /parents/{parentId} {
+        allow read, write: if request.auth != null && request.auth.uid == parentId;
     }
   }
 }

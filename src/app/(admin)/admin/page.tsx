@@ -100,6 +100,10 @@ export default function AdminDashboardPage() {
       )
     }
 
+    if (!userProfile || userProfile.role !== 'admin') {
+        return null; // Don't render anything if not an admin or profile is missing
+    }
+
     return (
         <div className="space-y-6 p-4 md:p-6">
             <h1 className="text-2xl md:text-3xl font-bold font-headline">

@@ -294,6 +294,10 @@ export default function MarketplaceAdminPage() {
         )
     }
 
+     if (!userProfile || userProfile.role !== 'admin') {
+        return null; // Don't render anything if not an admin or profile is missing
+    }
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold font-headline">Marketplace Management</h1>

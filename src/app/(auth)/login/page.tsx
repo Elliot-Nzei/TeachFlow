@@ -33,23 +33,15 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Force refresh the token to get custom claims
+      // Force refresh the token to ensure custom claims are loaded
       await user.getIdToken(true);
+      const tokenResult = await user.getIdTokenResult();
       
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists()) {
-          const userData = userDoc.data();
-          if (userData.role === 'admin') {
-              router.push('/admin');
-          } else {
-              router.push('/dashboard');
-          }
+      // Redirect based on the custom claim, which is the most reliable source.
+      if (tokenResult.claims.admin) {
+          router.push('/admin');
       } else {
-         // This case should ideally not happen if registration is done correctly
-         await auth.signOut();
-         throw new Error('User profile not found.');
+          router.push('/dashboard');
       }
       
     } catch (error) {
