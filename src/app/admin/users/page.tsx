@@ -129,16 +129,42 @@ export default function AdminUsersPage() {
     }
   };
 
-  const filteredUsers = useMemo(() => {
+  const uniqueUsers = useMemo(() => {
     if (!users) return [];
-    return users.filter(user => 
+    
+    // Create a map to hold the most representative user for each email
+    const userMap = new Map<string, User>();
+    
+    users.forEach(user => {
+      if (!user.email) return; // Skip users without an email
+
+      // Always prefer the currently logged-in admin if duplicates exist
+      if(user.id === currentUser?.uid) {
+         userMap.set(user.email, user);
+         return;
+      }
+      
+      const existingUser = userMap.get(user.email);
+      // If no user exists for this email, or if the new one is more recent, add it.
+      // We prioritize users with a `createdAt` timestamp.
+      if (!existingUser || (user.createdAt && (!existingUser.createdAt || user.createdAt.toDate() > existingUser.createdAt.toDate()))) {
+          userMap.set(user.email, user);
+      }
+    });
+
+    return Array.from(userMap.values());
+  }, [users, currentUser]);
+
+
+  const filteredUsers = useMemo(() => {
+    return uniqueUsers.filter(user => 
         user.id !== currentUser?.uid && (
             user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
             user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
         )
     );
-  }, [users, searchQuery, currentUser]);
+  }, [uniqueUsers, searchQuery, currentUser]);
 
 
   const getPlanColor = (plan: string) => {
