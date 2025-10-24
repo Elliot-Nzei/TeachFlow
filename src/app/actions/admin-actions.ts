@@ -183,7 +183,10 @@ async function deleteAuthUsers(auth: ReturnType<typeof getAuth>, uids: string[])
       if (result.failureCount > 0) {
         console.warn(`Failed to delete ${result.failureCount} users from Auth`);
         result.errors.forEach(err => {
-          console.error(`Error deleting user ${err.index}:`, err.error);
+          // It's okay if a user is not found, as they might be an orphan from Firestore.
+          if (err.error.code !== 'auth/user-not-found') {
+            console.error(`Error deleting user ${err.index}:`, err.error);
+          }
         });
       }
     }
@@ -216,60 +219,42 @@ export async function deleteAllData(adminUid: string): Promise<DeleteResult> {
       };
     }
 
-    // Step 2: Get all users from Authentication
-    const listUsersResult = await auth.listUsers(1000);
-    const allUsers = [...listUsersResult.users];
+    // Step 2: Get all user documents from Firestore this time
+    const usersCollectionRef = db.collection('users');
+    const allUserDocs = await usersCollectionRef.get();
+
+    // Filter out the admin user's document
+    const userDocsToDelete = allUserDocs.docs.filter(doc => doc.id !== adminUid);
+    const uidsToDelete = userDocsToDelete.map(doc => doc.id);
     
-    // Handle pagination if there are more than 1000 users
-    let pageToken = listUsersResult.pageToken;
-    while (pageToken) {
-      const nextPage = await auth.listUsers(1000, pageToken);
-      allUsers.push(...nextPage.users);
-      pageToken = nextPage.pageToken;
-    }
-
-    // Filter out the admin user
-    const uidsToDelete = allUsers
-      .filter(userRecord => userRecord.uid !== adminUid)
-      .map(userRecord => userRecord.uid);
-
-    // Step 3: Delete user subcollections first (to avoid orphaned data)
+    // Step 3: Delete subcollections for each user being deleted
     let subcollectionCount = 0;
     for (const uid of uidsToDelete) {
       try {
         const deleted = await deleteAllSubcollections(db, `users/${uid}`, BATCH_SIZE);
         subcollectionCount += deleted;
       } catch (error) {
-        console.error(`Error deleting subcollections for user ${uid}:`, error);
-        // Continue with other users even if one fails
+        console.warn(`Could not delete subcollections for user ${uid}:`, error);
       }
     }
 
-    // Step 4: Delete non-admin user documents from Firestore
-    const usersCollectionRef = db.collection('users');
+    // Step 4: Delete the user documents from Firestore in batches
     let firestoreUserCount = 0;
-    
-    // Delete in batches to avoid overwhelming Firestore
-    for (let i = 0; i < uidsToDelete.length; i += BATCH_SIZE) {
+    for (let i = 0; i < userDocsToDelete.length; i += BATCH_SIZE) {
       const batch = db.batch();
-      const batchUids = uidsToDelete.slice(i, i + BATCH_SIZE);
-      
-      batchUids.forEach(uid => {
-        batch.delete(usersCollectionRef.doc(uid));
+      const batchDocs = userDocsToDelete.slice(i, i + BATCH_SIZE);
+      batchDocs.forEach(doc => {
+        batch.delete(doc.ref);
       });
-      
       await batch.commit();
-      firestoreUserCount += batchUids.length;
+      firestoreUserCount += batchDocs.length;
     }
-
-    // Step 5: Delete other top-level collections (except protected ones)
+    
+    // Step 5: Delete all other top-level collections (except protected ones)
     const allCollections = await db.listCollections();
     const collectionsToDelete = allCollections
       .map(col => col.id)
-      .filter(name => 
-        name !== 'users' && 
-        !PROTECTED_COLLECTIONS.includes(name)
-      );
+      .filter(name => name !== 'users' && !PROTECTED_COLLECTIONS.includes(name));
 
     const deletedCollections: string[] = [];
     for (const collectionName of collectionsToDelete) {
@@ -277,8 +262,7 @@ export async function deleteAllData(adminUid: string): Promise<DeleteResult> {
         await deleteCollection(db, collectionName, BATCH_SIZE);
         deletedCollections.push(collectionName);
       } catch (error) {
-        console.error(`Error deleting collection ${collectionName}:`, error);
-        // Continue with other collections
+        console.warn(`Error deleting collection ${collectionName}:`, error);
       }
     }
 
@@ -289,7 +273,7 @@ export async function deleteAllData(adminUid: string): Promise<DeleteResult> {
       BATCH_SIZE
     );
 
-    // Step 7: Delete users from Firebase Authentication
+    // Step 7: Delete the corresponding users from Firebase Authentication
     const authDeletedCount = await deleteAuthUsers(auth, uidsToDelete);
 
     return {
@@ -346,7 +330,10 @@ export async function getDataStats(adminUid: string): Promise<{
     const totalUsers = usersSnapshot.data().count;
 
     // Get auth users count
-    const listUsersResult = await auth.listUsers(1);
+    // This is an approximation as listing all users can be slow. 
+    // We list a small number to confirm the service is working.
+    const listUsersResult = await auth.listUsers(1); 
+    const authUserCount = (await auth.listUsers(1000)).users.length; // More accurate but still capped
     
     // Get all collections
     const collections = await db.listCollections();
@@ -360,7 +347,7 @@ export async function getDataStats(adminUid: string): Promise<{
       success: true,
       stats: {
         totalUsers,
-        totalAuthUsers: listUsersResult.pageToken ? 1000 : listUsersResult.users.length,
+        totalAuthUsers: authUserCount, // Note: This is an approximation
         collections: collectionNames,
         adminSubcollections: adminSubcollections.length
       }
