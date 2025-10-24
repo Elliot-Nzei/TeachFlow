@@ -44,8 +44,11 @@ import { SettingsProvider } from '@/contexts/settings-context';
 import { PlanProvider } from '@/contexts/plan-context';
 import { useEffect } from 'react';
 
-// All admin menu items have been removed as the admin section is deleted.
-const adminMenuItems: any[] = [];
+const adminMenuItems = [
+  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
+];
 
 function UserProfileDisplay() {
   const { firestore } = useFirebase();
@@ -153,8 +156,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { state: sidebarState } = useSidebar();
 
-  const adjustedMenuItems: any[] = [];
-
   return (
     <AdminAuthGuard>
       <div className="flex min-h-screen w-full">
@@ -164,7 +165,19 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {/* No menu items as the admin section is removed */}
+              {adminMenuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href}>
+                    <SidebarMenuButton
+                      isActive={pathname === item.href}
+                      tooltip={{ children: item.label }}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>
