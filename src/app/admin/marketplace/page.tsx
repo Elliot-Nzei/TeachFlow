@@ -754,7 +754,7 @@ export default function AdminMarketplacePage() {
             ) : filteredProducts.length > 0 ? (
               filteredProducts.map(product => (
                 <Card key={product.id} className="overflow-hidden flex flex-col">
-                  <CardHeader className="p-2">
+                  <CardHeader className="p-2 pb-1">
                     <div className="relative aspect-video mb-2 bg-muted rounded-md overflow-hidden">
                       <Image 
                         src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
