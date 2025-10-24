@@ -1,6 +1,7 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -16,15 +17,23 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 export default function AdminUsersPage() {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
 
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<any>(userProfileQuery);
   
+  // Defer query creation until we confirm the user is an admin.
   const usersQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
-  const isLoading = isUserLoading || isLoadingProfile || isLoadingUsers;
+  useEffect(() => {
+    if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
+      router.push('/dashboard');
+    }
+  }, [userProfile, isProfileLoading, router]);
+
+  const isLoading = isUserLoading || isLoadingProfile || (userProfile?.role === 'admin' && isLoadingUsers);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -35,6 +44,26 @@ export default function AdminUsersPage() {
       (user.schoolName && user.schoolName.toLowerCase().includes(searchTerm.toLowerCase())))
     );
   }, [users, searchTerm]);
+  
+  if (isUserLoading || isLoadingProfile) {
+      return (
+         <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <Skeleton className="h-10 w-1/3" />
+              <Skeleton className="h-12 w-24" />
+          </div>
+          <Card>
+              <CardHeader>
+                  <Skeleton className="h-8 w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                  <Skeleton className="h-40 w-full" />
+              </CardContent>
+          </Card>
+      </div>
+      )
+  }
 
   return (
     <div className="space-y-6">

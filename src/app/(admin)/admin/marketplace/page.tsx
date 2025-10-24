@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, doc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +23,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 type Product = {
     id: string;
@@ -203,12 +204,22 @@ const ProductForm = ({ product, onSave, onCancel }: { product?: Product | null, 
 
 export default function MarketplaceAdminPage() {
     const { firestore, user } = useFirebase();
+    const router = useRouter();
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const productsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'marketplace_products')) : null, [firestore]);
+    const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
+
+    useEffect(() => {
+        if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
+            router.push('/dashboard');
+        }
+    }, [userProfile, isProfileLoading, router]);
+
+    const productsQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'marketplace_products')) : null, [firestore, userProfile]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     const handleSaveProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -265,6 +276,23 @@ export default function MarketplaceAdminPage() {
         const dimensions = size === 'small' ? '40/40' : '80/80';
         return `https://picsum.photos/seed/${product.id}/${dimensions}`;
     };
+    
+    if (isProfileLoading) {
+        return (
+             <div className="space-y-6">
+                <Skeleton className="h-10 w-1/3" />
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-8 w-1/2" />
+                        <Skeleton className="h-4 w-3/4" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-40 w-full" />
+                    </CardContent>
+                </Card>
+             </div>
+        )
+    }
 
     return (
         <div className="space-y-6">

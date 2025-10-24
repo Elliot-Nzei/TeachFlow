@@ -7,6 +7,7 @@ import { doc, collection, query, collectionGroup } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, ClipboardList, DollarSign, GraduationCap } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const plansData = {
   basic: { monthly: 1500, annually: 15000 },
@@ -36,15 +37,17 @@ const StatCard = ({ title, value, icon, description, isLoading }: { title: strin
 export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
     const { user } = useUser();
+    const router = useRouter();
     const [greeting, setGreeting] = useState('');
 
     const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile } = useDoc<any>(userProfileQuery);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
-    const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
+    // Defer query creation until we confirm the user is an admin.
+    const usersQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collection(firestore, 'users')) : null, [firestore, userProfile]);
     const { data: allUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery);
 
-    const studentsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'students')) : null, [firestore]);
+    const studentsQuery = useMemoFirebase(() => (firestore && userProfile?.role === 'admin') ? query(collectionGroup(firestore, 'students')) : null, [firestore, userProfile]);
     const { data: allStudents, isLoading: isLoadingStudents } = useCollection<any>(studentsQuery);
 
     const totalRevenue = useMemo(() => {
@@ -61,6 +64,12 @@ export default function AdminDashboardPage() {
                 return total;
             }, 0);
     }, [allUsers]);
+    
+    useEffect(() => {
+        if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
+            router.push('/dashboard');
+        }
+    }, [userProfile, isProfileLoading, router]);
 
     useEffect(() => {
         const now = new Date();
@@ -74,7 +83,22 @@ export default function AdminDashboardPage() {
         }
     }, []);
 
-    const isLoading = isLoadingUsers || isLoadingStudents;
+    const isLoading = isProfileLoading || (userProfile?.role === 'admin' && (isLoadingUsers || isLoadingStudents));
+    
+    if (isProfileLoading) {
+      return (
+        <div className="space-y-6 p-4 md:p-6">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-6 w-1/2" />
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
+           <Skeleton className="h-40 w-full" />
+        </div>
+      )
+    }
 
     return (
         <div className="space-y-6 p-4 md:p-6">

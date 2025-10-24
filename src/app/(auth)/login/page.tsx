@@ -31,8 +31,12 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Force refresh the token to get custom claims
+      await user.getIdToken(true);
       
-      const userDocRef = doc(firestore, 'users', userCredential.user.uid);
+      const userDocRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
