@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, orderBy, query, where } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -639,7 +639,7 @@ export default function AdminMarketplacePage() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Total Products</CardDescription>
@@ -821,11 +821,19 @@ export default function AdminMarketplacePage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete &quot;{deleteDialog.product?.name}&quot; from the marketplace. This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{deleteDialog.product?.name}&quot; from the marketplace.
+              This action cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
