@@ -107,6 +107,9 @@ export async function POST(req: NextRequest) {
   // 2. Handle data update based on payment type
   if (isSubscription) {
       // It's a subscription payment, update user document in Firestore
+      if (!userId || !planId) {
+        return NextResponse.json({ success: false, message: 'User ID and Plan ID are required for subscription.' }, { status: 400 });
+      }
       try {
         const userRef = db.collection('users').doc(userId);
         await userRef.update({
