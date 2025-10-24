@@ -33,12 +33,11 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Force refresh the token to get the latest custom claims.
-      await user.getIdToken(true);
-      const tokenResult = await user.getIdTokenResult();
-      
-      // Redirect based on the custom claim, which is the most reliable source.
-      if (tokenResult.claims.admin) {
+      // Fetch user profile from Firestore to check their role
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists() && userDoc.data().role === 'admin') {
           router.push('/admin');
       } else {
           router.push('/dashboard');
