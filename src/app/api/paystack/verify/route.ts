@@ -138,9 +138,15 @@ export async function POST(req: NextRequest) {
               if (!productDoc.exists) {
                   throw new Error("Product not found");
               }
-              const currentStock = productDoc.data()?.stock;
-              // Only decrement if stock is not unlimited (0) and is greater than 0
-              if (currentStock > 0) {
+              const productData = productDoc.data();
+              if(!productData) {
+                  throw new Error("Product data is empty");
+              }
+              const currentStock = productData.stock;
+              const category = productData.category;
+              
+              // Only decrement stock for physical goods where stock > 0
+              if (category === 'Physical Good' && currentStock > 0) {
                   transaction.update(productRef, {
                       stock: admin.firestore.FieldValue.increment(-1)
                   });
