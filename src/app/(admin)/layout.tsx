@@ -156,6 +156,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { state: sidebarState } = useSidebar();
 
+  const adjustedMenuItems = [
+      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/admin/users', label: 'Users', icon: Users },
+      { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
+  ];
+
   return (
     <AdminAuthGuard>
       <div className="flex min-h-screen w-full">
@@ -165,11 +171,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {adminMenuItems.map((item) => (
+              {adjustedMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
                     <SidebarMenuButton
-                      isActive={pathname === item.href}
+                      isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/admin')}
                       tooltip={{ children: item.label }}
                     >
                       <item.icon />

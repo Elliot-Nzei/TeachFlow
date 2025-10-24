@@ -1,8 +1,7 @@
 
-'use client';
-
-// This file is a placeholder and is not used in the admin section.
-// The correct admin users page is located at /app/(admin)/admin/users/page.tsx
-export default function LegacyAdminUsersPage() {
+// This file is intentionally left blank.
+// The correct admin users page is now consolidated at /app/(admin)/admin/users/page.tsx
+// This file created a conflicting route at /users in the (admin) group.
+export default function RemovedAdminUsersConflictPage() {
   return null;
 }
