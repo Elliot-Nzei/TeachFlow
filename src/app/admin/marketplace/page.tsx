@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { upsertProduct, deleteProduct } from './actions';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -488,7 +489,7 @@ export default function AdminMarketplacePage() {
   const stats = useMemo(() => {
     if (!products) return { total: 0, active: 0, archived: 0, totalValue: 0 };
     
-    const physicalGoods = products.filter(p => p.category === 'Physical Good');
+    const physicalGoods = products.filter(p => p.category === 'Physical Good' && (p.stock || 0) > 0);
 
     return {
       total: products.length,
