@@ -102,57 +102,6 @@ const testimonials = [
   }
 ];
 
-const pricingPlans = [
-  {
-    name: 'Free Trial',
-    price: '₦0',
-    period: '30 days',
-    description: 'Perfect for trying out TeachFlow',
-    features: [
-      'Up to 2 classes',
-      'Basic gradebook',
-      'Student management',
-      '5 AI-generated reports',
-      'Email support',
-    ],
-    cta: 'Start Free Trial',
-    highlighted: false,
-  },
-  {
-    name: 'Basic',
-    price: '₦12,000',
-    period: 'per term',
-    description: 'For individual teachers',
-    features: [
-      'Unlimited classes',
-      'Full gradebook features',
-      'Attendance tracking',
-      'Unlimited AI reports',
-      'Lesson note generator',
-      'Priority email support',
-    ],
-    cta: 'Get Started',
-    highlighted: true,
-  },
-  {
-    name: 'Prime',
-    price: '₦30,000',
-    period: 'per term',
-    description: 'For schools & coordinators',
-    features: [
-      'Everything in Basic',
-      'Multi-teacher accounts',
-      'Advanced analytics',
-      'Custom branding',
-      'Data transfer',
-      'Phone & email support',
-      'Priority feature requests',
-    ],
-    cta: 'Go Prime',
-    highlighted: false,
-  },
-];
-
 const stats = [
   { value: '500+', label: 'Active Teachers' },
   { value: '10,000+', label: 'Students Managed' },
@@ -171,9 +120,6 @@ export default function Home() {
         <nav className="ml-auto hidden md:flex items-center gap-2 sm:gap-4">
           <Link href="#features">
             <Button variant="ghost">Features</Button>
-          </Link>
-          <Link href="#pricing">
-            <Button variant="ghost">Pricing</Button>
           </Link>
           <Link href="/parents">
             <Button variant="ghost">Parents</Button>
@@ -201,9 +147,6 @@ export default function Home() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
                 <Link href="#features" onClick={() => setMobileMenuOpen(false)}>Features</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="#pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/parents" onClick={() => setMobileMenuOpen(false)}>Parents</Link>
@@ -349,64 +292,9 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Pricing Section */}
-        <section id="pricing" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-semibold">Pricing</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Choose Your Plan</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
-                  Affordable pricing for Nigerian educators. Start free, upgrade when you're ready.
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-6xl items-start gap-8 lg:grid-cols-3 pt-12">
-              {pricingPlans.map((plan, index) => (
-                <Card 
-                  key={index} 
-                  className={`relative ${plan.highlighted ? 'border-primary border-2 shadow-xl scale-105' : 'border-2'}`}
-                >
-                  {plan.highlighted && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
-                      Most Popular
-                    </div>
-                  )}
-                  <CardContent className="p-6 space-y-6">
-                    <div className="space-y-2">
-                      <h3 className="text-2xl font-bold font-headline">{plan.name}</h3>
-                      <p className="text-muted-foreground text-sm">{plan.description}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-4xl font-bold font-headline">{plan.price}</p>
-                      <p className="text-sm text-muted-foreground">{plan.period}</p>
-                    </div>
-                    <ul className="space-y-3">
-                      {plan.features.map((feature, fIndex) => (
-                        <li key={fIndex} className="flex items-start gap-2">
-                          <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Link href="/register">
-                      <Button 
-                        className="w-full" 
-                        variant={plan.highlighted ? 'default' : 'outline'}
-                      >
-                        {plan.cta}
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
         
         {/* Testimonials Section */}
-        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -486,7 +374,7 @@ export default function Home() {
               <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Features
               </Link>
-              <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/billing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
               </Link>
               <Link href="#video-demo" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
