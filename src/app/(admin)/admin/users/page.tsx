@@ -26,7 +26,7 @@ export default function AdminUsersPage() {
   const isAdmin = userProfile?.role === 'admin';
 
   const usersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'users')) : null, [firestore, isAdmin]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
+  const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery, { requiresAdmin: true });
 
   useEffect(() => {
     if (!isUserLoading && !isLoadingProfile) {
