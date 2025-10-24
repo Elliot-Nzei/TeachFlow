@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -574,6 +575,39 @@ export default function AdminMarketplacePage() {
     toast({ title: 'Export Complete', description: 'Products exported successfully' });
   };
 
+  const ProductActionsDropdown = ({ product }: { product: Product }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">Open menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuItem onSelect={() => handleEdit(product)}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => handleToggleStatus(product)}>
+          {product.status === 'active' ? (
+            <><Archive className="mr-2 h-4 w-4" />Archive</>
+          ) : (
+            <><Unarchive className="mr-2 h-4 w-4" />Activate</>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => setDeleteDialog({ open: true, product })}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -605,45 +639,29 @@ export default function AdminMarketplacePage() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Total Products</CardDescription>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <CardTitle className="text-2xl">{stats.total}</CardTitle>
-            )}
+            {isLoading ? <Skeleton className="h-8 w-16" /> : <CardTitle className="text-2xl">{stats.total}</CardTitle>}
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Active</CardDescription>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <CardTitle className="text-2xl text-green-600">{stats.active}</CardTitle>
-            )}
+            {isLoading ? <Skeleton className="h-8 w-16" /> : <CardTitle className="text-2xl text-green-600">{stats.active}</CardTitle>}
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Archived</CardDescription>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <CardTitle className="text-2xl text-muted-foreground">{stats.archived}</CardTitle>
-            )}
+            {isLoading ? <Skeleton className="h-8 w-16" /> : <CardTitle className="text-2xl text-muted-foreground">{stats.archived}</CardTitle>}
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Total Value</CardDescription>
-            {isLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <CardTitle className="text-2xl">₦{stats.totalValue.toLocaleString()}</CardTitle>
-            )}
+            {isLoading ? <Skeleton className="h-8 w-20" /> : <CardTitle className="text-2xl">₦{stats.totalValue.toLocaleString()}</CardTitle>}
           </CardHeader>
         </Card>
       </div>
@@ -663,9 +681,9 @@ export default function AdminMarketplacePage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Select value={categoryFilter} onValueChange={(val) => setCategoryFilter(val as any)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -676,7 +694,7 @@ export default function AdminMarketplacePage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -689,133 +707,101 @@ export default function AdminMarketplacePage() {
           </div>
         </CardHeader>
 
-        {/* Products Table */}
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40%]">Product</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[70px]">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={6}>
-                        <Skeleton className="h-14 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : filteredProducts.length > 0 ? (
-                  filteredProducts.map(product => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="relative h-10 w-10 flex-shrink-0">
-                            <Image
-                              src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=random`}
-                              alt={product.name}
-                              fill
-                              className="rounded-md object-cover"
-                            />
+           {/* Mobile Card View */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
+              ) : filteredProducts.length > 0 ? (
+                filteredProducts.map(product => (
+                  <Card key={product.id}>
+                    <CardHeader>
+                      <div className="relative aspect-video mb-2">
+                        <Image src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}`} alt={product.name} fill className="rounded-md object-cover" />
+                      </div>
+                      <CardTitle className="text-base line-clamp-2">{product.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Price:</span>
+                            <span className="font-semibold">₦{product.price.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Stock:</span>
+                            <span>{product.stock === 0 ? "Unlimited" : product.stock}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Status:</span>
+                          <Badge variant={product.status === 'active' ? 'default' : 'secondary'} className={product.status === 'active' ? 'bg-green-600' : ''}>{toTitleCase(product.status)}</Badge>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                      <ProductActionsDropdown product={product} />
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12 col-span-full">No products found.</div>
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Product</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[70px]"><span className="sr-only">Actions</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-14 w-full" /></TableCell></TableRow>
+                    ))
+                  ) : filteredProducts.length > 0 ? (
+                    filteredProducts.map(product => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="relative h-10 w-10 flex-shrink-0">
+                              <Image src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=random`} alt={product.name} fill className="rounded-md object-cover" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold truncate">{product.name}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-1">{product.description}</p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold truncate">{product.name}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {product.description}
-                            </p>
-                          </div>
+                        </TableCell>
+                        <TableCell><Badge variant="outline">{product.category}</Badge></TableCell>
+                        <TableCell className="font-medium">₦{product.price.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {product.stock === 0 ? (<span className="text-muted-foreground">Unlimited</span>) : (<span className={product.stock < 10 ? 'text-orange-600' : ''}>{product.stock}</span>)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={product.status === 'active' ? 'default' : 'secondary'} className={product.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>{toTitleCase(product.status)}</Badge>
+                        </TableCell>
+                        <TableCell><ProductActionsDropdown product={product} /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-32 text-center">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                          <PackageOpen className="h-12 w-12 mb-2 opacity-30" />
+                          <p className="text-sm font-medium">No products found</p>
+                          <p className="text-xs">{searchQuery || categoryFilter !== 'all' || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Add your first product to get started'}</p>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.category}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        ₦{product.price.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        {product.stock === 0 ? (
-                          <span className="text-muted-foreground">Unlimited</span>
-                        ) : (
-                          <span className={product.stock < 10 ? 'text-orange-600' : ''}>
-                            {product.stock}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={product.status === 'active' ? 'default' : 'secondary'}
-                          className={product.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}
-                        >
-                          {toTitleCase(product.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handleEdit(product)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleToggleStatus(product)}>
-                              {product.status === 'active' ? (
-                                <>
-                                  <Archive className="mr-2 h-4 w-4" />
-                                  Archive
-                                </>
-                              ) : (
-                                <>
-                                  <Unarchive className="mr-2 h-4 w-4" />
-                                  Activate
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onSelect={() => setDeleteDialog({ open: true, product })}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center">
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <PackageOpen className="h-12 w-12 mb-2 opacity-30" />
-                        <p className="text-sm font-medium">No products found</p>
-                        <p className="text-xs">
-                          {searchQuery || categoryFilter !== 'all' || statusFilter !== 'all'
-                            ? 'Try adjusting your filters'
-                            : 'Add your first product to get started'}
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
         </CardContent>
       </Card>
 
@@ -823,29 +809,10 @@ export default function AdminMarketplacePage() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              {editingProduct ? 'Edit Product' : 'Add New Product'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingProduct
-                ? 'Update the product information below.'
-                : 'Fill in the details to create a new product.'}
-            </DialogDescription>
+            <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+            <DialogDescription>{editingProduct ? 'Update the product information below.' : 'Fill in the details to create a new product.'}</DialogDescription>
           </DialogHeader>
-          {user && (
-            <ProductForm
-              product={editingProduct}
-              user={user}
-              onSave={() => {
-                setIsFormOpen(false);
-                setEditingProduct(null);
-              }}
-              onCancel={() => {
-                setIsFormOpen(false);
-                setEditingProduct(null);
-              }}
-            />
-          )}
+          {user && (<ProductForm product={editingProduct} user={user} onSave={() => { setIsFormOpen(false); setEditingProduct(null); }} onCancel={() => { setIsFormOpen(false); setEditingProduct(null); }} />)}
         </DialogContent>
       </Dialog>
 
@@ -854,19 +821,11 @@ export default function AdminMarketplacePage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete &quot;{deleteDialog.product?.name}&quot; from the marketplace.
-              This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete &quot;{deleteDialog.product?.name}&quot; from the marketplace. This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
