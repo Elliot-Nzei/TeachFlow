@@ -34,3 +34,17 @@ export function toTitleCase(str: string): string {
   if (!str) return '';
   return str.toLowerCase().replace(/(^|\s)\S/g, (L) => L.toUpperCase());
 }
+
+/**
+ * Calculates a grade based on a score, following a standard Nigerian grading system.
+ * @param score The score out of 100.
+ * @returns A letter grade ('A', 'B', 'C', 'D', 'E', or 'F').
+ */
+export const calculateNigerianGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
+  if (score >= 75) return 'A';
+  if (score >= 70) return 'B';
+  if (score >= 60) return 'C';
+  if (score >= 50) return 'D';
+  if (score >= 45) return 'E';
+  return 'F';
+};

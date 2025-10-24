@@ -26,7 +26,7 @@ export default function AdminUsersPage() {
   const isAdmin = userProfile?.role === 'admin';
 
   const usersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore, 'users')) : null, [firestore, isAdmin]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery, { requiresAdmin: true });
+  const { data: users, isLoading: isLoadingUsers, error: usersError } = useCollection(usersQuery, { requiresAdmin: true });
 
   useEffect(() => {
     if (!isUserLoading && !isLoadingProfile) {
@@ -141,6 +141,12 @@ export default function AdminUsersPage() {
                       <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))
+                ) : usersError ? (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                           Error: {usersError.message}
+                        </TableCell>
+                    </TableRow>
                 ) : (
                   filteredUsers.map(user => (
                     <TableRow key={user.id}>
