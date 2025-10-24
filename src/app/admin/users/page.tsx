@@ -57,7 +57,7 @@ export default function AdminUsersPage() {
     firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, 
     [firestore]
   );
-  const { data: users, isLoading, error } = useCollection<User>(usersQuery, { requiresAdmin: true });
+  const { data: users, isLoading, error } = useCollection<User>(usersQuery);
 
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
