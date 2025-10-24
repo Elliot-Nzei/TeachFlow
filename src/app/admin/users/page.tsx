@@ -7,7 +7,7 @@ import { collection, orderBy, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Search } from 'lucide-react';
+import { MoreHorizontal, Search, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -261,22 +261,6 @@ export default function AdminUsersPage() {
     </Card>
   );
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold font-headline">User Management</h1>
-          <p className="text-muted-foreground">View and manage all users in the system.</p>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-destructive">Error loading users. Please try again.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -307,6 +291,12 @@ export default function AdminUsersPage() {
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-destructive">
+                <AlertCircle className="mx-auto h-8 w-8 mb-2" />
+                <p className="font-semibold">Error Loading Users</p>
+                <p className="text-sm">{error.message}</p>
             </div>
           ) : filteredUsers && filteredUsers.length > 0 ? (
             <>

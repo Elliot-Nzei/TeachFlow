@@ -1,47 +1,39 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
-    }
-
-    // Rules for the top-level 'users' collection
+    
+    // Admins can read the entire 'users' collection.
     match /users/{userId} {
-      // An admin can read any user's document.
-      // A user can read or write their own document.
-      allow get: if isAdmin() || isOwner(userId);
-      allow list: if isAdmin();
-      allow create, update, delete: if isAdmin() || isOwner(userId);
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
 
-      // Rules for all subcollections under a user
-      match /{allPaths=**} {
-        // An admin can read/write any subcollection document.
-        // A user can read/write documents in their own subcollections.
-        allow read, write: if isAdmin() || isOwner(userId);
+    match /users/{userId} {
+      // Any authenticated user can read their own profile.
+      allow get: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can update their own profile.
+      allow update: if request.auth != null && request.auth.uid == userId;
+      // Users can only be created via a server-side function, not directly.
+      allow create: if false;
+
+      // Rules for user subcollections
+      match /{subcollection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
-    
-    // Rule for the collection group 'students'
-    match /{path=**}/students/{studentId} {
-        // Allow an admin to perform a 'list' query across all users' students subcollections.
-        allow list: if isAdmin();
+
+    match /parents/{parentId} {
+      // Authenticated users can read/update their own parent profile
+      allow get, update: if request.auth != null && request.auth.uid == parentId;
+      // Allow creation of parent profiles
+      allow create: if request.auth != null;
     }
 
-    // Rules for top-level collections accessible by any authenticated user
     match /marketplace_products/{productId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if isAdmin();
-    }
-    
-    match /parents/{parentId} {
-        allow read, write: if request.auth != null && request.auth.uid == parentId;
+      // Any authenticated user can read active marketplace products.
+      allow get: if request.auth != null;
+      // Listing all products is also allowed for any authenticated user.
+      allow list: if request.auth != null;
     }
   }
 }
