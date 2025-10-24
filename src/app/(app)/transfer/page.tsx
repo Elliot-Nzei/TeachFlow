@@ -442,6 +442,7 @@ export default function DataManagementPage() {
             }
         }
         
+        let targetClassRef;
         if (transfer.dataType === 'Full Class Data' && selections.classDetails) {
             if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
             
@@ -449,11 +450,10 @@ export default function DataManagementPage() {
             const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
             const classQuerySnap = await getDocs(q);
 
-            let classRef;
             const studentDocIdsToMerge = Array.from(studentIdMap.values());
 
             if (classQuerySnap.empty) {
-                classRef = doc(classesRef);
+                targetClassRef = doc(classesRef);
                 const classData = {
                   ...transfer.data,
                   students: selections.students ? studentDocIdsToMerge : [],
@@ -461,10 +461,10 @@ export default function DataManagementPage() {
                   transferredFrom: transfer.fromUserId,
                   transferredAt: serverTimestamp(),
                 };
-                batch.set(classRef, classData);
+                batch.set(targetClassRef, classData);
             } else {
-                classRef = classQuerySnap.docs[0].ref;
-                batch.update(classRef, { 
+                targetClassRef = classQuerySnap.docs[0].ref;
+                batch.update(targetClassRef, { 
                     subjects: selections.subjects ? arrayUnion(...(transfer.data.subjects || [])) : undefined,
                     students: selections.students ? arrayUnion(...studentDocIdsToMerge) : undefined,
                     transferredFrom: transfer.fromUserId, 
@@ -474,10 +474,21 @@ export default function DataManagementPage() {
 
             for (const studentId of studentDocIdsToMerge) {
                 const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
-                batch.update(studentRefToUpdate, { classId: classRef.id, className: transfer.data.name });
+                batch.update(studentRefToUpdate, { classId: targetClassRef.id, className: transfer.data.name });
             }
         }
         
+        if (transfer.timetable && targetClassRef) {
+            const timetableRef = doc(firestore, 'users', user.uid, 'timetables', targetClassRef.id);
+            batch.set(timetableRef, {
+              ...transfer.timetable,
+              id: targetClassRef.id,
+              classId: targetClassRef.id,
+              transferredFrom: transfer.fromUserId,
+              transferredAt: serverTimestamp(),
+            }, { merge: true });
+        }
+
         if (selections.subjects && transfer.data.subjects && transfer.data.subjects.length > 0) {
             const subjectsRef = collection(firestore, 'users', user.uid, 'subjects');
             const existingSubjectsSnap = await getDocs(subjectsRef);
@@ -903,5 +914,3 @@ export default function DataManagementPage() {
     </>
   );
 }
-
-    

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,13 +19,30 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { deleteAllData } from '@/app/actions/admin-actions';
+import { useFirebase, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CONFIRMATION_PHRASE = 'DELETE ALL DATA';
 
 export default function AdminSettingsPage() {
+  const { firestore } = useFirebase();
+  const { user } = useUser();
+  const router = useRouter();
   const [isClearing, setIsClearing] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
   const { toast } = useToast();
+
+  const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery, { requiresAdmin: true });
+
+  useEffect(() => {
+    if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
+        router.push('/dashboard');
+    }
+  }, [userProfile, isProfileLoading, router]);
 
   const handleClearAllData = async () => {
     setIsClearing(true);
@@ -50,6 +67,27 @@ export default function AdminSettingsPage() {
       setIsClearing(false);
     }
   };
+  
+  if (isProfileLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Card className="border-destructive">
+          <CardHeader>
+            <Skeleton className="h-8 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-24 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!userProfile || userProfile.role !== 'admin') {
+      return null;
+  }
 
   return (
     <div className="space-y-6">
