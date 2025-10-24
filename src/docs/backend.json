@@ -125,17 +125,19 @@
       "type": "object",
       "description": "Represents a product available for sale in the marketplace.",
       "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "price": { "type": "number" },
-        "category": { "type": "string", "enum": ["Digital Resource", "Physical Good", "Service"] },
-        "status": { "type": "string", "enum": ["active", "archived"] },
-        "stock": { "type": "number" },
-        "imageUrl": { "type": "string", "format": "uri" },
-        "sellerId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "name": { "type": "string", "description": "Name of the product." },
+        "description": { "type": "string", "description": "Detailed description of the product." },
+        "price": { "type": "number", "description": "Price in the local currency (e.g., Naira)." },
+        "category": { "type": "string", "enum": ["Digital Resource", "Physical Good", "Service"], "description": "The category the product belongs to." },
+        "status": { "type": "string", "enum": ["active", "archived"], "description": "The current status of the product listing." },
+        "stock": { "type": "number", "description": "Available stock quantity. Use 0 for unlimited digital goods." },
+        "imageUrl": { "type": "string", "format": "uri", "description": "URL for the product's primary image." },
+        "locations": { "type": "array", "description": "List of states or cities where the product is available.", "items": { "type": "string" } },
+        "sellerId": { "type": "string", "description": "The user ID of the seller (admin in this case)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the product was created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the product was last updated." }
       },
-      "required": ["name", "price", "category", "status", "sellerId"]
+      "required": ["name", "price", "category", "status", "sellerId", "createdAt"]
     },
     "Class": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -556,7 +558,7 @@
       "schema": { "$ref": "#/entities/Parent"},
       "description": "Stores parent user profiles. Parent can create their own account."
     },
-     "/marketplace_products/{productId}": {
+    "/marketplace_products/{productId}": {
       "schema": { "$ref": "#/entities/MarketplaceProduct"},
       "description": "Stores products for the marketplace, accessible platform-wide."
     },

@@ -214,7 +214,7 @@ export default function MarketplaceAdminPage() {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
 
     useEffect(() => {
-        if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
+        if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
             router.push('/dashboard');
         }
     }, [userProfile, isProfileLoading, router]);

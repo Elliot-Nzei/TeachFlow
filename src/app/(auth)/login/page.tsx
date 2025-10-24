@@ -33,7 +33,7 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Force refresh the token to ensure custom claims are loaded
+      // Force refresh the token to get the latest custom claims.
       await user.getIdToken(true);
       const tokenResult = await user.getIdTokenResult();
       

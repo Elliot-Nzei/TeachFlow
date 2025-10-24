@@ -28,7 +28,7 @@ export default function AdminUsersPage() {
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
 
   useEffect(() => {
-    if (!isLoadingProfile && userProfile && userProfile.role !== 'admin') {
+    if (!isLoadingProfile && (!userProfile || userProfile.role !== 'admin')) {
       router.push('/dashboard');
     }
   }, [userProfile, isLoadingProfile, router]);

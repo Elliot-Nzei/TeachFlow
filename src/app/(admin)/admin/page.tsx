@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
     }, [allUsers]);
     
     useEffect(() => {
-        if (!isProfileLoading && userProfile && userProfile.role !== 'admin') {
+        if (!isProfileLoading && (!userProfile || userProfile.role !== 'admin')) {
             router.push('/dashboard');
         }
     }, [userProfile, isProfileLoading, router]);
