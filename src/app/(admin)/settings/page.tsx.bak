@@ -1,6 +1,4 @@
-// This file has been intentionally disabled to resolve a routing conflict
-// with the primary user settings page at /src/app/(app)/settings/page.tsx.
+// This file is intentionally left empty and commented out.
+// It was causing a Next.js routing conflict with /src/app/(app)/settings/page.tsx
+// because both were resolving to the same "/settings" path.
 // The correct admin settings page is located at /src/app/(admin)/admin/settings/page.tsx.
-export default function DisabledAdminSettingsPage() {
-  return null;
-}
