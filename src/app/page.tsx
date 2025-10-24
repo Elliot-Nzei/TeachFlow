@@ -17,7 +17,8 @@ import {
   Check,
   Zap,
   Shield,
-  TrendingUp
+  TrendingUp,
+  ShoppingCart
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -52,6 +53,11 @@ const features = [
     icon: Notebook,
     title: 'AI Lesson Note Generator',
     description: 'Generate multi-week, NERDC-compliant lesson notes for any subject, ready to download as a PDF.',
+  },
+  {
+    icon: ShoppingCart,
+    title: 'Educational Marketplace',
+    description: 'Discover and purchase quality educational resources, goods, and services from the community.',
   },
   {
     icon: Database,
