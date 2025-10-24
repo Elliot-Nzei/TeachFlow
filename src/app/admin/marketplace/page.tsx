@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -753,7 +752,7 @@ export default function AdminMarketplacePage() {
                   <CardHeader className="p-0">
                     <div className="relative aspect-video bg-muted">
                       <Image 
-                        src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}`} 
+                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
                         alt={product.name} 
                         fill 
                         className="object-cover" 
@@ -765,6 +764,10 @@ export default function AdminMarketplacePage() {
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Price:</span>
                       <span className="font-semibold">₦{product.price.toLocaleString()}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Stock:</span>
+                      <span>{product.stock === 0 ? "Unlimited" : product.stock}</span>
                     </div>
                      <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Status:</span>
@@ -823,7 +826,7 @@ export default function AdminMarketplacePage() {
                         <div className="flex items-center gap-3">
                           <div className="relative h-10 w-10 xl:h-12 xl:w-12 flex-shrink-0 bg-muted rounded-md overflow-hidden">
                             <Image 
-                              src={product.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=random`} 
+                              src={product.imageUrl || `https://picsum.photos/seed/${product.id}/50`}
                               alt={product.name} 
                               fill 
                               className="object-cover" 
