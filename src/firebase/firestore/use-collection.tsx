@@ -27,18 +27,6 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
-/* Internal implementation of Query:
-  https://github.com/firebase/firebase-js-sdk/blob/c5f08a9bc5da0d2b0207802c972d53724ccef055/packages/firestore/src/lite-api/reference.ts#L143
-*/
-export interface InternalQuery extends Query<DocumentData> {
-  _query: {
-    path: {
-      canonicalString(): string;
-      toString(): string;
-    }
-  }
-}
-
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries and optional admin role enforcement.
@@ -49,7 +37,7 @@ export interface InternalQuery extends Query<DocumentData> {
  * @param {boolean} [options.requiresAdmin] - If true, the hook waits for user auth and verifies admin role before executing the query.
  */
 export function useCollection<T = any>(
-  memoizedTargetRefOrQuery: CollectionReference<DocumentData> | InternalQuery | null | undefined,
+  memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined,
   options: { requiresAdmin?: boolean } = {}
 ): UseCollectionResult<T> {
   const { isUserLoading, user } = useFirebase();
@@ -130,10 +118,15 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
+        let path = '[unknown path]';
+        // The public API for Query and CollectionReference is slightly different.
+        if (memoizedTargetRefOrQuery.type === 'collection') {
+            path = (memoizedTargetRefOrQuery as CollectionReference).path;
+        } else if (memoizedTargetRefOrQuery.type === 'query') {
+            // For queries, we can reference the converter to get a hint, but the full path isn't public.
+            // This is a safe approximation for error logging.
+            path = `query on collection: [path unavailable in v9 SDK]`;
+        }
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
