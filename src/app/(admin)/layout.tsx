@@ -47,6 +47,7 @@ const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
+  { href: '/admin/settings', label: 'Admin Settings', icon: Shield },
 ];
 
 function UserProfileDisplay() {
@@ -131,7 +132,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.href}>
                 <Link href={item.href}>
                   <SidebarMenuButton
-                    isActive={pathname === item.href}
+                    isActive={pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')}
                     tooltip={{ children: item.label }}
                   >
                     <item.icon />
