@@ -99,7 +99,7 @@ const testimonials = [
     name: 'Mr. Chukwuma',
     role: 'JSS Coordinator, Abuja',
     avatar: 'https://picsum.photos/seed/teacher-2/100/100',
-    comment: "The ability to manage all my classes, subjects, and student records in one place is fantastic. It's so organized and easy to use.",
+    comment: "The ability to manage all my classes, subjects, and student records in one place is fantastic. It is so organized and easy to use.",
     rating: 5,
   },
   {
@@ -375,8 +375,10 @@ export default function Home() {
                   <span className="sr-only">Instagram</span>
                 </Link>
                 <Link href="https://x.com/TeachFlow_App?t=t6EBa6xnU55byovi-6ic8w&s=09" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                  <X className="h-6 w-6" />
-                  <span className="sr-only">Twitter</span>
+                  <svg className="h-6 w-6" viewBox="0 0 1200 1227" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L112.383 39.0909H308.864L600.438 505.637L647.882 573.555L1096.45 1188.2H900.011L569.165 687.854V687.828Z" fill="currentColor"/>
+                  </svg>
+                  <span className="sr-only">X (formerly Twitter)</span>
                 </Link>
             </div>
           </div>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart, Linkedin, Briefcase, Facebook, Instagram, X } from 'lucide-react';
+import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart, Linkedin, Briefcase, Facebook, Instagram } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const aboutImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
@@ -238,6 +238,20 @@ export default function AboutPage() {
           <Link className="text-xs hover:underline underline-offset-4" href="/about">
             About Us
           </Link>
+           <Link href="https://www.facebook.com/share/1TY3JDTrKW/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+              <Facebook className="h-5 w-5" />
+              <span className="sr-only">Facebook</span>
+           </Link>
+            <Link href="https://www.instagram.com/teachflow.official?igsh=MTJwemh2MXNibHFscw==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+              <Instagram className="h-5 w-5" />
+              <span className="sr-only">Instagram</span>
+            </Link>
+            <Link href="https://x.com/TeachFlow_App?t=t6EBa6xnU55byovi-6ic8w&s=09" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+              <svg className="h-5 w-5" viewBox="0 0 1200 1227" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L112.383 39.0909H308.864L600.438 505.637L647.882 573.555L1096.45 1188.2H900.011L569.165 687.854V687.828Z" fill="currentColor"/>
+              </svg>
+              <span className="sr-only">X (formerly Twitter)</span>
+            </Link>
         </nav>
       </footer>
     </div>
