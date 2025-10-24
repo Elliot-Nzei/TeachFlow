@@ -21,7 +21,7 @@ import {
   ShoppingCart,
   Facebook,
   Instagram,
-  Twitter
+  X
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -375,7 +375,7 @@ export default function Home() {
                   <span className="sr-only">Instagram</span>
                 </Link>
                 <Link href="https://x.com/TeachFlow_App?t=t6EBa6xnU55byovi-6ic8w&s=09" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                  <Twitter className="h-6 w-6" />
+                  <X className="h-6 w-6" />
                   <span className="sr-only">Twitter</span>
                 </Link>
             </div>

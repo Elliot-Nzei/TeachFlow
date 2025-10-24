@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart, Linkedin, Briefcase } from 'lucide-react';
+import { ArrowRight, Lightbulb, Target, Users, Menu, GitBranch, Bell, LineChart, Linkedin, Briefcase, Facebook, Instagram, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const aboutImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
