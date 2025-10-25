@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
 import { toTitleCase } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -20,6 +19,7 @@ import { nigerianStates } from '@/lib/nigerian-states';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { SafeImage } from '@/components/SafeImage';
 
 type Product = {
     id: string;
@@ -32,39 +32,6 @@ type Product = {
     imageUrl?: string;
     locations?: string[];
 };
-
-const isValidImageUrl = (url: string | undefined): boolean => {
-    if (!url) return false;
-    try {
-        const allowedHosts = ['images.unsplash.com', 'picsum.photos', 'drive.google.com', 'lh3.googleusercontent.com', 'images-cdn.ubuy.co.in', 'ui-avatars.com'];
-        const urlObj = new URL(url);
-        return allowedHosts.includes(urlObj.hostname);
-    } catch (error) {
-        return false;
-    }
-};
-
-const getDirectGoogleDriveUrl = (url: string): string => {
-    if (url.includes('drive.google.com')) {
-        const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) {
-            return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-        }
-    }
-    return url;
-};
-
-const getSafeImageUrl = (product: Product, size: 'small' | 'large' = 'large') => {
-    if (product.imageUrl) {
-        const directUrl = getDirectGoogleDriveUrl(product.imageUrl);
-         if (isValidImageUrl(directUrl)) {
-            return directUrl;
-        }
-    }
-    const dimensions = size === 'small' ? '40/40' : '400/300';
-    return `https://picsum.photos/seed/${product.id}/${dimensions}`;
-};
-
 
 const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -87,8 +54,8 @@ const ProductCard = ({ product, index, onClick }: { product: Product; index: num
             <Card className="overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-2 hover:border-primary/20">
                 <CardHeader className="p-0 relative">
                     <div className="aspect-[4/3] relative overflow-hidden bg-muted">
-                        <Image
-                            src={getSafeImageUrl(product)}
+                        <SafeImage
+                            src={product.imageUrl || `https://picsum.photos/seed/${product.id}/400/300`}
                             alt={product.name}
                             fill
                             className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -514,8 +481,8 @@ export default function MarketplacePage() {
                     <div className="flex flex-col h-full">
                         <SheetHeader className="space-y-0 pb-0">
                             <div className="aspect-[4/3] relative -mx-6 -mt-6 mb-6 bg-muted">
-                                <Image 
-                                    src={getSafeImageUrl(selectedProduct)} 
+                                <SafeImage 
+                                    src={selectedProduct.imageUrl} 
                                     alt={selectedProduct.name} 
                                     fill 
                                     className="object-cover"

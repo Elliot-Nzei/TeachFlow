@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -21,7 +20,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toTitleCase, cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -36,6 +34,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, AlertCircle } from 'lucide-react';
 import { nigerianStates } from '@/lib/nigerian-states';
+import { getSafeImageUrl } from '@/lib/image-url';
+import { SafeImage } from '@/components/SafeImage';
 
 type ProductCategory = 'Digital Resource' | 'Physical Good' | 'Service';
 type ProductStatus = 'active' | 'archived';
@@ -79,17 +79,6 @@ type ProductFormState = Partial<Omit<Product, 'price' | 'stock'> & {
     stock: number | string;
 }>;
 
-const getDirectGoogleDriveUrl = (url: string): string => {
-    if (url.includes('drive.google.com')) {
-        const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) {
-            return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-        }
-    }
-    return url;
-};
-
-
 const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: ProductFormProps) => {
   const [product, setProduct] = useState<ProductFormState>(
     initialProduct || { ...initialProductState, sellerId: user.uid }
@@ -103,16 +92,6 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
     setProduct(initialProduct || { ...initialProductState, sellerId: user.uid });
     setErrors({});
   }, [initialProduct, user.uid]);
-
-  const isValidUrl = (url: string): boolean => {
-    if (!url) return false;
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -136,11 +115,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
     if (product.stock === undefined || product.stock === '' || Number(product.stock) < 0) {
       newErrors.stock = 'Stock must be 0 or greater';
     }
-
-    if (product.imageUrl && !isValidUrl(product.imageUrl)) {
-      newErrors.imageUrl = 'Please enter a valid URL';
-    }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -228,8 +203,6 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
       setIsSubmitting(false);
     }
   };
-
-  const canShowPreview = product.imageUrl && !errors.imageUrl && isValidUrl(product.imageUrl);
 
   return (
     <form onSubmit={handleSubmit}>
@@ -363,10 +336,10 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
               {errors.imageUrl && (
                 <p className="text-sm text-destructive">{errors.imageUrl}</p>
               )}
-              {canShowPreview && (
+              {product.imageUrl && (
                 <div className="mt-2">
-                  <Image
-                    src={getDirectGoogleDriveUrl(product.imageUrl!)}
+                  <SafeImage
+                    src={product.imageUrl}
                     alt="Preview"
                     width={100}
                     height={100}
@@ -771,10 +744,10 @@ export default function AdminMarketplacePage() {
                 <Card key={product.id} className="overflow-hidden flex flex-col">
                   <CardHeader className="p-2 pb-1">
                     <div className="relative aspect-video mb-2 bg-muted rounded-md overflow-hidden">
-                      <Image 
-                        src={getDirectGoogleDriveUrl(product.imageUrl || `https://picsum.photos/seed/${product.id}/200`)}
+                      <SafeImage 
+                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
                         alt={product.name} 
-                        fill 
+                        fill
                         className="object-cover" 
                       />
                     </div>
@@ -845,8 +818,8 @@ export default function AdminMarketplacePage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="relative h-10 w-10 xl:h-12 xl:w-12 flex-shrink-0 bg-muted rounded-md overflow-hidden">
-                            <Image 
-                              src={getDirectGoogleDriveUrl(product.imageUrl || `https://picsum.photos/seed/${product.id}/50`)}
+                            <SafeImage 
+                              src={product.imageUrl || `https://picsum.photos/seed/${product.id}/50`}
                               alt={product.name} 
                               fill 
                               className="object-cover" 

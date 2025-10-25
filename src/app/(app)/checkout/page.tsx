@@ -7,7 +7,6 @@ import { useFirebase, useUser } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, ShoppingCart, Home, Edit, Check } from 'lucide-react';
-import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import PaystackButton from '@/components/paystack/PaystackButton';
 import { SettingsContext } from '@/contexts/settings-context';
@@ -16,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { nigerianStates } from '@/lib/nigerian-states';
+import { SafeImage } from '@/components/SafeImage';
 
 type ShippingAddress = {
     address?: string;
@@ -153,7 +153,7 @@ function CheckoutPageContent() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="flex items-start gap-4 p-4 border rounded-lg">
-                    {productImageUrl && <div className="relative h-20 w-20 flex-shrink-0 bg-muted rounded-md overflow-hidden"><Image src={decodeURIComponent(productImageUrl)} alt={productName} fill className="object-cover"/></div>}
+                    {productImageUrl && <div className="relative h-20 w-20 flex-shrink-0 bg-muted rounded-md overflow-hidden"><SafeImage src={decodeURIComponent(productImageUrl)} alt={productName} fill className="object-cover"/></div>}
                     <div className="flex-1">
                         <p className="font-semibold text-lg">{productName}</p>
                         {!isSubscription && <p className="text-sm text-muted-foreground">Quantity: {quantityNum}</p>}
