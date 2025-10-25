@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold font-headline">{greeting}, {adminName}</h1>
+        <h1 className="text-3xl font-bold font-headline">{greeting}, Admin {adminName}</h1>
         <p className="text-muted-foreground">
           Here's a summary of your application's status and recent activity.
         </p>
