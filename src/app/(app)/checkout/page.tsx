@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { nigerianStates } from '@/lib/nigerian-states';
 import { SafeImage } from '@/components/SafeImage';
+import { getSafeImageUrl } from '@/lib/image-url';
 
 type ShippingAddress = {
     address?: string;

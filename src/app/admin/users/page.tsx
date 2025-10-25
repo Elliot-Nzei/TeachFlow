@@ -170,11 +170,12 @@ export default function AdminUsersPage() {
 
 
   const filteredUsers = useMemo(() => {
+    if (!uniqueUsers) return [];
     return uniqueUsers.filter(user => 
         user.id !== currentUser?.uid && (
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.schoolName.toLowerCase().includes(searchQuery.toLowerCase())
+            (user.name && user.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (user.schoolName && user.schoolName.toLowerCase().includes(searchQuery.toLowerCase()))
         )
     );
   }, [uniqueUsers, searchQuery, currentUser]);

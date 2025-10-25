@@ -137,19 +137,13 @@ export async function POST(req: NextRequest) {
   
   // 2. Handle data update based on payment type
   try {
-    const adminUid = await getAdminUid(db);
-    const userRef = userId ? db.collection('users').doc(userId) : null;
-    let userData: admin.firestore.DocumentData | undefined;
-    if(userRef) {
-      const userDoc = await userRef.get();
-      if(userDoc.exists) userData = userDoc.data();
-    }
-
     if (isSubscription) {
       if (!userId || !planId) {
         return NextResponse.json({ success: false, message: 'User ID and Plan ID are required for subscription.' }, { status: 400 });
       }
-      if(!userRef || !userData) {
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      if(!userDoc.exists) {
         return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
       }
       
@@ -168,6 +162,12 @@ export async function POST(req: NextRequest) {
       }
 
       const productRef = db.collection('marketplace_products').doc(productId);
+      const userRef = userId ? db.collection('users').doc(userId) : null;
+      let userData: admin.firestore.DocumentData | undefined;
+      if(userRef) {
+        const userDoc = await userRef.get();
+        if(userDoc.exists) userData = userDoc.data();
+      }
       
       // Use transaction to ensure atomic stock update
       await db.runTransaction(async (transaction) => {
@@ -199,7 +199,8 @@ export async function POST(req: NextRequest) {
       const productData = (await productRef.get()).data();
       if (!productData) throw new Error("Could not retrieve product data after transaction.");
 
-      // Create records in a batch
+      // Create sales and purchase records in a batch
+      const adminUid = await getAdminUid(db);
       const batch = db.batch();
       if (adminUid) {
         const saleRef = db.collection('users').doc(adminUid).collection('sales').doc();
