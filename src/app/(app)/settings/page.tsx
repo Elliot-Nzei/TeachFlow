@@ -83,7 +83,7 @@ export default function SettingsPage() {
         setLocalSettings(prev => prev ? {
             ...prev,
             shippingAddress: {
-                ...prev.shippingAddress,
+                ...(prev.shippingAddress || {}),
                 [id]: value
             }
         } : null);
@@ -93,7 +93,7 @@ export default function SettingsPage() {
         setLocalSettings(prev => prev ? {
             ...prev,
             shippingAddress: {
-                ...prev.shippingAddress,
+                ...(prev.shippingAddress || {}),
                 [id]: value
             }
         } : null);
