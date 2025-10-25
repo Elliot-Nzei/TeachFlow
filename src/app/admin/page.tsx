@@ -151,9 +151,14 @@ export default function AdminDashboardPage() {
 
   // Calculate growth percentage
   const userGrowthPercentage = useMemo(() => {
-    if (stats.totalUsers === 0) return 0;
-    return Math.round((stats.newUsersThisWeek / stats.totalUsers) * 100);
+    // Avoid division by zero. If there were no users before this week, growth is infinite, show as 100%.
+    const previousUsers = stats.totalUsers - stats.newUsersThisWeek;
+    if (previousUsers <= 0 && stats.newUsersThisWeek > 0) return 100;
+    if (previousUsers <= 0) return 0;
+    
+    return Math.round((stats.newUsersThisWeek / previousUsers) * 100);
   }, [stats.totalUsers, stats.newUsersThisWeek]);
+
 
   const isLoading = isLoadingUsers || isLoadingProducts || isLoadingRecentUsers || isLoadingAdminProfile;
   const adminName = adminProfile?.name?.split(' ')[0] || 'Administrator';
@@ -219,9 +224,10 @@ export default function AdminDashboardPage() {
               <div className="space-y-1">
                 <div className="text-2xl font-bold">{stats.newUsersThisWeek}</div>
                 <p className="text-xs text-muted-foreground">
-                  {userGrowthPercentage > 0 && (
-                    <span className="text-green-600">+{userGrowthPercentage}%</span>
-                  )} growth rate
+                   {stats.newUsersThisWeek > 0
+                    ? <span className="text-green-600 font-semibold">+{userGrowthPercentage}% growth</span>
+                    : "+0 this week"
+                  }
                 </p>
               </div>
             )}
