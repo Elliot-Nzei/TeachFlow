@@ -199,10 +199,11 @@ export async function POST(req: NextRequest) {
       const productData = (await productRef.get()).data();
       if (!productData) throw new Error("Could not retrieve product data after transaction.");
 
-      // Create sales and purchase records in a batch
+      // Create sales, purchase, and notification records in a batch
       const adminUid = await getAdminUid(db);
       const batch = db.batch();
       if (adminUid) {
+        // Record the sale in admin's 'sales' subcollection
         const saleRef = db.collection('users').doc(adminUid).collection('sales').doc();
         batch.set(saleRef, {
             productId,
@@ -217,9 +218,22 @@ export async function POST(req: NextRequest) {
             reference,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        
+        // Create a notification for the admin
+        const notificationRef = db.collection('users').doc(adminUid).collection('notifications').doc();
+        const shippingInfo = shippingAddress ? ` to ${shippingAddress.address}, ${shippingAddress.state}.` : '.';
+        batch.set(notificationRef, {
+            title: "New Product Sale",
+            message: `${userData?.name || 'A guest'} purchased ${quantity}x ${productData.name}${shippingInfo}`,
+            type: "sale",
+            isRead: false,
+            link: `/admin/marketplace`, // Link to marketplace management
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
       }
       
       if (userRef) {
+        // Record the purchase in user's 'purchases' subcollection
         const purchaseRef = userRef.collection('purchases').doc();
         batch.set(purchaseRef, {
             productId,
