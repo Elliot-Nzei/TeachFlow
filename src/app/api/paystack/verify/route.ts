@@ -40,6 +40,17 @@ function initializeFirebaseAdmin() {
   }
 }
 
+async function getAdminUid(db: admin.firestore.Firestore): Promise<string | null> {
+    const usersRef = db.collection('users');
+    const adminQuery = usersRef.where('role', '==', 'admin').limit(1);
+    const snapshot = await adminQuery.get();
+    if (snapshot.empty) {
+        return null;
+    }
+    return snapshot.docs[0].id;
+}
+
+
 export async function POST(req: NextRequest) {
   try {
     initializeFirebaseAdmin();
@@ -105,6 +116,8 @@ export async function POST(req: NextRequest) {
   }
   
   // 2. Handle data update based on payment type
+  const adminUid = await getAdminUid(db);
+
   if (isSubscription) {
       // It's a subscription payment, update user document in Firestore
       if (!userId || !planId) {
@@ -145,24 +158,48 @@ export async function POST(req: NextRequest) {
               if(!productData) {
                   throw new Error("Product data is empty");
               }
+              
+              if (adminUid) {
+                  const saleNotification = {
+                      title: 'New Sale',
+                      message: `A "${productData.name}" was just sold.`,
+                      type: 'sale',
+                      isRead: false,
+                      link: `/admin/marketplace`,
+                      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  };
+                  db.collection('users').doc(adminUid).collection('notifications').add(saleNotification);
+              }
+
               const currentStock = productData.stock;
               const category = productData.category;
               
-              // Only decrement stock for physical goods where stock > 0
               if (category === 'Physical Good' && currentStock > 0) {
-                  transaction.update(productRef, {
-                      stock: admin.firestore.FieldValue.increment(-1)
-                  });
+                  const newStock = currentStock - 1;
+                  transaction.update(productRef, { stock: newStock });
+                  
+                  if (newStock === 0 && adminUid) {
+                      const stockNotification = {
+                          title: 'Out of Stock',
+                          message: `"${productData.name}" is now out of stock.`,
+                          type: 'stock',
+                          isRead: false,
+                          link: `/admin/marketplace`,
+                          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                      };
+                      db.collection('users').doc(adminUid).collection('notifications').add(stockNotification);
+                  }
               }
           });
           return NextResponse.json({ success: true, message: 'Payment verified and stock updated.' });
       } catch (error: any) {
           console.error('Stock decrement error:', error);
-          // Still return success to the client as payment was verified, but log the error
           return NextResponse.json(
             { success: true, message: 'Payment verified, but stock could not be updated.', details: error.message },
-            { status: 200 } // Status 200 because payment is valid, but with a warning in body
+            { status: 200 }
           );
       }
   }
 }
+
+    

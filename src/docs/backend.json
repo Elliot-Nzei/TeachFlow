@@ -119,6 +119,21 @@
         },
         "required": ["name", "email", "linkedStudentIds", "linkedParentIds"]
     },
+    "Notification": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Notification",
+        "type": "object",
+        "description": "Represents a notification for a user.",
+        "properties": {
+            "title": { "type": "string", "description": "The title of the notification." },
+            "message": { "type": "string", "description": "The main content of the notification." },
+            "type": { "type": "string", "enum": ["sale", "stock", "transfer", "general"], "description": "The category of the notification." },
+            "isRead": { "type": "boolean", "description": "Whether the notification has been read." },
+            "link": { "type": "string", "format": "uri-reference", "description": "An optional link to navigate to." },
+            "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the notification was created." }
+        },
+        "required": ["title", "message", "type", "isRead", "createdAt"]
+    },
     "MarketplaceProduct": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Marketplace Product",
@@ -562,6 +577,10 @@
       "schema": { "$ref": "#/entities/MarketplaceProduct"},
       "description": "Stores products for the marketplace, accessible platform-wide."
     },
+    "/users/{userId}/notifications/{notificationId}": {
+        "schema": { "$ref": "#/entities/Notification" },
+        "description": "Stores notifications for a user."
+    },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
       "description": "Stores classes for a user."
@@ -604,3 +623,5 @@
     }
   }
 }
+
+    

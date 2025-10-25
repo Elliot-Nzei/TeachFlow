@@ -54,6 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsProvider } from '@/contexts/settings-context';
 import { PlanProvider } from '@/contexts/plan-context';
 import { useEffect, useState } from 'react';
+import AdminNotificationBell from '@/components/admin-notification-bell';
 
 const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -248,6 +249,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <SidebarTrigger className="md:hidden" />
           <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
             <div className="ml-auto flex items-center gap-4">
+              <AdminNotificationBell />
               <UserProfileDisplay />
             </div>
           </div>
@@ -273,3 +275,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </SettingsProvider>
   );
 }
+
+    
