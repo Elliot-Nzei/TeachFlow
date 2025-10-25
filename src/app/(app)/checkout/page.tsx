@@ -100,7 +100,8 @@ function CheckoutPageContent() {
             }
             
             // Redirect after successful verification
-            router.push(isSubscription ? '/billing' : '/marketplace/my-orders');
+            const redirectPath = isSubscription ? '/billing' : '/marketplace';
+            router.push(redirectPath);
 
         } catch (error) {
             console.error('Verification error:', error);
