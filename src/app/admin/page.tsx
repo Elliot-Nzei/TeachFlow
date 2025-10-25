@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Users, ShoppingCart, ArrowRight, UserPlus, AlertCircle, TrendingUp, Activity } from 'lucide-react';
 import Link from 'next/link';
-import { useFirebase, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, query, orderBy, limit, where, Timestamp } from 'firebase/firestore';
+import { useFirebase, useUser, useMemoFirebase, useCollection, useDoc } from '@/firebase';
+import { collection, query, orderBy, limit, where, Timestamp, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -44,6 +44,12 @@ export default function AdminDashboardPage() {
   const { user } = useUser();
   const [greeting, setGreeting] = useState('Welcome');
   const [error, setError] = useState<string | null>(null);
+
+  const adminProfileQuery = useMemoFirebase(
+    () => (firestore && user) ? doc(firestore, 'users', user.uid) : null,
+    [firestore, user]
+  );
+  const { data: adminProfile, isLoading: isLoadingAdminProfile } = useDoc<UserData>(adminProfileQuery);
 
   // Queries
   const usersQuery = useMemoFirebase(
@@ -149,13 +155,14 @@ export default function AdminDashboardPage() {
     return Math.round((stats.newUsersThisWeek / stats.totalUsers) * 100);
   }, [stats.totalUsers, stats.newUsersThisWeek]);
 
-  const isLoading = isLoadingUsers || isLoadingProducts || isLoadingRecentUsers;
+  const isLoading = isLoadingUsers || isLoadingProducts || isLoadingRecentUsers || isLoadingAdminProfile;
+  const adminName = adminProfile?.name?.split(' ')[0] || 'Administrator';
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold font-headline">{greeting}, Administrator</h1>
+        <h1 className="text-3xl font-bold font-headline">{greeting}, {adminName}</h1>
         <p className="text-muted-foreground">
           Here's a summary of your application's status and recent activity.
         </p>
