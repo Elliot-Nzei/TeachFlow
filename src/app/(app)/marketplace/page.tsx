@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { usePlan } from '@/contexts/plan-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Lock, Search, Filter, X, ShoppingCart, Package, Star, MapPin, TrendingUp, Sparkles, PackageOpen, Plus, Minus } from 'lucide-react';
+import { Loader2, Lock, Search, Filter, X, ShoppingCart, Package, Star, MapPin, TrendingUp, Sparkles, PackageOpen, Plus, Minus, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { SafeImage } from '@/components/SafeImage';
 import { getSafeImageUrl } from '@/lib/image-url';
+import PurchaseHistory from '@/components/purchase-history';
 
 type Product = {
     id: string;
@@ -259,6 +260,7 @@ export default function MarketplacePage() {
 
     const [isLoadingPlan, setIsLoadingPlan] = useState(true);
     const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+    const [isPurchaseHistoryOpen, setIsPurchaseHistoryOpen] = useState(false);
     
     const [filters, setFilters] = useState({
         searchTerm: '',
@@ -359,14 +361,28 @@ export default function MarketplacePage() {
         <Sheet open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
             <div className="space-y-6 p-4 sm:p-6 lg:p-8">
                 {/* Header Section */}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline">Marketplace</h1>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline">Marketplace</h1>
+                        </div>
+                        <p className="text-sm sm:text-base text-muted-foreground">
+                            Discover quality educational resources, goods, and services from the community
+                        </p>
                     </div>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                        Discover quality educational resources, goods, and services from the community
-                    </p>
+                     <Sheet open={isPurchaseHistoryOpen} onOpenChange={setIsPurchaseHistoryOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="outline"><History className="mr-2 h-4 w-4"/>My Purchases</Button>
+                        </SheetTrigger>
+                        <SheetContent className="w-full sm:max-w-md">
+                            <SheetHeader>
+                                <SheetTitle>My Purchase History</SheetTitle>
+                                <SheetDescription>A record of all items you have purchased from the marketplace.</SheetDescription>
+                            </SheetHeader>
+                            <PurchaseHistory />
+                        </SheetContent>
+                    </Sheet>
                 </div>
 
                 {products && <MarketplaceStats products={products} />}

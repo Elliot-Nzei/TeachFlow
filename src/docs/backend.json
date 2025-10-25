@@ -444,6 +444,22 @@
       },
       "required": [ "studentId", "classId", "term", "session", "amountDue", "amountPaid", "balance", "status" ]
     },
+    "Purchase": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Purchase",
+      "type": "object",
+      "description": "Represents a marketplace product purchase made by a user.",
+      "properties": {
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "quantity": { "type": "number" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["completed", "pending", "failed"] },
+        "reference": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "productName", "quantity", "amount", "status", "reference", "createdAt"]
+    },
     "Transfer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transfer",
@@ -580,6 +596,10 @@
     "/users/{userId}/notifications/{notificationId}": {
         "schema": { "$ref": "#/entities/Notification" },
         "description": "Stores notifications for a user."
+    },
+    "/users/{userId}/purchases/{purchaseId}": {
+        "schema": { "$ref": "#/entities/Purchase" },
+        "description": "Stores a user's marketplace purchase history."
     },
     "/users/{userId}/classes/{classId}": {
       "schema": { "$ref": "#/entities/Class" },
