@@ -65,7 +65,7 @@ const getCategoryIcon = (category: string) => {
 };
 
 const ProductCard = ({ product, index, onClick }: { product: Product; index: number; onClick: () => void }) => {
-    const isSoldOut = product.stock === 0 && product.category !== 'Digital Resource' && product.category !== 'Service';
+    const isSoldOut = product.stock === 0 && product.category === 'Physical Good';
 
     return (
         <div onClick={onClick} className="group cursor-pointer h-full">
@@ -338,6 +338,8 @@ export default function MarketplacePage() {
             name: product.name,
             price: product.price.toString(),
             imageUrl: encodeURIComponent(imageUrl),
+            quantity: '1',
+            isSubscription: 'false',
         });
         router.push(`/checkout?${query.toString()}`);
     };
@@ -493,14 +495,14 @@ export default function MarketplacePage() {
                                         {selectedProduct.category}
                                     </Badge>
                                 </div>
-                                {selectedProduct.stock > 0 && selectedProduct.stock < 10 && (
+                                {selectedProduct.stock > 0 && selectedProduct.stock < 10 && selectedProduct.category === 'Physical Good' && (
                                     <div className="absolute top-4 right-4">
                                         <Badge variant="destructive">
                                             Only {selectedProduct.stock} left!
                                         </Badge>
                                     </div>
                                 )}
-                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service' && (
+                                {selectedProduct.stock === 0 && selectedProduct.category === 'Physical Good' && (
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                        <Badge variant="destructive" className="text-sm px-3 py-1">SOLD OUT</Badge>
                                     </div>
@@ -566,8 +568,8 @@ export default function MarketplacePage() {
                                         Stock Status
                                     </h3>
                                     <p className="text-sm text-muted-foreground">
-                                        {selectedProduct.category === 'Digital Resource' || selectedProduct.category === 'Service'
-                                            ? 'Digital product or service'
+                                        {selectedProduct.category !== 'Physical Good'
+                                            ? 'Digital product or service (Unlimited)'
                                             : selectedProduct.stock > 0 
                                             ? `${selectedProduct.stock} unit${selectedProduct.stock > 1 ? 's' : ''} available`
                                             : 'Sold Out'
@@ -579,8 +581,8 @@ export default function MarketplacePage() {
 
                         {/* Purchase Button - Sticky at bottom */}
                         <div className="pt-6 border-t bg-background mt-auto">
-                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full" disabled={selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service'}>
-                                {selectedProduct.stock === 0 && selectedProduct.category !== 'Digital Resource' && selectedProduct.category !== 'Service' ? 'Sold Out' : <><ShoppingCart className="mr-2 h-4 w-4" /> Buy Now</>}
+                            <Button onClick={() => handleBuyNow(selectedProduct)} className="w-full" disabled={selectedProduct.stock === 0 && selectedProduct.category === 'Physical Good'}>
+                                {selectedProduct.stock === 0 && selectedProduct.category === 'Physical Good' ? 'Sold Out' : <><ShoppingCart className="mr-2 h-4 w-4" /> Buy Now</>}
                             </Button>
                         </div>
                     </div>

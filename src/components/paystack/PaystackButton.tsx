@@ -11,6 +11,7 @@ interface PaystackButtonProps {
   onSuccess: (reference: { reference: string }) => void;
   onClose: () => void;
   isPurchase?: boolean;
+  disabled?: boolean;
 }
 
 const PaystackButton: React.FC<PaystackButtonProps> = ({ 
@@ -19,6 +20,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = ({
     onSuccess, 
     onClose, 
     isPurchase = false,
+    disabled = false,
 }) => {
   const initializePayment = usePaystackPayment({
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
@@ -37,7 +39,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = ({
   };
 
   return (
-    <Button onClick={handlePayment} className="w-full">
+    <Button onClick={handlePayment} className="w-full" disabled={disabled}>
       <ShoppingCart className="mr-2 h-4 w-4" /> 
       {isPurchase ? 'Pay Now' : 'Proceed to Payment'}
     </Button>
