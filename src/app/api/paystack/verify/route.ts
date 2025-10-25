@@ -136,23 +136,23 @@ export async function POST(req: NextRequest) {
   }
   
   // 2. Handle data update based on payment type
-  const adminUid = await getAdminUid(db);
-  const userRef = userId ? db.collection('users').doc(userId) : null;
-  let userData: admin.firestore.DocumentData | undefined;
-  if(userRef) {
-    const userDoc = await userRef.get();
-    if(userDoc.exists) userData = userDoc.data();
-  }
+  try {
+    const adminUid = await getAdminUid(db);
+    const userRef = userId ? db.collection('users').doc(userId) : null;
+    let userData: admin.firestore.DocumentData | undefined;
+    if(userRef) {
+      const userDoc = await userRef.get();
+      if(userDoc.exists) userData = userDoc.data();
+    }
 
-  if (isSubscription) {
-    if (!userId || !planId) {
-      return NextResponse.json({ success: false, message: 'User ID and Plan ID are required for subscription.' }, { status: 400 });
-    }
-    if(!userRef || !userData) {
-      return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
-    }
-    
-    try {
+    if (isSubscription) {
+      if (!userId || !planId) {
+        return NextResponse.json({ success: false, message: 'User ID and Plan ID are required for subscription.' }, { status: 400 });
+      }
+      if(!userRef || !userData) {
+        return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
+      }
+      
       await userRef.update({
         plan: planId,
         subscriptionCycle: billingCycle || 'monthly',
@@ -161,20 +161,14 @@ export async function POST(req: NextRequest) {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       return NextResponse.json({ success: true, message: 'Subscription activated successfully!' });
-    } catch (error: any) {
-      console.error('Subscription update error:', error);
-      return NextResponse.json({ success: false, message: 'Failed to update subscription in database.', details: error.message }, { status: 500 });
-    }
-  } else {
-    // Product purchase
-    if (!productId) {
-      return NextResponse.json({ success: false, message: 'Product ID is required for product purchase.' }, { status: 400 });
-    }
+    } else {
+      // Product purchase
+      if (!productId) {
+        return NextResponse.json({ success: false, message: 'Product ID is required for product purchase.' }, { status: 400 });
+      }
 
-    const batch = db.batch();
-    const productRef = db.collection('marketplace_products').doc(productId);
-    
-    try {
+      const productRef = db.collection('marketplace_products').doc(productId);
+      
       // Use transaction to ensure atomic stock update
       await db.runTransaction(async (transaction) => {
         const productDoc = await transaction.get(productRef);
@@ -206,6 +200,7 @@ export async function POST(req: NextRequest) {
       if (!productData) throw new Error("Could not retrieve product data after transaction.");
 
       // Create records in a batch
+      const batch = db.batch();
       if (adminUid) {
         const saleRef = db.collection('users').doc(adminUid).collection('sales').doc();
         batch.set(saleRef, {
@@ -239,15 +234,17 @@ export async function POST(req: NextRequest) {
       await batch.commit();
 
       return NextResponse.json({ success: true, message: `Payment verified successfully! Your order for ${quantity}x ${productData.name} is confirmed.` });
-
-    } catch (error: any) {
-      console.error('Stock/Purchase update error:', error);
+    }
+  } catch (error: any) {
+      console.error('Database update error after payment verification:', error);
       
+      // If it's a known stock error, return it as a client error
       if (error.message.includes('Insufficient stock') || error.message.includes('not found')) {
         return NextResponse.json({ success: false, message: error.message }, { status: 400 });
       }
       
-      // Log for manual processing if stock update failed after successful payment
+      // For any other failure after payment, log for admin review
+      const adminUid = await getAdminUid(db);
       if (adminUid) {
         const failureLogRef = db.collection('users').doc(adminUid).collection('notifications').doc();
         await failureLogRef.set({
@@ -264,6 +261,5 @@ export async function POST(req: NextRequest) {
         warning: true, // Use a warning flag for the frontend to handle this special case
         message: 'Payment verified, but there was an issue updating inventory. Our team has been notified and will process your order manually.'
       }, { status: 200 });
-    }
   }
 }
