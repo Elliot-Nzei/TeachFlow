@@ -44,13 +44,27 @@ const isValidImageUrl = (url: string | undefined): boolean => {
     }
 };
 
+const getDirectGoogleDriveUrl = (url: string): string => {
+    if (url.includes('drive.google.com')) {
+        const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        }
+    }
+    return url;
+};
+
 const getSafeImageUrl = (product: Product, size: 'small' | 'large' = 'large') => {
-    if (isValidImageUrl(product.imageUrl)) {
-        return product.imageUrl!;
+    if (product.imageUrl) {
+        const directUrl = getDirectGoogleDriveUrl(product.imageUrl);
+         if (isValidImageUrl(directUrl)) {
+            return directUrl;
+        }
     }
     const dimensions = size === 'small' ? '40/40' : '400/300';
     return `https://picsum.photos/seed/${product.id}/${dimensions}`;
 };
+
 
 const getCategoryIcon = (category: string) => {
     switch (category) {

@@ -78,6 +78,16 @@ type ProductFormState = Partial<Omit<Product, 'price' | 'stock'> & {
     stock: number | string;
 }>;
 
+const getDirectGoogleDriveUrl = (url: string): string => {
+    if (url.includes('drive.google.com')) {
+        const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        }
+    }
+    return url;
+};
+
 
 const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: ProductFormProps) => {
   const [product, setProduct] = useState<ProductFormState>(
@@ -352,7 +362,7 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
               {product.imageUrl && !errors.imageUrl && (
                 <div className="mt-2">
                   <Image
-                    src={product.imageUrl}
+                    src={getDirectGoogleDriveUrl(product.imageUrl)}
                     alt="Preview"
                     width={100}
                     height={100}
@@ -759,7 +769,7 @@ export default function AdminMarketplacePage() {
                   <CardHeader className="p-2 pb-1">
                     <div className="relative aspect-video mb-2 bg-muted rounded-md overflow-hidden">
                       <Image 
-                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
+                        src={getDirectGoogleDriveUrl(product.imageUrl || `https://picsum.photos/seed/${product.id}/200`)}
                         alt={product.name} 
                         fill 
                         className="object-cover" 
@@ -833,7 +843,7 @@ export default function AdminMarketplacePage() {
                         <div className="flex items-center gap-3">
                           <div className="relative h-10 w-10 xl:h-12 xl:w-12 flex-shrink-0 bg-muted rounded-md overflow-hidden">
                             <Image 
-                              src={product.imageUrl || `https://picsum.photos/seed/${product.id}/50`}
+                              src={getDirectGoogleDriveUrl(product.imageUrl || `https://picsum.photos/seed/${product.id}/50`)}
                               alt={product.name} 
                               fill 
                               className="object-cover" 
