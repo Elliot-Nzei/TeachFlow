@@ -16,7 +16,7 @@ const Separator = React.forwardRef<
   ) => {
     if (children) {
       return (
-        <div className={cn("flex items-center", className)}>
+        <div className={cn("flex items-center", className)} {...props}>
           <SeparatorPrimitive.Root
             ref={ref}
             decorative={decorative}

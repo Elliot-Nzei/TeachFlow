@@ -331,9 +331,9 @@ export default function AdminUsersPage() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-2">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
             </div>
           ) : error ? (
             <div className="text-center py-8 text-destructive">

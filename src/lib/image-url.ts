@@ -1,49 +1,42 @@
 
 // utils/image-url.ts
-export const getSafeImageUrl = (url: string): string => {
-  if (!url) return '';
+
+/**
+ * A more robust function to sanitize and format image URLs for safe display.
+ * It handles Google Drive links and provides a fallback.
+ * @param url The raw image URL from the database.
+ * @param fallbackName A name to generate a placeholder avatar if the URL is invalid.
+ * @returns A safe, usable image URL string.
+ */
+export const getSafeImageUrl = (url: string | null | undefined, fallbackName: string = 'User'): string => {
+  if (!url) {
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
+  }
 
   try {
-    // --- 1️⃣ Handle Google Drive links ---
-    if (url.includes('drive.google.com')) {
+    // --- 1. Handle Google Drive 'file/d/' links ---
+    if (url.includes('drive.google.com/file/d/')) {
       const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
+        // Use the 'uc' (user content) link for direct viewing
         return `https://drive.google.com/uc?export=view&id=${match[1]}`;
       }
     }
 
-    // --- 2️⃣ Handle Google Images redirect links ---
-    if (url.includes('google.com/imgres')) {
-      const imgUrlParam = new URL(url).searchParams.get('imgurl');
-      if (imgUrlParam) return decodeURIComponent(imgUrlParam);
+    // --- 2. Check if it's already a valid, absolute URL from an allowed domain ---
+    // This simple check is often sufficient. new URL() is more robust.
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image')) {
+       // All other URLs are passed through, assuming they are valid direct image links.
+       // The `SafeImage` component's onError will catch any that fail to load.
+       return url;
     }
 
-    // --- 3️⃣ Handle Pinterest redirect or tracking URLs ---
-    if (url.includes('pinimg.com')) {
-      // Direct Pinterest CDN image (fine to use)
-      return url;
-    }
+    // --- 3. If it's not a recognizable format, return a fallback ---
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
 
-    // --- 4️⃣ Handle Unsplash ---
-    if (url.includes('unsplash.com')) {
-      // Handle short forms or page URLs
-      if (!url.match(/\.(jpg|jpeg|png|webp|avif)$/)) {
-        const match = url.match(/photos\/([^/?]+)/);
-        if (match && match[1]) {
-          return `https://source.unsplash.com/${match[1]}`;
-        }
-      }
-      return url;
-    }
-
-    // --- 5️⃣ If it’s already a valid image file URL ---
-    if (url.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i)) {
-      return url;
-    }
-
-    // --- 6️⃣ Default fallback ---
-    return url;
-  } catch {
-    return '';
+  } catch (error) {
+    // If any part of the URL processing fails, return a fallback.
+    console.error("Failed to process image URL:", url, error);
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
   }
 };
