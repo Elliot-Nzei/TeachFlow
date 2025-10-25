@@ -33,13 +33,19 @@ function initializeFirebaseAdmin() {
 }
 
 async function getAdminUid(db: admin.firestore.Firestore): Promise<string | null> {
-    const usersRef = db.collection('users');
-    const adminQuery = usersRef.where('role', '==', 'admin').limit(1);
-    const snapshot = await adminQuery.get();
-    if (snapshot.empty) {
+    try {
+        const usersRef = db.collection('users');
+        const adminQuery = usersRef.where('role', '==', 'admin').limit(1);
+        const snapshot = await adminQuery.get();
+        if (snapshot.empty) {
+            console.warn("No admin user found to log sales notifications.");
+            return null;
+        }
+        return snapshot.docs[0].id;
+    } catch (e) {
+        console.error("Failed to query for admin user:", e);
         return null;
     }
-    return snapshot.docs[0].id;
 }
 
 
@@ -119,13 +125,12 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Paystack verification error:', error);
+    let suggestion = 'Check your network connection and API keys.';
+    if (error.message.includes('fetch')) {
+      suggestion = 'Network error. If using Firebase, the Spark plan may block this request. Please upgrade to the Blaze plan.';
+    }
     return NextResponse.json(
-      { 
-        success: false, 
-        message: 'Could not verify payment with Paystack.', 
-        details: error.message,
-        suggestion: 'If you are on Firebase Spark plan, please upgrade to Blaze plan to enable external API calls.'
-      }, 
+      { success: false, message: `Could not verify payment with Paystack. ${suggestion}`, details: error.message }, 
       { status: 500 }
     );
   }
@@ -140,12 +145,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (isSubscription) {
-    // Subscription payment - update user document
     if (!userId || !planId) {
-      return NextResponse.json(
-        { success: false, message: 'User ID and Plan ID are required for subscription.' }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: 'User ID and Plan ID are required for subscription.' }, { status: 400 });
     }
     if(!userRef || !userData) {
       return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
@@ -165,34 +166,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Failed to update subscription in database.', details: error.message }, { status: 500 });
     }
   } else {
-    // Product purchase - decrement stock
+    // Product purchase
     if (!productId) {
       return NextResponse.json({ success: false, message: 'Product ID is required for product purchase.' }, { status: 400 });
     }
 
+    const batch = db.batch();
+    const productRef = db.collection('marketplace_products').doc(productId);
+    
     try {
-      const productRef = db.collection('marketplace_products').doc(productId);
-      const batch = db.batch();
-      
-      const productDoc = await productRef.get();
-      if (!productDoc.exists) throw new Error("Product not found in database");
-      
-      const productData = productDoc.data();
-      if (!productData) throw new Error("Product data is empty");
-      
-      const currentStock = productData.stock || 0;
-      const category = productData.category;
-      
-      if (category === 'Physical Good') {
-        if (currentStock < quantity) {
-          throw new Error(`Insufficient stock. Available: ${currentStock}, Requested: ${quantity}`);
+      // Use transaction to ensure atomic stock update
+      await db.runTransaction(async (transaction) => {
+        const productDoc = await transaction.get(productRef);
+        
+        if (!productDoc.exists) {
+          throw new Error("Product not found in database.");
         }
-        batch.update(productRef, {
-          stock: admin.firestore.FieldValue.increment(-quantity),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
+        
+        const productData = productDoc.data();
+        if (!productData) {
+          throw new Error("Product data is empty.");
+        }
+        
+        const currentStock = productData.stock || 0;
+        const category = productData.category;
+        
+        if (category === 'Physical Good') {
+          if (currentStock < quantity) {
+            throw new Error(`Insufficient stock for "${productData.name}". Available: ${currentStock}, Requested: ${quantity}`);
+          }
+          transaction.update(productRef, {
+            stock: admin.firestore.FieldValue.increment(-quantity),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      });
+      
+      const productData = (await productRef.get()).data();
+      if (!productData) throw new Error("Could not retrieve product data after transaction.");
 
+      // Create records in a batch
       if (adminUid) {
         const saleRef = db.collection('users').doc(adminUid).collection('sales').doc();
         batch.set(saleRef, {
@@ -201,7 +214,7 @@ export async function POST(req: NextRequest) {
             quantity,
             amount: paystackData.data.amount / 100,
             buyerId: userId,
-            buyerName: userData?.name,
+            buyerName: userData?.name || 'Guest',
             buyerEmail: userData?.email,
             shippingAddress,
             status: 'completed',
@@ -225,17 +238,32 @@ export async function POST(req: NextRequest) {
 
       await batch.commit();
 
-      return NextResponse.json({ 
-        success: true, 
-        message: `Payment verified successfully! ${quantity > 1 ? `${quantity} items` : 'Item'} purchased.` 
-      });
+      return NextResponse.json({ success: true, message: `Payment verified successfully! Your order for ${quantity}x ${productData.name} is confirmed.` });
 
     } catch (error: any) {
       console.error('Stock/Purchase update error:', error);
+      
       if (error.message.includes('Insufficient stock') || error.message.includes('not found')) {
         return NextResponse.json({ success: false, message: error.message }, { status: 400 });
       }
-      return NextResponse.json({ success: false, message: 'Failed to record purchase after payment verification.'}, { status: 500 });
+      
+      // Log for manual processing if stock update failed after successful payment
+      if (adminUid) {
+        const failureLogRef = db.collection('users').doc(adminUid).collection('notifications').doc();
+        await failureLogRef.set({
+            title: "ACTION REQUIRED: Payment/Stock Mismatch",
+            message: `Payment for reference ${reference} was successful but stock update failed for product ID ${productId}. Please investigate.`,
+            type: "error",
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        warning: true, // Use a warning flag for the frontend to handle this special case
+        message: 'Payment verified, but there was an issue updating inventory. Our team has been notified and will process your order manually.'
+      }, { status: 200 });
     }
   }
 }

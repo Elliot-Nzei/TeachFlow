@@ -83,19 +83,36 @@ function CheckoutPageContent() {
 
             const verifyResult = await verifyResponse.json();
 
-            if (!verifyResponse.ok || !verifyResult.success) {
-                throw new Error(verifyResult.message || 'Verification request failed');
+            if (!verifyResponse.ok) {
+                // If the server returns an error, it's a verification failure.
+                throw new Error(verifyResult.message || 'Verification request failed on the server.');
             }
-
-            toast({ title: 'Order Confirmed!', description: verifyResult.message || 'Your purchase has been confirmed.' });
+            
+            if (verifyResult.warning) {
+                // Handle cases where payment is verified but another step failed (e.g., stock update)
+                toast({
+                    title: 'Payment Verified with a Warning',
+                    description: verifyResult.message || 'Please contact support if your order details are not updated.',
+                    duration: 10000,
+                });
+            } else {
+                 toast({ title: 'Order Confirmed!', description: verifyResult.message || 'Your purchase has been confirmed.' });
+            }
+            
+            // Redirect after successful verification
             router.push(isSubscription ? '/billing' : '/marketplace/my-orders');
+
         } catch (error) {
             console.error('Verification error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+            
             toast({
                 variant: 'destructive',
-                title: 'Verification Failed',
-                description: error instanceof Error ? error.message : 'There was an issue confirming your purchase. Please contact support.',
+                title: 'Order Verification Failed',
+                description: `Your payment may have been successful, but we could not confirm your order. Please contact support with payment reference. Error: ${errorMessage}`,
+                duration: 15000, // Give user more time to read
             });
+        } finally {
             setIsVerifying(false);
         }
     };
