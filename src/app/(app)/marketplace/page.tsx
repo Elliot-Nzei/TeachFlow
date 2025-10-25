@@ -20,6 +20,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescri
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { SafeImage } from '@/components/SafeImage';
+import { getSafeImageUrl } from '@/lib/image-url';
 
 type Product = {
     id: string;
@@ -321,7 +322,7 @@ export default function MarketplacePage() {
     };
     
     const handleBuyNow = (product: Product) => {
-        const imageUrl = getSafeImageUrl(product);
+        const imageUrl = getSafeImageUrl(product.imageUrl || '');
         const query = new URLSearchParams({
             productId: product.id,
             name: product.name,
