@@ -229,26 +229,24 @@ const MarketplaceStats = ({ products }: { products: Product[] }) => {
     }, [products]);
 
     return (
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
-            <Card className="border-2">
-                <CardContent className="p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-primary">{stats.total}</div>
-                    <div className="text-xs sm:text-sm text-muted-foreground">Products</div>
-                </CardContent>
-            </Card>
-            <Card className="border-2">
-                <CardContent className="p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-primary">{stats.categories}</div>
-                    <div className="text-xs sm:text-sm text-muted-foreground">Categories</div>
-                </CardContent>
-            </Card>
-            <Card className="border-2">
-                <CardContent className="p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-primary">{stats.locations}</div>
-                    <div className="text-xs sm:text-sm text-muted-foreground">Locations</div>
-                </CardContent>
-            </Card>
-        </div>
+        <Card>
+            <CardContent className="p-4">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div className="text-lg sm:text-xl font-bold text-primary">{stats.total}</div>
+                        <div className="text-xs text-muted-foreground">Products</div>
+                    </div>
+                    <div>
+                        <div className="text-lg sm:text-xl font-bold text-primary">{stats.categories}</div>
+                        <div className="text-xs text-muted-foreground">Categories</div>
+                    </div>
+                    <div>
+                        <div className="text-lg sm:text-xl font-bold text-primary">{stats.locations}</div>
+                        <div className="text-xs text-muted-foreground">Locations</div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
     );
 };
 
@@ -361,19 +359,22 @@ export default function MarketplacePage() {
         <Sheet open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
             <div className="space-y-6">
                 {/* Header Section */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                            <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-headline">Marketplace</h1>
+                            <Sparkles className="h-6 w-6 text-primary" />
+                            <h1 className="text-2xl sm:text-3xl font-bold font-headline">Marketplace</h1>
                         </div>
-                        <p className="text-sm sm:text-base text-muted-foreground">
-                            Discover quality educational resources, goods, and services from the community
+                        <p className="text-sm text-muted-foreground hidden sm:block">
+                            Discover quality educational resources, goods, and services from the community.
                         </p>
                     </div>
                      <Sheet open={isPurchaseHistoryOpen} onOpenChange={setIsPurchaseHistoryOpen}>
                         <SheetTrigger asChild>
-                            <Button variant="outline"><History className="mr-2 h-4 w-4"/>My Purchases</Button>
+                            <Button variant="outline" className="hidden sm:inline-flex"><History className="mr-2 h-4 w-4"/>My Purchases</Button>
+                        </SheetTrigger>
+                        <SheetTrigger asChild>
+                             <Button variant="outline" size="icon" className="sm:hidden"><History className="h-4 w-4"/><span className="sr-only">My Purchases</span></Button>
                         </SheetTrigger>
                         <SheetContent className="w-full sm:max-w-md">
                             <SheetHeader>
@@ -613,3 +614,5 @@ export default function MarketplacePage() {
         </Sheet>
     );
 }
+
+    
