@@ -247,12 +247,12 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SettingsProvider>
-      <PlanProvider>
-        <SidebarProvider>
+    <SidebarProvider>
+      <SettingsProvider>
+        <PlanProvider>
           <AppLayoutContent>{children}</AppLayoutContent>
-        </SidebarProvider>
-      </PlanProvider>
-    </SettingsProvider>
+        </PlanProvider>
+      </SettingsProvider>
+    </SidebarProvider>
   );
 }

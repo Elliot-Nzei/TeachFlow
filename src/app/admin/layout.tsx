@@ -253,14 +253,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SettingsProvider>
-      <PlanProvider>
-        <SidebarProvider>
+    <SidebarProvider>
+      <SettingsProvider>
+        <PlanProvider>
           <AdminAuthGuard>
             <AdminLayoutContent>{children}</AdminLayoutContent>
           </AdminAuthGuard>
-        </SidebarProvider>
-      </PlanProvider>
-    </SettingsProvider>
+        </PlanProvider>
+      </SettingsProvider>
+    </SidebarProvider>
   );
 }
