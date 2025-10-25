@@ -13,7 +13,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuFooter,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from './ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
@@ -126,14 +125,14 @@ export default function AdminNotificationBell() {
                 </ScrollArea>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuFooter>
+            <div className="p-1">
                 <Link href="/admin/notifications" className="w-full">
                     <Button variant="ghost" className="w-full justify-center text-sm">
                         View All Notifications
                         <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </Link>
-            </DropdownMenuFooter>
+            </div>
         </DropdownMenuContent>
     </DropdownMenu>
   );
