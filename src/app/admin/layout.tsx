@@ -163,7 +163,6 @@ function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { firestore } = useFirebase();
   const router = useRouter();
-  const [hasChecked, setHasChecked] = useState(false);
 
   const userProfileQuery = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileQuery);
@@ -171,34 +170,21 @@ function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const isLoading = isUserLoading || isProfileLoading;
   
   useEffect(() => {
-    if (!isLoading && !hasChecked) {
-      setHasChecked(true);
-      
+    if (!isLoading) {
       if (!user) {
         router.replace('/login');
       } else if (userProfile && userProfile.role !== 'admin') {
         router.replace('/dashboard');
       }
     }
-  }, [isLoading, user, userProfile, router, hasChecked]);
+  }, [isLoading, user, userProfile, router]);
 
-  if (isLoading || !hasChecked) {
+  if (isLoading || !user || !userProfile || userProfile.role !== 'admin') {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Verifying administrator access...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!user || !userProfile || userProfile.role !== 'admin') {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Redirecting...</p>
         </div>
       </div>
     );
@@ -212,56 +198,56 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { state: sidebarState } = useSidebar();
 
   return (
-    <div className="flex min-h-screen w-full">
-      <Sidebar>
-        <SidebarHeader>
-          <Logo compact={sidebarState === 'collapsed'} />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            {adminMenuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')}
-                    tooltip={{ children: item.label }}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
+      <div className="flex min-h-screen w-full">
+        <Sidebar>
+          <SidebarHeader>
+            <Logo compact={sidebarState === 'collapsed'} />
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              {adminMenuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href}>
+                    <SidebarMenuButton
+                      isActive={pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')}
+                      tooltip={{ children: item.label }}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <Link href="/">
+                  <SidebarMenuButton tooltip={{children: 'Logout'}}>
+                    <LogOut />
+                    <span>Logout</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link href="/">
-                <SidebarMenuButton tooltip={{children: 'Logout'}}>
-                  <LogOut />
-                  <span>Logout</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-          <SidebarTrigger className="md:hidden" />
-          <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-            <div className="ml-auto flex items-center gap-4">
-              <AdminNotificationBell />
-              <UserProfileDisplay />
+            </SidebarMenu>
+          </SidebarFooter>
+        </Sidebar>
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+            <SidebarTrigger className="md:hidden" />
+            <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+              <div className="ml-auto flex items-center gap-4">
+                <AdminNotificationBell />
+                <UserProfileDisplay />
+              </div>
             </div>
-          </div>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-          {children}
-        </main>
+          </header>
+          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
   )
 }
 
