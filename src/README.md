@@ -1,3 +1,4 @@
+
 # 📘 TeachFlow: Your Complete User Guide
 
 Welcome to TeachFlow! This guide provides a comprehensive overview of the entire platform, explaining how to use each feature to manage your school's administrative tasks efficiently. From initial setup to generating AI-powered reports, this document is your single source of truth.
@@ -238,7 +239,21 @@ Leverage generative AI to automate complex tasks.
 
 ---
 
-## 7. Advanced Features
+## 7. Marketplace
+
+**Go to [Marketplace](/marketplace)**
+
+The Marketplace is a community hub for educational resources. (This feature is available on Basic and Prime plans).
+
+1.  **Browse Products**: Discover digital resources, physical goods, and services.
+2.  **Filter and Search**: Use the filters on the left (or in the "Show Filters" panel on mobile) to narrow down products by category, location, or name.
+3.  **View Product Details**: Click on any product to see a detailed description, price, and availability.
+4.  **Purchase**: Click "Buy Now" to proceed to a secure checkout page powered by Paystack.
+5.  **My Purchases**: Click the "My Purchases" button at the top to view a history of all items you have bought.
+
+---
+
+## 8. Advanced Features
 
 ### End-of-Session Promotion
 **Go to the [Classes](/classes) page and select a class.**
@@ -256,7 +271,7 @@ Promotions are a critical year-end task.
 ### Data Transfer
 **Go to [Data Transfer](/transfer)**
 
-This feature allows you to securely share data with another teacher or administrator using TeachFlow.
+This feature allows you to securely share data with another teacher or administrator using TeachFlow. (This feature is available on the Prime plan).
 
 1.  **Initiate Transfer**:
     *   Enter the recipient's unique `User Code`.
@@ -270,7 +285,20 @@ This feature allows you to securely share data with another teacher or administr
 
 ---
 
-## 8. Danger Zone: Clearing Data
+## 9. Admin Dashboard (For Admins Only)
+
+If you are the first user to register or have been granted admin rights, you will have access to the Admin Dashboard.
+
+**Go to [Admin](/admin)**
+
+1.  **User Management**: View all registered users. You can change their roles (teacher/admin), update their subscription plans, or delete their accounts.
+2.  **Marketplace Management**: Create, edit, and manage all products available in the public marketplace.
+3.  **Notifications**: View a log of all system-wide notifications, such as new product sales.
+4.  **System**: Access critical, high-risk system functions, such as resetting the entire application database. Use this area with extreme caution.
+
+---
+
+## 10. Danger Zone: Clearing Data
 
 **Go to [Settings](/settings)**
 

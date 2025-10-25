@@ -144,6 +144,19 @@ const guideContent: Record<string, React.ReactNode> = {
       </ul>
     </div>
   ),
+  '/marketplace': (
+    <div>
+      <h3 className="font-bold text-lg mb-2">Marketplace Guide</h3>
+      <p className="mb-4">Discover and purchase educational resources from the community.</p>
+      <ul className="list-disc pl-5 space-y-2 text-sm">
+        <li><strong>Browse Products:</strong> Scroll through the list of available items.</li>
+        <li><strong>Filter & Search:</strong> Use the search bar to find items by name, or use the filter options to narrow down by category and location.</li>
+        <li><strong>View Details:</strong> Click on any product card to open a detailed view with more information, including a full description and availability.</li>
+        <li><strong>Purchase History:</strong> Click the "My Purchases" button to view a list of all the items you have bought.</li>
+        <li><strong>Buy Now:</strong> In the product details view, click "Buy Now" to proceed to the secure checkout page and complete your purchase.</li>
+      </ul>
+    </div>
+  ),
   '/transfer': (
      <div>
       <h3 className="font-bold text-lg mb-2">Data Management Guide</h3>
@@ -184,6 +197,68 @@ const guideContent: Record<string, React.ReactNode> = {
         <li><strong>Academic Settings:</strong> This is very important. Set the **Current Term** and **Current Session** here. All new records you create (grades, attendance, etc.) will be automatically tagged with these values.</li>
         <li><strong>Saving:</strong> Click the "Save" buttons in each section to apply your changes.</li>
         <li><strong>Danger Zone:</strong> Be very careful with this section. The "Clear All School Data" option will permanently delete all your students, classes, grades, and records. This action is irreversible.</li>
+      </ul>
+    </div>
+  ),
+  '/admin': (
+    <div>
+      <h3 className="font-bold text-lg mb-2">Admin Dashboard Guide</h3>
+      <p className="mb-4">This is the central control panel for managing the entire TeachFlow application.</p>
+      <ul className="list-disc pl-5 space-y-2 text-sm">
+        <li><strong>Statistics:</strong> View key metrics like total users, total marketplace products, and user activity over the last week.</li>
+        <li><strong>Quick Actions:</strong> Jump directly to User Management or Marketplace Management.</li>
+        <li><strong>Recently Joined:</strong> See a list of the newest users who have registered on the platform.</li>
+        <li><strong>Sidebar Navigation:</strong> Use the links on the left to access all admin-specific pages.</li>
+      </ul>
+    </div>
+  ),
+  '/admin/users': (
+     <div>
+      <h3 className="font-bold text-lg mb-2">Admin: User Management Guide</h3>
+      <p className="mb-4">Manage all the user accounts on the TeachFlow platform.</p>
+      <ul className="list-disc pl-5 space-y-2 text-sm">
+        <li><strong>View Users:</strong> The main table displays all registered users (except your own admin account).</li>
+        <li><strong>Search:</strong> Use the search bar to find users by name, email, or school name.</li>
+        <li><strong>Actions Menu:</strong> Click the three-dots icon on any user's row to open the actions menu.</li>
+        <li><strong>Change Role:</strong> Promote a 'teacher' to an 'admin' or vice-versa.</li>
+        <li><strong>Change Plan:</strong> Manually upgrade or downgrade a user's subscription plan.</li>
+        <li><strong>Delete User:</strong> Permanently delete a user and all their associated data. This action is irreversible.</li>
+      </ul>
+    </div>
+  ),
+  '/admin/marketplace': (
+     <div>
+      <h3 className="font-bold text-lg mb-2">Admin: Marketplace Management Guide</h3>
+      <p className="mb-4">Add, edit, and manage all products available for sale in the marketplace.</p>
+      <ul className="list-disc pl-5 space-y-2 text-sm">
+        <li><strong>Add Product:</strong> Click the "Add Product" button to open a form and create a new product listing.</li>
+        <li><strong>Edit Product:</strong> Click the three-dots icon on any product and select "Edit" to modify its details.</li>
+        <li><strong>Archive/Activate:</strong> You can "Archive" a product to temporarily hide it from the marketplace without deleting it. You can "Activate" it again later.</li>
+        <li><strong>Delete Product:</strong> Permanently remove a product listing.</li>
+        <li><strong>Statistics:</strong> The cards at the top show an overview of your marketplace, including total products and inventory value.</li>
+      </ul>
+    </div>
+  ),
+  '/admin/notifications': (
+     <div>
+      <h3 className="font-bold text-lg mb-2">Admin: Notifications Guide</h3>
+      <p className="mb-4">View a complete history of all system notifications.</p>
+      <ul className="list-disc pl-5 space-y-2 text-sm">
+        <li><strong>Notification History:</strong> This page shows a list of all notifications generated by the system, such as new product sales or processing errors.</li>
+        <li><strong>Delete Notification:</strong> Click the 'X' button on a notification to remove it from the list.</li>
+        <li><strong>Clear All:</strong> Use the "Clear All" button to permanently delete all notifications.</li>
+      </ul>
+    </div>
+  ),
+  '/admin/system': (
+     <div>
+      <h3 className="font-bold text-lg mb-2">Admin: System Management Guide</h3>
+      <p className="mb-4">This page contains critical, system-wide actions. Please use with extreme caution.</p>
+      <ul className="list-disc pl-5 space-y-2 text-sm">
+        <li><strong>Reset Application:</strong> This is a highly destructive action that will wipe the entire database clean.</li>
+        <li><strong>What it does:</strong> It deletes all user accounts (except your own), all school data, all marketplace products, and everything else.</li>
+        <li><strong>Confirmation:</strong> To prevent accidental use, you must type the phrase "DELETE ALL DATA" into a confirmation box before the action can proceed.</li>
+        <li><strong>Use Case:</strong> This is primarily for resetting the application to a clean slate for a new deployment or for development purposes.</li>
       </ul>
     </div>
   ),
