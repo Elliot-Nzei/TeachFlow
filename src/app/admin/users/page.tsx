@@ -78,6 +78,15 @@ export default function AdminUsersPage() {
         });
         return;
     }
+    // Prevent admin from changing their own plan as well
+    if (currentUser?.uid === user.id && type === 'plan') {
+      toast({
+          variant: 'destructive',
+          title: 'Action Not Allowed',
+          description: "You cannot change your own plan from the admin panel. Please go to the 'Billing' page.",
+      });
+      return;
+    }
     setDialogState({
       open: true,
       type,
@@ -132,21 +141,25 @@ export default function AdminUsersPage() {
   const uniqueUsers = useMemo(() => {
     if (!users) return [];
     
-    // Create a map to hold the most representative user for each email
     const userMap = new Map<string, User>();
     
     users.forEach(user => {
-      if (!user.email) return; // Skip users without an email
+      if (!user.email) return;
 
-      // Always prefer the currently logged-in admin if duplicates exist
-      if(user.id === currentUser?.uid) {
-         userMap.set(user.email, user);
-         return;
+      const existingUser = userMap.get(user.email);
+      
+      // Prioritize the currently logged-in user to ensure they are always the reference
+      if (user.id === currentUser?.uid) {
+        userMap.set(user.email, user);
+        return;
       }
       
-      const existingUser = userMap.get(user.email);
-      // If no user exists for this email, or if the new one is more recent, add it.
-      // We prioritize users with a `createdAt` timestamp.
+      // If a user with the same email is already in the map, and it's the current user, don't replace them
+      if (existingUser && existingUser.id === currentUser?.uid) {
+          return;
+      }
+
+      // If no user exists, or if the new one has a more recent creation date, update.
       if (!existingUser || (user.createdAt && (!existingUser.createdAt || user.createdAt.toDate() > existingUser.createdAt.toDate()))) {
           userMap.set(user.email, user);
       }

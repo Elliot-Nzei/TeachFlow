@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
         
         if (category === 'Physical Good') {
           if (currentStock < quantity) {
-            throw new Error(`Insufficient stock for "${productData.name}". Available: ${currentStock}, Requested: ${quantity}`);
+            throw new Error(`Insufficient stock for "${productData.name}". Only ${currentStock} available.`);
           }
           transaction.update(productRef, {
             stock: admin.firestore.FieldValue.increment(-quantity),
@@ -238,28 +238,26 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
       console.error('Database update error after payment verification:', error);
       
-      // If it's a known stock error, return it as a client error
-      if (error.message.includes('Insufficient stock') || error.message.includes('not found')) {
-        return NextResponse.json({ success: false, message: error.message }, { status: 400 });
-      }
-      
-      // For any other failure after payment, log for admin review
       const adminUid = await getAdminUid(db);
       if (adminUid) {
         const failureLogRef = db.collection('users').doc(adminUid).collection('notifications').doc();
         await failureLogRef.set({
             title: "ACTION REQUIRED: Payment/Stock Mismatch",
-            message: `Payment for reference ${reference} was successful but stock update failed for product ID ${productId}. Please investigate.`,
+            message: `Payment for reference ${reference} was successful but post-payment processing failed for product ID ${productId}. Error: ${error.message}`,
             type: "error",
             isRead: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
 
+      if (error.message.includes('Insufficient stock')) {
+        return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+      }
+
       return NextResponse.json({
         success: true,
-        warning: true, // Use a warning flag for the frontend to handle this special case
-        message: 'Payment verified, but there was an issue updating inventory. Our team has been notified and will process your order manually.'
+        warning: true,
+        message: 'Payment verified, but there was an issue updating your order. Our team has been notified and will process it manually.'
       }, { status: 200 });
   }
 }

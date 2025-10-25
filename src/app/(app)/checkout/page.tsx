@@ -45,10 +45,12 @@ function CheckoutPageContent() {
     const quantity = searchParams.get('quantity') || '1';
 
     useEffect(() => {
-        if (settings?.shippingAddress) {
+        // Only set the default shipping address if it hasn't been set yet.
+        // This prevents overwriting a manually entered address.
+        if (settings?.shippingAddress && Object.keys(shippingAddress).length === 0) {
             setShippingAddress(settings.shippingAddress);
         }
-    }, [settings]);
+    }, [settings, shippingAddress]);
 
     const handleShippingInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setShippingAddress(prev => ({...prev, [e.target.id]: e.target.value }));

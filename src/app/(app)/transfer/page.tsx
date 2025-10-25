@@ -16,7 +16,7 @@ import type { Class, DataTransfer, Student, Grade, LessonNote, Attendance, Trait
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsContext } from '@/contexts/settings-context';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { usePlan } from '@/contexts/plan-context';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -390,173 +390,130 @@ export default function DataManagementPage() {
     setProcessingTransferId(transfer.id);
     setSelectionDialog({ open: false, transfer: null, selections: {} as any });
 
-    const batch = writeBatch(firestore);
-    let studentCounter = userProfile.studentCounter || 0;
-    
     try {
-        const studentIdMap = new Map<string, string>(); 
-        const recipientStudentsRef = collection(firestore, 'users', user.uid, 'students');
+        await firestore.runTransaction(async (transaction) => {
+            let studentCounter = userProfile.studentCounter || 0;
+            const studentIdMap = new Map<string, string>();
+            const recipientStudentsRef = collection(firestore, 'users', user.uid, 'students');
 
-        const processStudent = async (student: Student) => {
-            const { id: originalStudentDocId, ...studentData } = student;
-            let finalStudentDocId;
+            const processStudent = async (student: Student) => {
+                const { id: originalStudentDocId, ...studentData } = student;
+                let finalStudentDocId;
 
-            const existingStudentQuery = query(
-                recipientStudentsRef, 
-                where('transferredFrom', '==', transfer.fromUserId),
-                where('originalStudentDocId', '==', originalStudentDocId),
-                limit(1)
-            );
-            const existingStudentSnap = await getDocs(existingStudentQuery);
+                const existingStudentQuery = query(
+                    recipientStudentsRef,
+                    where('transferredFrom', '==', transfer.fromUserId),
+                    where('originalStudentDocId', '==', originalStudentDocId),
+                    limit(1)
+                );
+                const existingStudentSnap = await getDocs(existingStudentQuery);
 
-            if (!existingStudentSnap.empty) {
-                finalStudentDocId = existingStudentSnap.docs[0].id;
-            } else {
-                studentCounter++;
-                const schoolAcronym = userProfile.userCode ? userProfile.userCode.split('-')[0] : 'SPS';
-                const newStudentId = `${schoolAcronym}-${String(studentCounter).padStart(3, '0')}`;
-                
-                const newStudentRef = doc(recipientStudentsRef);
-                batch.set(newStudentRef, {
-                  ...studentData,
-                  studentId: newStudentId,
-                  transferredFrom: transfer.fromUserId,
-                  originalStudentDocId: originalStudentDocId,
-                  transferredAt: serverTimestamp(),
-                });
-                finalStudentDocId = newStudentRef.id;
-            }
-            studentIdMap.set(originalStudentDocId, finalStudentDocId);
-        }
-
-        if (selections.students) {
-            const studentsToProcess: Student[] = [];
-            if (transfer.dataType === 'Full Class Data' && transfer.students) {
-                studentsToProcess.push(...transfer.students);
-            } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
-                studentsToProcess.push(transfer.data as Student);
-            }
-
-            for (const student of studentsToProcess) {
-                await processStudent(student);
-            }
-        }
-        
-        let targetClassRef;
-        if (transfer.dataType === 'Full Class Data' && selections.classDetails) {
-            if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
-            
-            const classesRef = collection(firestore, 'users', user.uid, 'classes');
-            const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
-            const classQuerySnap = await getDocs(q);
-
-            const studentDocIdsToMerge = Array.from(studentIdMap.values());
-
-            if (classQuerySnap.empty) {
-                targetClassRef = doc(classesRef);
-                const classData = {
-                  ...transfer.data,
-                  students: selections.students ? studentDocIdsToMerge : [],
-                  subjects: selections.subjects ? transfer.data.subjects || [] : [],
-                  transferredFrom: transfer.fromUserId,
-                  transferredAt: serverTimestamp(),
-                };
-                batch.set(targetClassRef, classData);
-            } else {
-                targetClassRef = classQuerySnap.docs[0].ref;
-                batch.update(targetClassRef, { 
-                    subjects: selections.subjects ? arrayUnion(...(transfer.data.subjects || [])) : undefined,
-                    students: selections.students ? arrayUnion(...studentDocIdsToMerge) : undefined,
-                    transferredFrom: transfer.fromUserId, 
-                    transferredAt: serverTimestamp() 
-                });
-            }
-
-            for (const studentId of studentDocIdsToMerge) {
-                const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentId);
-                batch.update(studentRefToUpdate, { classId: targetClassRef.id, className: transfer.data.name });
-            }
-        }
-        
-        if (transfer.timetable && targetClassRef) {
-            const timetableRef = doc(firestore, 'users', user.uid, 'timetables', targetClassRef.id);
-            batch.set(timetableRef, {
-              ...transfer.timetable,
-              id: targetClassRef.id,
-              classId: targetClassRef.id,
-              transferredFrom: transfer.fromUserId,
-              transferredAt: serverTimestamp(),
-            }, { merge: true });
-        }
-
-        if (selections.subjects && transfer.data.subjects && transfer.data.subjects.length > 0) {
-            const subjectsRef = collection(firestore, 'users', user.uid, 'subjects');
-            const existingSubjectsSnap = await getDocs(subjectsRef);
-            const existingSubjectNames = existingSubjectsSnap.docs.map(d => d.data().name.toLowerCase());
-            
-            for (const subjectName of transfer.data.subjects) {
-              if (!existingSubjectNames.includes(subjectName.toLowerCase())) {
-                batch.set(doc(subjectsRef), { name: subjectName });
-              }
-            }
-        }
-        
-        const upsertSubcollectionData = async (
-          subcollectionName: 'grades' | 'attendance' | 'traits',
-          dataArray: any[] | undefined
-        ) => {
-            if (!dataArray || !user) return;
-            const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
-
-            for (const item of dataArray) {
-                const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
-                const newStudentDocId = studentIdMap.get(originalStudentId);
-                if (!newStudentDocId) continue; // Skip if student wasn't imported
-
-                let uniquenessQuery;
-                if (subcollectionName === 'grades') {
-                    uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('subject', '==', item.subject), where('term', '==', item.term), where('session', '==', item.session));
-                } else if (subcollectionName === 'attendance') {
-                    uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('date', '==', item.date));
-                } else { // traits
-                    uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('term', '==', item.term), where('session', '==', item.session));
-                }
-
-                if (!uniquenessQuery) continue;
-
-                const existingSnap = await getDocs(uniquenessQuery);
-                const dataToSave = { ...itemData, studentId: newStudentDocId, transferredFrom: transfer.fromUserId };
-
-                if (existingSnap.empty) {
-                    batch.set(doc(subcollectionRef), dataToSave);
+                if (!existingStudentSnap.empty) {
+                    finalStudentDocId = existingStudentSnap.docs[0].id;
                 } else {
-                    const existingDocRef = existingSnap.docs[0].ref;
-                    batch.update(existingDocRef, dataToSave);
+                    studentCounter++;
+                    const schoolAcronym = userProfile.schoolName?.substring(0, 3).toUpperCase() || 'SPS';
+                    const newStudentId = `${schoolAcronym}-${String(studentCounter).padStart(3, '0')}`;
+                    
+                    const newStudentRef = doc(recipientStudentsRef);
+                    transaction.set(newStudentRef, {
+                        ...studentData,
+                        studentId: newStudentId,
+                        transferredFrom: transfer.fromUserId,
+                        originalStudentDocId: originalStudentDocId,
+                        transferredAt: serverTimestamp(),
+                    });
+                    finalStudentDocId = newStudentRef.id;
+                }
+                studentIdMap.set(originalStudentDocId, finalStudentDocId);
+            };
+
+            if (selections.students) {
+                const studentsToProcess: Student[] = [];
+                if (transfer.dataType === 'Full Class Data' && transfer.students) {
+                    studentsToProcess.push(...transfer.students);
+                } else if (transfer.dataType === 'Single Student Record' && transfer.data) {
+                    studentsToProcess.push(transfer.data as Student);
+                }
+                for (const student of studentsToProcess) {
+                    await processStudent(student);
                 }
             }
-        };
+            
+            let targetClassRef;
+            if (transfer.dataType === 'Full Class Data' && selections.classDetails) {
+                if (!transfer.data || !transfer.data.name) throw new Error('Invalid class data in transfer.');
+                
+                const classesRef = collection(firestore, 'users', user.uid, 'classes');
+                const q = query(classesRef, where('name', '==', transfer.data.name), limit(1));
+                const classQuerySnap = await getDocs(q);
 
-        if (selections.grades) await upsertSubcollectionData('grades', transfer.grades);
-        if (selections.attendance) await upsertSubcollectionData('attendance', transfer.attendance);
-        if (selections.traits) await upsertSubcollectionData('traits', transfer.traits);
-        
-        const timestamp = serverTimestamp();
-        const incomingRef = doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id);
-        batch.update(incomingRef, { status: 'accepted', processedAt: timestamp });
-        
-        const outgoingRef = doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId);
-        batch.update(outgoingRef, { status: 'accepted', processedAt: timestamp });
-        
-        if (studentCounter > (userProfile.studentCounter || 0)) {
-          const userRef = doc(firestore, 'users', user.uid);
-          batch.update(userRef, { studentCounter: studentCounter });
-        }
+                const studentDocIdsToMerge = Array.from(studentIdMap.values());
 
-        await batch.commit();
-        
-        if (studentCounter > (userProfile.studentCounter || 0)) {
-          setSettings({ studentCounter: studentCounter });
-        }
+                if (classQuerySnap.empty) {
+                    targetClassRef = doc(classesRef);
+                    const classData = {
+                        ...transfer.data,
+                        students: selections.students ? studentDocIdsToMerge : [],
+                        subjects: selections.subjects ? transfer.data.subjects || [] : [],
+                        transferredFrom: transfer.fromUserId,
+                        transferredAt: serverTimestamp(),
+                    };
+                    transaction.set(targetClassRef, classData);
+                } else {
+                    targetClassRef = classQuerySnap.docs[0].ref;
+                    transaction.update(targetClassRef, {
+                        subjects: selections.subjects ? arrayUnion(...(transfer.data.subjects || [])) : undefined,
+                        students: selections.students ? arrayUnion(...studentDocIdsToMerge) : undefined,
+                    });
+                }
+                 // Update student documents with new class info
+                for (const studentDocId of studentDocIdsToMerge) {
+                    const studentRefToUpdate = doc(firestore, 'users', user.uid, 'students', studentDocId);
+                    transaction.update(studentRefToUpdate, { classId: targetClassRef.id, className: transfer.data.name });
+                }
+            }
+
+            const upsertSubcollectionData = async (
+                subcollectionName: 'grades' | 'attendance' | 'traits',
+                dataArray: any[] | undefined
+              ) => {
+                  if (!dataArray || !user) return;
+                  const subcollectionRef = collection(firestore, 'users', user.uid, subcollectionName);
+      
+                  for (const item of dataArray) {
+                      const { id: originalDocId, studentId: originalStudentId, ...itemData } = item;
+                      const newStudentDocId = studentIdMap.get(originalStudentId);
+                      if (!newStudentDocId) continue;
+      
+                      let uniquenessQuery;
+                      if (subcollectionName === 'grades') uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('subject', '==', item.subject), where('term', '==', item.term), where('session', '==', item.session));
+                      else if (subcollectionName === 'attendance') uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('date', '==', item.date));
+                      else uniquenessQuery = query(subcollectionRef, where('studentId', '==', newStudentDocId), where('term', '==', item.term), where('session', '==', item.session));
+                      
+                      const existingSnap = await getDocs(uniquenessQuery);
+                      const dataToSave = { ...itemData, studentId: newStudentDocId, transferredFrom: transfer.fromUserId };
+      
+                      if (existingSnap.empty) {
+                          transaction.set(doc(subcollectionRef), dataToSave);
+                      } else {
+                          transaction.update(existingSnap.docs[0].ref, dataToSave);
+                      }
+                  }
+              };
+      
+            if (selections.grades) await upsertSubcollectionData('grades', transfer.grades);
+            if (selections.attendance) await upsertSubcollectionData('attendance', transfer.attendance);
+            if (selections.traits) await upsertSubcollectionData('traits', transfer.traits);
+            
+            const timestamp = serverTimestamp();
+            transaction.update(doc(firestore, 'users', user.uid, 'incomingTransfers', transfer.id), { status: 'accepted', processedAt: timestamp });
+            transaction.update(doc(firestore, 'users', transfer.fromUserId, 'outgoingTransfers', transfer.outgoingTransferId), { status: 'accepted', processedAt: timestamp });
+            
+            if (studentCounter > (userProfile.studentCounter || 0)) {
+              transaction.update(doc(firestore, 'users', user.uid), { studentCounter });
+            }
+        });
 
         toast({
             title: 'Transfer Accepted',
