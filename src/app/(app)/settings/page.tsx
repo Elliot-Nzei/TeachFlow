@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Clipboard, Loader2, AlertTriangle, School, Save } from 'lucide-react';
+import { Clipboard, Loader2, AlertTriangle, School, Save, Home, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsContext } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +17,8 @@ import { collection, writeBatch, getDocs, doc, updateDoc } from 'firebase/firest
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Badge } from '@/components/ui/badge';
 import { toTitleCase } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import { nigerianStates } from '@/lib/nigerian-states';
 
 
 export default function SettingsPage() {
@@ -71,10 +73,32 @@ export default function SettingsPage() {
         }
     };
     
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target;
         setLocalSettings(prev => prev ? {...prev, [id]: value} : null);
     };
+
+    const handleShippingInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setLocalSettings(prev => prev ? {
+            ...prev,
+            shippingAddress: {
+                ...prev.shippingAddress,
+                [id]: value
+            }
+        } : null);
+    };
+
+    const handleShippingSelectChange = (id: string, value: string) => {
+        setLocalSettings(prev => prev ? {
+            ...prev,
+            shippingAddress: {
+                ...prev.shippingAddress,
+                [id]: value
+            }
+        } : null);
+    };
+
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -295,6 +319,39 @@ export default function SettingsPage() {
                 </div>
             </CardContent>
         </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5"/> Default Shipping Address</CardTitle>
+          <CardDescription>Set your default delivery address for marketplace purchases.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           <div className="space-y-2">
+              <Label htmlFor="address">Street Address</Label>
+              <Textarea id="address" placeholder="e.g., 123 Main Street, Ikeja" value={localSettings?.shippingAddress?.address || ''} onChange={handleShippingInputChange} disabled={isSaving}/>
+           </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Select value={localSettings?.shippingAddress?.state || ''} onValueChange={(value) => handleShippingSelectChange('state', value)} disabled={isSaving}>
+                      <SelectTrigger id="state"><SelectValue placeholder="Select your state" /></SelectTrigger>
+                      <SelectContent>
+                        {nigerianStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+               </div>
+               <div className="space-y-2">
+                    <Label htmlFor="landmark">Nearest Landmark</Label>
+                    <Input id="landmark" placeholder="e.g., Near Zenith Bank" value={localSettings?.shippingAddress?.landmark || ''} onChange={handleShippingInputChange} disabled={isSaving}/>
+               </div>
+           </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="flex items-center gap-2"><Phone className="h-4 w-4"/> Contact Phone Number</Label>
+              <Input id="phone" type="tel" placeholder="e.g., 08012345678" value={localSettings?.shippingAddress?.phone || ''} onChange={handleShippingInputChange} disabled={isSaving}/>
+           </div>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader>
@@ -336,8 +393,8 @@ export default function SettingsPage() {
         </CardContent>
         <CardFooter>
           <Button onClick={handleSaveChanges} disabled={isSaving || isLoading}>
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isSaving ? 'Saving...' : 'Save Settings'}
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSaving ? 'Saving...' : 'Save All Settings'}
           </Button>
         </CardFooter>
       </Card>

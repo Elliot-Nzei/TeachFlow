@@ -4,6 +4,13 @@ import React, { createContext, useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, type Timestamp } from 'firebase/firestore';
 
+type ShippingAddress = {
+    address?: string;
+    state?: string;
+    landmark?: string;
+    phone?: string;
+}
+
 type Settings = {
     name: string;
     schoolName: string;
@@ -18,12 +25,14 @@ type Settings = {
     plan?: 'free_trial' | 'basic' | 'prime';
     planStartDate?: Timestamp;
     subscriptionCycle?: 'monthly' | 'annually';
+    reportCardTemplate?: 'classic' | 'modern' | 'compact' | 'minimal-compact';
     aiUsage?: {
         reportCardGenerations?: number;
         lessonNoteGenerations?: number;
         examGenerations?: number;
         usageCycleStartDate?: Timestamp;
     };
+    shippingAddress?: ShippingAddress;
 }
 
 type SettingsContextType = {

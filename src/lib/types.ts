@@ -1,5 +1,4 @@
 
-
 import { type DialogContentProps } from '@radix-ui/react-dialog';
 
 declare module "@radix-ui/react-dialog" {
@@ -127,6 +126,32 @@ export type ReportCard = {
   remark: string;
 };
 
+export type ShippingAddress = {
+    address: string;
+    state: string;
+    landmark?: string;
+    phone: string;
+};
+
+export type Purchase = {
+    id: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    amount: number;
+    status: 'completed' | 'pending' | 'failed';
+    reference: string;
+    createdAt: any;
+};
+
+export type Sale = Purchase & {
+    buyerId?: string;
+    buyerName?: string;
+    buyerEmail?: string;
+    shippingAddress?: ShippingAddress;
+};
+
+
 export type DataTransfer = {
   id: string;
   fromUserCode: string;
@@ -171,7 +196,8 @@ export type Settings = {
       lessonNoteGenerations?: number;
       examGenerations?: number;
       usageCycleStartDate?: any;
-  }
+  },
+  shippingAddress?: ShippingAddress;
 };
 
 export type TimetablePeriod = {
