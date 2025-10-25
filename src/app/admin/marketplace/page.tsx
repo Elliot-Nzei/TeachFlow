@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -103,6 +104,16 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
     setErrors({});
   }, [initialProduct, user.uid]);
 
+  const isValidUrl = (url: string): boolean => {
+    if (!url) return false;
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -132,15 +143,6 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const isValidUrl = (url: string): boolean => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -226,6 +228,8 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
       setIsSubmitting(false);
     }
   };
+
+  const canShowPreview = product.imageUrl && !errors.imageUrl && isValidUrl(product.imageUrl);
 
   return (
     <form onSubmit={handleSubmit}>
@@ -359,15 +363,14 @@ const ProductForm = ({ product: initialProduct, user, onSave, onCancel }: Produc
               {errors.imageUrl && (
                 <p className="text-sm text-destructive">{errors.imageUrl}</p>
               )}
-              {product.imageUrl && !errors.imageUrl && (
+              {canShowPreview && (
                 <div className="mt-2">
                   <Image
-                    src={getDirectGoogleDriveUrl(product.imageUrl)}
+                    src={getDirectGoogleDriveUrl(product.imageUrl!)}
                     alt="Preview"
                     width={100}
                     height={100}
                     className="rounded-md object-cover"
-                    onError={() => setErrors(prev => ({ ...prev, imageUrl: 'Failed to load image' }))}
                   />
                 </div>
               )}
