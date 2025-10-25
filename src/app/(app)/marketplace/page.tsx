@@ -359,7 +359,7 @@ export default function MarketplacePage() {
     
     return (
         <Sheet open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
-            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="space-y-6">
                 {/* Header Section */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-2">
