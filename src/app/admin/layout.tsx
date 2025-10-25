@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -12,6 +13,7 @@ import {
   Settings,
   Loader2,
   AlertTriangle,
+  Bell,
 } from 'lucide-react';
 import { useTheme } from "next-themes"
 import {
@@ -59,6 +61,7 @@ import AdminNotificationBell from '@/components/admin-notification-bell';
 const adminMenuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/notifications', label: 'Notifications', icon: Bell },
   { href: '/admin/marketplace', label: 'Marketplace', icon: ShoppingCart },
   { href: '/admin/system', label: 'System', icon: AlertTriangle },
 ];
@@ -220,7 +223,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.href}>
                 <Link href={item.href}>
                   <SidebarMenuButton
-                    isActive={pathname === item.href}
+                    isActive={pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')}
                     tooltip={{ children: item.label }}
                   >
                     <item.icon />
@@ -275,5 +278,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </SettingsProvider>
   );
 }
-
-    

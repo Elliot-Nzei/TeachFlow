@@ -2,7 +2,7 @@
 'use client';
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { Bell, ShoppingCart, Package, AlertCircle, X } from 'lucide-react';
+import { Bell, ShoppingCart, Package, AlertCircle, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirebase, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, orderBy, limit, doc } from 'firebase/firestore';
@@ -13,6 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuFooter,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from './ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,7 +23,7 @@ type Notification = {
   id: string;
   title: string;
   message: string;
-  type: 'sale' | 'stock' | 'transfer' | 'general';
+  type: 'sale' | 'stock' | 'transfer' | 'general' | 'error';
   isRead: boolean;
   link?: string;
   createdAt: any; 
@@ -58,7 +59,8 @@ export default function AdminNotificationBell() {
     switch (type) {
       case 'sale': return <ShoppingCart className="mr-2 h-4 w-4 text-green-500" />;
       case 'stock': return <Package className="mr-2 h-4 w-4 text-orange-500" />;
-      default: return <AlertCircle className="mr-2 h-4 w-4 text-blue-500" />;
+      case 'error': return <AlertCircle className="mr-2 h-4 w-4 text-red-500" />;
+      default: return <Bell className="mr-2 h-4 w-4 text-blue-500" />;
     }
   }
 
@@ -123,9 +125,16 @@ export default function AdminNotificationBell() {
                     ))}
                 </ScrollArea>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuFooter>
+                <Link href="/admin/notifications" className="w-full">
+                    <Button variant="ghost" className="w-full justify-center text-sm">
+                        View All Notifications
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
+            </DropdownMenuFooter>
         </DropdownMenuContent>
     </DropdownMenu>
   );
 }
-
-    
