@@ -1,10 +1,11 @@
+
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { usePlan } from '@/contexts/plan-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Lock, Search, Filter, X, ShoppingCart, Package, Star, MapPin, TrendingUp, Sparkles, PackageOpen } from 'lucide-react';
+import { Loader2, Lock, Search, Filter, X, ShoppingCart, Package, Star, MapPin, TrendingUp, Sparkles, PackageOpen, Plus, Minus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -35,7 +36,7 @@ type Product = {
 const isValidImageUrl = (url: string | undefined): boolean => {
     if (!url) return false;
     try {
-        const allowedHosts = ['images.unsplash.com', 'picsum.photos', 'drive.google.com', 'lh3.googleusercontent.com'];
+        const allowedHosts = ['images.unsplash.com', 'picsum.photos', 'drive.google.com', 'lh3.googleusercontent.com', 'images-cdn.ubuy.co.in', 'ui-avatars.com'];
         const urlObj = new URL(url);
         return allowedHosts.includes(urlObj.hostname);
     } catch (error) {
@@ -284,6 +285,7 @@ export default function MarketplacePage() {
     });
     
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [quantity, setQuantity] = useState(1);
 
     const productsQuery = useMemoFirebase(
         () => firestore ? query(collection(firestore, 'marketplace_products'), where('status', '==', 'active')) : null, 
@@ -305,6 +307,12 @@ export default function MarketplacePage() {
             }
         }
     }, [plan, isTrial, router, toast]);
+
+    useEffect(() => {
+        if (selectedProduct) {
+            setQuantity(1);
+        }
+    }, [selectedProduct]);
     
     const allLocations = useMemo(() => {
         if (!products) return [];
@@ -338,11 +346,21 @@ export default function MarketplacePage() {
             name: product.name,
             price: product.price.toString(),
             imageUrl: encodeURIComponent(imageUrl),
-            quantity: '1',
+            quantity: quantity.toString(),
             isSubscription: 'false',
+            category: product.category,
         });
         router.push(`/checkout?${query.toString()}`);
     };
+
+    const handleQuantityChange = (amount: number) => {
+        if (!selectedProduct) return;
+        const newQuantity = quantity + amount;
+        const maxStock = selectedProduct.category === 'Physical Good' ? selectedProduct.stock : Infinity;
+        if (newQuantity >= 1 && newQuantity <= maxStock) {
+            setQuantity(newQuantity);
+        }
+    }
 
     if (isLoadingPlan) {
         return (
@@ -515,15 +533,21 @@ export default function MarketplacePage() {
                         
                         <ScrollArea className="flex-1 pr-6 -mr-6">
                             <div className="space-y-6 py-6">
-                                {/* Price Section */}
+                                {/* Price & Quantity Section */}
                                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border-2 border-primary/10">
                                     <div>
-                                        <p className="text-sm text-muted-foreground mb-1">Price</p>
+                                        <p className="text-sm text-muted-foreground mb-1">Total Price</p>
                                         <p className="text-2xl sm:text-3xl font-bold text-primary">
-                                            ₦{selectedProduct.price.toLocaleString()}
+                                            ₦{(selectedProduct.price * quantity).toLocaleString()}
                                         </p>
                                     </div>
-                                    <ShoppingCart className="h-8 w-8 text-primary/40" />
+                                     {selectedProduct.category === 'Physical Good' && (
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(-1)} disabled={quantity <= 1}><Minus className="h-4 w-4" /></Button>
+                                            <span className="text-lg font-bold w-10 text-center">{quantity}</span>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(1)} disabled={quantity >= selectedProduct.stock}><Plus className="h-4 w-4" /></Button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Description */}

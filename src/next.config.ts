@@ -57,6 +57,12 @@ const nextConfig: NextConfig = {
         hostname: 'ui-avatars.com',
         port: '',
         pathname: '/api/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images-cdn.ubuy.co.in',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

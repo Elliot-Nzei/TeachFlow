@@ -50,10 +50,10 @@ function CheckoutPageContent() {
         }
     }, [settings]);
 
-    const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleShippingInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setShippingAddress(prev => ({...prev, [e.target.id]: e.target.value }));
     }
-    const handleAddressSelectChange = (id: string, value: string) => {
+    const handleShippingSelectChange = (id: string, value: string) => {
         setShippingAddress(prev => ({...prev, [id]: value }));
     }
 
@@ -173,12 +173,12 @@ function CheckoutPageContent() {
                         <CardContent>
                             {isEditingAddress ? (
                                 <div className="space-y-4">
-                                    <div className="space-y-2"><Label htmlFor="address">Street Address</Label><Textarea id="address" value={shippingAddress.address || ''} onChange={handleAddressInputChange} /></div>
+                                    <div className="space-y-2"><Label htmlFor="address">Street Address</Label><Textarea id="address" value={shippingAddress.address || ''} onChange={handleShippingInputChange} /></div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2"><Label htmlFor="state">State</Label><Select value={shippingAddress.state || ''} onValueChange={(v) => handleAddressSelectChange('state', v)}><SelectTrigger><SelectValue placeholder="Select state..."/></SelectTrigger><SelectContent>{nigerianStates.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-                                        <div className="space-y-2"><Label htmlFor="landmark">Nearest Landmark</Label><Input id="landmark" value={shippingAddress.landmark || ''} onChange={handleAddressInputChange} /></div>
+                                        <div className="space-y-2"><Label htmlFor="state">State</Label><Select value={shippingAddress.state || ''} onValueChange={(v) => handleShippingSelectChange('state', v)}><SelectTrigger><SelectValue placeholder="Select state..."/></SelectTrigger><SelectContent>{nigerianStates.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
+                                        <div className="space-y-2"><Label htmlFor="landmark">Nearest Landmark</Label><Input id="landmark" value={shippingAddress.landmark || ''} onChange={handleShippingInputChange} /></div>
                                     </div>
-                                    <div className="space-y-2"><Label htmlFor="phone">Contact Phone</Label><Input id="phone" type="tel" value={shippingAddress.phone || ''} onChange={handleAddressInputChange} /></div>
+                                    <div className="space-y-2"><Label htmlFor="phone">Contact Phone</Label><Input id="phone" type="tel" value={shippingAddress.phone || ''} onChange={handleShippingInputChange} /></div>
                                     <Button onClick={() => setIsEditingAddress(false)} className="w-full"><Check className="mr-2 h-4 w-4"/>Confirm Address</Button>
                                 </div>
                             ) : (
