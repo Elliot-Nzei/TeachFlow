@@ -258,7 +258,7 @@ export default function StudentsPage() {
                         </TooltipContent>
                     )}
                 </Tooltip>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle>Add New Student</DialogTitle>
                         <DialogDescription>
