@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import { useAuth, useFirebase } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -21,8 +21,7 @@ import { checkIfAnyUserExists } from '@/app/actions/user-actions';
 const registerImage = placeholderImages.placeholderImages.find(img => img.id === 'hero-students');
 
 export default function RegisterPage() {
-    const { firestore } = useFirebase();
-    const auth = useAuth();
+    const { firestore, auth } = useFirebase();
     const router = useRouter();
     const { toast } = useToast();
     const [fullName, setFullName] = useState('');
